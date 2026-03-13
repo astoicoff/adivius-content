@@ -8,6 +8,7 @@
     #contentArea .card-body { flex: 1; display: flex; flex-direction: column; }
     #htmlOutput, #editOutput { flex: 1; min-height: 300px; resize: none; }
     #cleanOutput        { flex: 1; min-height: 300px; }
+    .content-view-bar .btn { padding: 6px 10px; }
 </style>
 </head>
 <body>
