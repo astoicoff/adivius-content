@@ -268,7 +268,7 @@
         /* ── Alert ── */
         .alert { display: none; padding: 13px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; margin-bottom: 20px; align-items: center;  }
         .alert.visible { display: flex; }
-        .alert svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+        .alert svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; margin-right: 10px; }
         .alert-error   { background: var(--red-tint); color: var(--red); border: 1px solid rgba(238,45,36,0.2); }
         .alert-success { background: #F0FAF0; color: #2a7a1a; border: 1px solid rgba(107,189,69,0.3); }
 

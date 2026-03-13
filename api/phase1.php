@@ -1,7 +1,9 @@
 <?php
+ob_start();
 set_time_limit(300);
 require_once __DIR__ . '/helpers.php';
 set_headers();
+ob_end_clean();
 
 $user    = get_authed_user();
 $user_id = $user['id'];
