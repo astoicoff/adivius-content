@@ -1,0 +1,30 @@
+RewriteEngine On
+
+# ── Security: block direct access to internal PHP files ──────────
+<FilesMatch "^(config|helpers)\.php$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# ── Disable ModSecurity for API endpoints ────────────────────────
+<IfModule mod_security.c>
+    <LocationMatch "^/api/">
+        SecRuleEngine Off
+    </LocationMatch>
+</IfModule>
+
+# ── Redirect old .html and .php extensions to clean URLs ─────────
+RewriteRule ^(login|dashboard|new-content|content-groups|history|api-keys|view-content)\.html$ /$1 [R=301,L]
+RewriteRule ^(login|dashboard|new-content|content-groups|history|api-keys|view-content)\.php$  /$1 [R=301,L]
+
+# ── Serve clean URLs from PHP files ──────────────────────────────
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(login|dashboard|new-content|content-groups|history|api-keys|view-content)$ $1.php [L]
+
+# php -- BEGIN cPanel-generated handler, do not edit
+# Set the "ea-php74" package as the default "PHP" programming language.
+<IfModule mime_module>
+  AddHandler application/x-httpd-ea-php74 .php .php7 .phtml
+</IfModule>
+# php -- END cPanel-generated handler, do not edit

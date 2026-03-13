@@ -1,0 +1,10 @@
+# Sensitive config (lives outside web root on server)
+adcontent_config.php
+config.php
+.env
+
+# PHP/Python artifacts
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
