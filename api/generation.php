@@ -8,6 +8,15 @@ $id      = $_GET['id'] ?? '';
 
 if (!$id) { http_response_code(400); echo json_encode(['detail' => 'Generation ID is required.']); exit; }
 
+if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+    $res = supabase_call('DELETE',
+        '/rest/v1/content_generations?id=eq.' . urlencode($id) . '&user_id=eq.' . urlencode($user_id)
+    );
+    if ($res['status'] >= 400) { http_response_code($res['status']); echo $res['body']; exit; }
+    echo json_encode(['success' => true]);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     $body    = json_decode(file_get_contents('php://input'), true) ?: [];
     $content = $body['content'] ?? null;

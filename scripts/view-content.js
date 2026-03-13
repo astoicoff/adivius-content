@@ -103,11 +103,35 @@ function openDensityModal() {
     document.getElementById("densityContent").innerHTML = buildDensityHTML(genData?.content || '');
     document.getElementById("densityModal").classList.add("open");
     document.getElementById("densityOverlay").classList.add("visible");
+    const btn = document.getElementById("btnDensity");
+    btn.classList.remove("btn-secondary");
+    btn.classList.add("btn-yellow");
 }
 
 function closeDensityModal() {
     document.getElementById("densityModal").classList.remove("open");
     document.getElementById("densityOverlay").classList.remove("visible");
+    const btn = document.getElementById("btnDensity");
+    btn.classList.remove("btn-yellow");
+    btn.classList.add("btn-secondary");
+}
+
+async function deleteContent() {
+    if (!confirm("Delete this content? This cannot be undone.")) return;
+    const id      = new URLSearchParams(window.location.search).get("id");
+    const groupId = new URLSearchParams(window.location.search).get("group");
+    const btn     = document.getElementById("btnDelete");
+    btn.disabled  = true;
+    try {
+        const res = await fetch(`${API_URL}/api/generation.php?id=${encodeURIComponent(id)}`, {
+            method: 'DELETE', headers: authHeaders()
+        });
+        if (!res.ok) throw new Error('Failed to delete.');
+        window.location.href = groupId ? `/content-groups?group=${encodeURIComponent(groupId)}` : '/content-groups';
+    } catch (err) {
+        alert(err.message);
+        btn.disabled = false;
+    }
 }
 
 function buildDensityHTML(html) {

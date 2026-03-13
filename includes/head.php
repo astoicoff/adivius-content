@@ -255,8 +255,10 @@
         .btn-blue:hover  { background: #007bbf; }
         .btn-green { background: var(--green); color: white; }
         .btn-green:hover { background: #5aa33c; }
-        .btn-red  { background: var(--red);   color: white; }
-        .btn-red:hover  { background: #d42620; }
+        .btn-red    { background: var(--red);    color: white; }
+        .btn-red:hover    { background: #d42620; }
+        .btn-yellow { background: var(--yellow); color: var(--dark); }
+        .btn-yellow:hover { background: #e6ce45; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* ── Loading ── */
