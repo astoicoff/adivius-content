@@ -3,6 +3,9 @@ adcontent_config.php
 config.php
 .env
 
+# Directives live outside public_html on server (~/Content Creator/directives/)
+directives/
+
 # PHP/Python artifacts
 .venv/
 __pycache__/
