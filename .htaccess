@@ -22,6 +22,11 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(login|dashboard|new-content|content-groups|history|api-keys|view-content)$ $1.php [L]
 
+# ── PHP settings ─────────────────────────────────────────────────
+php_flag  display_errors      Off
+php_flag  log_errors           On
+php_value max_execution_time  300
+
 # php -- BEGIN cPanel-generated handler, do not edit
 # Set the "ea-php74" package as the default "PHP" programming language.
 <IfModule mime_module>
