@@ -7,6 +7,11 @@ document.addEventListener("DOMContentLoaded", () => {
     initAuth(async () => {
         await loadGroups();
         populateGroupSelector();
+        const params = new URLSearchParams(window.location.search);
+        const kw = params.get('keyword');
+        const gp = params.get('group');
+        if (kw) document.getElementById("keywordInput").value = kw;
+        if (gp) document.getElementById("groupSelect").value  = gp;
     });
     document.getElementById("phase1Form").addEventListener("submit", handlePhase1);
     document.getElementById("proceedToPhase2Btn").addEventListener("click", handlePhase2);

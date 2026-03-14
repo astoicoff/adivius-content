@@ -35,6 +35,13 @@ async function loadGeneration(id) {
         document.getElementById("densityModalTitle").textContent = `Keyword Density — ${title}`;
         document.getElementById("htmlOutput").value = data.content || "(No content stored — generation may not have completed.)";
 
+        if (data.content) {
+            const wc   = wordCount(data.content);
+            const meta = document.getElementById("viewMeta");
+            meta.textContent  = `${wc.toLocaleString()} words · ${readingTime(wc)}`;
+            meta.style.display = "";
+        }
+
         document.getElementById("loadingState").style.display = "none";
         document.getElementById("contentArea").style.display  = "";
     } catch (err) {
@@ -86,6 +93,14 @@ async function saveContent() {
     } finally {
         saveBtn.disabled = false;
     }
+}
+
+function regenerate() {
+    const params  = new URLSearchParams();
+    const groupId = new URLSearchParams(window.location.search).get("group") || genData?.group_id || '';
+    if (genData?.keyword) params.set('keyword', genData.keyword);
+    if (groupId)          params.set('group', groupId);
+    window.location.href = '/new-content' + (params.toString() ? '?' + params.toString() : '');
 }
 
 function copyContent() {

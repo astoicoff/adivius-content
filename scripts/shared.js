@@ -58,6 +58,18 @@ async function loadHistoryBadge() {
     } catch (_) {}
 }
 
+function wordCount(html) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html || '';
+    const text = (tmp.textContent || tmp.innerText || '').trim();
+    return text ? (text.match(/\S+/g) || []).length : 0;
+}
+
+function readingTime(words) {
+    const mins = Math.ceil(words / 200);
+    return mins === 1 ? '1 min read' : `${mins} min read`;
+}
+
 function toTitleCase(str) {
     return (str || '').replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
 }

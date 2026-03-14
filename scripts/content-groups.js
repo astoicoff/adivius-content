@@ -121,15 +121,18 @@ function renderContentItems(generations) {
     }
 
     list.innerHTML = generations.map(g => {
-        const title = toTitleCase(g.keyword);
-        const date  = new Date(g.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
-        const url   = `/view-content?id=${encodeURIComponent(g.id)}&group=${encodeURIComponent(editingGroupId)}`;
+        const title  = toTitleCase(g.keyword);
+        const date   = new Date(g.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
+        const url    = `/view-content?id=${encodeURIComponent(g.id)}&group=${encodeURIComponent(editingGroupId)}`;
+        const wc     = g.content ? wordCount(g.content) : 0;
+        const wcMeta = wc > 0 ? `<div class="word-count-meta">${wc.toLocaleString()} words · ${readingTime(wc)}</div>` : '';
 
         return `<a class="content-item" href="${url}" style="text-decoration:none;display:block;">
             <div class="content-item-header" style="cursor:pointer;">
                 <div>
                     <div class="content-item-title">${escapeHtml(title)}</div>
                     <div class="content-item-date">${date}</div>
+                    ${wcMeta}
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     ${statusBadge(g.status)}

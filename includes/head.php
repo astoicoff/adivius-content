@@ -287,12 +287,15 @@
         .step-line.done { background: var(--green); }
 
         /* ── History ── */
+        .history-filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+        .history-filters .form-input { padding: 8px 12px; }
         .history-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-radius: 8px; border: 1px solid var(--light-gray); margin-bottom: 10px; background: var(--card); transition: border-color 0.15s; }
         .history-item:hover { border-color: var(--blue); }
         .history-keyword { font-size: 13px; font-weight: 600; color: var(--dark); margin-bottom: 3px; }
         .history-date { font-size: 11px; color: var(--text-muted); font-family: 'Inter', sans-serif; }
         .history-empty { text-align: center; padding: 48px 20px; color: var(--text-muted); font-size: 13px; }
         .history-empty svg { width: 40px; height: 40px; stroke: var(--light-gray); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; display: block; margin: 0 auto 12px; }
+        .word-count-meta { font-size: 11px; color: var(--text-muted); font-family: 'Inter', sans-serif; margin-top: 2px; }
 
         /* ── Settings ── */
         .settings-section-title { font-size: 13px; font-weight: 600; color: var(--dark); margin-bottom: 4px; }

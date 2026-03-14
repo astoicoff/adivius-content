@@ -36,6 +36,7 @@
                 </div>
             </div>
             <div id="viewKeyword" style="font-size:22px;font-weight:700;color:var(--dark);margin-top:10px;line-height:1.3;letter-spacing:0.3px;text-transform:uppercase;"></div>
+            <div id="viewMeta" class="word-count-meta" style="display:none;margin-top:4px;"></div>
         </div>
 
         <!-- Loading -->
@@ -69,6 +70,10 @@
                 <button id="btnDensity" class="btn btn-secondary" onclick="openDensityModal()">
                     <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                     Keyword Density
+                </button>
+                <button class="btn btn-blue" onclick="regenerate()">
+                    <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
+                    Regenerate
                 </button>
                 <button id="btnCopy" class="btn btn-green" onclick="copyContent()">
                     <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
