@@ -9,6 +9,15 @@
     #htmlOutput, #editOutput { flex: 1; min-height: 300px; resize: none; }
     #cleanOutput        { flex: 1; min-height: 300px; }
     .content-view-bar .btn { padding: 6px 10px; }
+
+    /* Meta panel */
+    #metaPanel          { margin-bottom: 16px; }
+    #metaPanel .card    { flex: unset; margin-bottom: 0; }
+    .meta-row           { display: flex; align-items: baseline; gap: 14px; }
+    .meta-row + .meta-row { border-top: 1px solid var(--light-gray); padding-top: 10px; }
+    .meta-key           { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; min-width: 44px; flex-shrink: 0; }
+    .meta-val           { font-size: 13px; color: var(--dark); line-height: 1.5; font-family: 'Inter', sans-serif; }
+    .meta-code          { font-family: monospace; font-size: 12px; color: var(--text-muted); background: var(--off-white); padding: 2px 7px; border-radius: 4px; border: 1px solid var(--light-gray); }
 </style>
 </head>
 <body>
@@ -83,6 +92,27 @@
                     <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
                     Delete
                 </button>
+            </div>
+
+            <!-- Meta panel (h1 / title / url) -->
+            <div id="metaPanel" style="display:none;">
+                <div class="card">
+                    <div class="card-accent blue"></div>
+                    <div class="card-body" style="padding:14px 20px;gap:10px;display:flex;flex-direction:column;">
+                        <div class="meta-row" id="metaRowH1" style="display:none;">
+                            <span class="meta-key">H1</span>
+                            <span class="meta-val" id="metaH1"></span>
+                        </div>
+                        <div class="meta-row" id="metaRowTitle" style="display:none;">
+                            <span class="meta-key">Title</span>
+                            <span class="meta-val" id="metaTitle"></span>
+                        </div>
+                        <div class="meta-row" id="metaRowUrl" style="display:none;">
+                            <span class="meta-key">URL</span>
+                            <code class="meta-val meta-code" id="metaUrl"></code>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="card">

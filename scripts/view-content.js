@@ -1,5 +1,54 @@
-let genData  = null;
-let viewMode = 'html';
+let genData        = null;
+let genCleanContent = null;   // raw content with meta lines stripped
+let viewMode       = 'html';
+
+// Parse h1/title/url meta lines from the top of raw content.
+// Returns { meta: {h1,title,url} | null, content: string }
+function parseContentMeta(raw) {
+    if (!raw) return { meta: null, content: raw };
+    const lines = raw.split('\n');
+    const meta  = {};
+    let end     = 0;
+
+    for (let i = 0; i < Math.min(lines.length, 15); i++) {
+        const line = lines[i];
+        const trim = line.trim();
+        if (!trim) {
+            if (Object.keys(meta).length) { end = i + 1; break; }
+            continue;
+        }
+        if (trim.startsWith('<')) { end = i; break; }
+        const m = trim.match(/^(h1|title|url)\s*:\s*(.+)$/i);
+        if (m) { meta[m[1].toLowerCase()] = m[2].trim(); end = i + 1; }
+        else break;
+    }
+
+    if (!Object.keys(meta).length) return { meta: null, content: raw };
+    return { meta, content: lines.slice(end).join('\n').trim() };
+}
+
+function showMetaPanel(meta) {
+    const panel = document.getElementById("metaPanel");
+    if (!meta) { panel.style.display = "none"; return; }
+
+    const fields = [
+        { row: "metaRowH1",    el: "metaH1",    val: meta.h1    },
+        { row: "metaRowTitle", el: "metaTitle",  val: meta.title },
+        { row: "metaRowUrl",   el: "metaUrl",    val: meta.url   },
+    ];
+    let any = false;
+    fields.forEach(({ row, el, val }) => {
+        const rowEl = document.getElementById(row);
+        if (val) {
+            document.getElementById(el).textContent = val;
+            rowEl.style.display = "";
+            any = true;
+        } else {
+            rowEl.style.display = "none";
+        }
+    });
+    panel.style.display = any ? "" : "none";
+}
 
 document.addEventListener("DOMContentLoaded", () => {
     const params  = new URLSearchParams(window.location.search);
@@ -33,10 +82,15 @@ async function loadGeneration(id) {
             month: "long", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit"
         });
         document.getElementById("densityModalTitle").textContent = `Keyword Density — ${title}`;
-        document.getElementById("htmlOutput").value = data.content || "(No content stored — generation may not have completed.)";
+        // Parse and separate meta section from body content
+        const parsed    = parseContentMeta(data.content || '');
+        genCleanContent = parsed.content;
+        showMetaPanel(parsed.meta);
 
-        if (data.content) {
-            const wc   = wordCount(data.content);
+        document.getElementById("htmlOutput").value = genCleanContent || "(No content stored — generation may not have completed.)";
+
+        if (genCleanContent) {
+            const wc   = wordCount(genCleanContent);
             const meta = document.getElementById("viewMeta");
             meta.textContent  = `${wc.toLocaleString()} words · ${readingTime(wc)}`;
             meta.style.display = "";
@@ -68,7 +122,7 @@ function setViewMode(mode) {
     document.getElementById("btnClean").classList.toggle("btn-view-active", mode === 'clean');
     document.getElementById("btnEdit").classList.toggle("btn-view-active",  mode === 'edit');
 
-    if (mode === 'clean') document.getElementById("cleanOutput").innerHTML = genData?.content || '';
+    if (mode === 'clean') document.getElementById("cleanOutput").innerHTML = genCleanContent || '';
     if (mode === 'edit')  document.getElementById("editOutput").value      = genData?.content || '';
 }
 
@@ -83,7 +137,10 @@ async function saveContent() {
         });
         if (!res.ok) throw new Error('Failed to save.');
         genData.content = content;
-        document.getElementById("htmlOutput").value = content;
+        const reparsed  = parseContentMeta(content);
+        genCleanContent = reparsed.content;
+        showMetaPanel(reparsed.meta);
+        document.getElementById("htmlOutput").value = genCleanContent;
         setViewMode('html');
         const ind = document.getElementById("saveIndicator");
         ind.classList.add("visible");
