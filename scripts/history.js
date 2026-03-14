@@ -72,7 +72,7 @@ function renderHistory(generations) {
             month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit"
         });
         const group      = cachedGroups.find(gr => gr.id === g.group_id);
-        const groupLabel = group ? ` · ${escapeHtml(group.name)}` : '';
+        const groupBadge = group ? `<span style="font-size:11px;color:var(--text-muted);font-weight:500;">${escapeHtml(group.name)}</span>` : '';
         const isComplete = g.status === "completed";
         const viewLink   = isComplete
             ? `<a href="/view-content?id=${encodeURIComponent(g.id)}&group=${encodeURIComponent(g.group_id || '')}" class="btn btn-secondary" style="padding:6px 12px;font-size:12px;">
@@ -83,9 +83,10 @@ function renderHistory(generations) {
         return `<div class="history-item">
             <div>
                 <div class="history-keyword">${escapeHtml(toTitleCase(g.keyword))}</div>
-                <div class="history-date">${date}${groupLabel}</div>
+                <div class="history-date">${date}</div>
             </div>
             <div style="display:flex;align-items:center;gap:10px;">
+                ${groupBadge}
                 ${statusBadge(g.status)}
                 ${viewLink}
             </div>
