@@ -16,8 +16,7 @@
             <div class="card-header"><div><div class="card-title">Generation History</div><div class="card-subtitle">All your past content generations</div></div></div>
             <div class="card-body">
                 <div class="history-filters">
-                    <input type="text" class="form-input" id="historySearch" placeholder="Search keyword..." oninput="applyFilters()" style="flex:1;min-width:160px;">
-                    <select class="form-input" id="historyStatusFilter" onchange="applyFilters()" style="min-width:140px;">
+                    <select class="form-input" id="historyStatusFilter" onchange="applyFilters()" style="flex:1;">
                         <option value="">All statuses</option>
                         <option value="completed">Complete</option>
                         <option value="failed">Failed</option>
@@ -25,9 +24,10 @@
                         <option value="generating_instructions">Generating Brief</option>
                         <option value="generating_content">Writing Content</option>
                     </select>
-                    <select class="form-input" id="historyGroupFilter" onchange="applyFilters()" style="min-width:140px;">
+                    <select class="form-input" id="historyGroupFilter" onchange="applyFilters()" style="flex:1;">
                         <option value="">All groups</option>
                     </select>
+                    <input type="text" class="form-input" id="historySearch" placeholder="Search keyword..." oninput="applyFilters()" style="flex:1;">
                 </div>
                 <div id="historyList">
                     <div class="history-empty">

@@ -67,7 +67,7 @@
                     <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     Edit
                 </button>
-                <button id="btnDensity" class="btn btn-blue" onclick="openDensityModal()">
+                <button id="btnDensity" class="btn btn-secondary" onclick="openDensityModal()">
                     <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                     Keyword Density
                 </button>
