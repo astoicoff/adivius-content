@@ -287,7 +287,8 @@
         .step-line.done { background: var(--green); }
 
         /* ── History ── */
-        .history-filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+        .history-filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: nowrap; }
+        @media (max-width: 600px) { .history-filters { flex-wrap: wrap; } }
         .history-filters .form-input { padding: 8px 12px; }
         .history-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-radius: 8px; border: 1px solid var(--light-gray); margin-bottom: 10px; background: var(--card); transition: border-color 0.15s; }
         .history-item:hover { border-color: var(--blue); }
@@ -354,7 +355,7 @@
         .content-item-body { padding: 16px; border-top: 1px solid var(--light-gray); display: none; }
         .content-item.expanded .content-item-body { display: block; }
         .content-view-bar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
-        .content-rendered { line-height: 1.8; font-size: 14px; color: var(--dark); max-height: 600px; overflow-y: auto; padding: 20px; background: var(--off-white); border-radius: 8px; border: 1px solid var(--light-gray); }
+        .content-rendered { line-height: 1.8; font-size: 14px; color: var(--dark); overflow-y: auto; padding: 20px; background: var(--off-white); border-radius: 8px; border: 1px solid var(--light-gray); }
         .content-rendered h1 { font-size: 22px; font-weight: 700; margin: 16px 0 8px; }
         .content-rendered h2 { font-size: 18px; font-weight: 700; margin: 14px 0 6px; }
         .content-rendered h3 { font-size: 15px; font-weight: 600; margin: 12px 0 4px; }

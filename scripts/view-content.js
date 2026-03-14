@@ -118,17 +118,11 @@ function openDensityModal() {
     document.getElementById("densityContent").innerHTML = buildDensityHTML(genData?.content || '');
     document.getElementById("densityModal").classList.add("open");
     document.getElementById("densityOverlay").classList.add("visible");
-    const btn = document.getElementById("btnDensity");
-    btn.classList.remove("btn-secondary");
-    btn.classList.add("btn-yellow");
 }
 
 function closeDensityModal() {
     document.getElementById("densityModal").classList.remove("open");
     document.getElementById("densityOverlay").classList.remove("visible");
-    const btn = document.getElementById("btnDensity");
-    btn.classList.remove("btn-yellow");
-    btn.classList.add("btn-secondary");
 }
 
 async function deleteContent() {
