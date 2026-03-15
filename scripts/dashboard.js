@@ -16,10 +16,8 @@ async function loadStats() {
         document.getElementById("statGroups").textContent = data.groups ?? '—';
 
         if (data.most_active_group) {
-            document.getElementById("statTopGroup").textContent = data.most_active_group;
-            const sub = document.getElementById("statTopGroupSub");
-            sub.textContent = `${data.most_active_count} generation${data.most_active_count !== 1 ? 's' : ''}`;
-            sub.style.display = "";
+            document.getElementById("statTopGroup").textContent    = data.most_active_group;
+            document.getElementById("statTopGroupSub").textContent = `Most active group with ${data.most_active_count} generation${data.most_active_count !== 1 ? 's' : ''}`;
         } else {
             document.getElementById("statTopGroup").textContent = '—';
         }
