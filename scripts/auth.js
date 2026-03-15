@@ -4,10 +4,10 @@ const SUPABASE_ANON_KEY = "sb_publishable_3Xfgg2eUSJaybbLZTyaGIQ_wQ4tayHL";
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// If already logged in, go to main app
+// If already logged in, go to dashboard
 sb.auth.getSession().then(({ data }) => {
     if (data.session) {
-        window.location.href = "/new-content";
+        window.location.href = "/dashboard";
     }
 });
 
@@ -54,7 +54,7 @@ loginForm.addEventListener("submit", async (e) => {
         btn.disabled = false;
         btn.textContent = "Sign In";
     } else {
-        window.location.href = "/new-content";
+        window.location.href = "/dashboard";
     }
 });
 

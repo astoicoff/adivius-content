@@ -2,6 +2,157 @@ let currentGenerationId = null;
 let currentGroupId      = null;
 let rawSerpapiText      = "";
 
+// ── Mode toggle ────────────────────────────────────────────────────────────────
+
+function setMode(mode) {
+    document.getElementById("singleMode").style.display = mode === 'single' ? "" : "none";
+    document.getElementById("bulkMode").style.display   = mode === 'bulk'   ? "" : "none";
+    document.getElementById("modeSingleBtn").classList.toggle("btn-view-active", mode === 'single');
+    document.getElementById("modeBulkBtn").classList.toggle("btn-view-active",   mode === 'bulk');
+    // Hide downstream sections when switching mode
+    document.getElementById("phase2Section").classList.add("hidden");
+    document.getElementById("phase3Section").classList.add("hidden");
+}
+
+// ── Bulk keyword generation ────────────────────────────────────────────────────
+
+const BULK_LIMIT = 10;
+let bulkQueue = []; // [{ keyword, status: 'pending'|'running'|'done'|'failed', id: null, error: null }]
+
+function parseBulkKeywords() {
+    const raw    = document.getElementById("bulkKeywordsInput").value;
+    const lines  = [...new Set(raw.split('\n').map(l => l.trim()).filter(l => l.length))];
+    const note   = document.getElementById("bulkNote");
+
+    if (!lines.length) return;
+
+    if (lines.length > BULK_LIMIT) {
+        note.textContent = `Only the first ${BULK_LIMIT} keywords will be used (${lines.length} entered).`;
+        note.style.display = "";
+    } else {
+        note.style.display = "none";
+    }
+
+    bulkQueue = lines.slice(0, BULK_LIMIT).map(kw => ({ keyword: kw, status: 'pending', id: null, error: null }));
+    renderChips();
+    renderBulkProgress();
+    updateBulkBtn();
+}
+
+function removeChip(index) {
+    bulkQueue.splice(index, 1);
+    renderChips();
+    renderBulkProgress();
+    updateBulkBtn();
+}
+
+function renderChips() {
+    const container = document.getElementById("bulkChips");
+    if (!bulkQueue.length) { container.style.display = "none"; container.innerHTML = ""; return; }
+    container.style.display = "";
+    container.innerHTML = bulkQueue.map((item, i) =>
+        `<div class="kw-chip">
+            <span>${escapeHtml(item.keyword)}</span>
+            <button class="kw-chip-remove" onclick="removeChip(${i})" aria-label="Remove">×</button>
+        </div>`
+    ).join("");
+}
+
+function updateBulkBtn() {
+    const btn   = document.getElementById("bulkGenerateBtn");
+    const label = document.getElementById("bulkGenerateLabel");
+    const n     = bulkQueue.filter(i => i.status === 'pending').length;
+    if (n > 0) {
+        label.textContent = `Generate All (${bulkQueue.length})`;
+        btn.style.display = "";
+    } else {
+        btn.style.display = "none";
+    }
+}
+
+function renderBulkProgress() {
+    const container = document.getElementById("bulkProgress");
+    if (!bulkQueue.length) { container.style.display = "none"; return; }
+
+    const hasStarted = bulkQueue.some(i => i.status !== 'pending');
+    if (!hasStarted) { container.style.display = "none"; return; }
+
+    container.style.display = "";
+    container.innerHTML = bulkQueue.map(item => {
+        let cls = "";
+        let right = "";
+        if (item.status === 'running') {
+            cls   = "running";
+            right = `<div class="spinner" style="width:16px;height:16px;border-width:2px;"></div><span style="font-size:12px;color:var(--blue);font-family:'Inter',sans-serif;">Generating...</span>`;
+        } else if (item.status === 'done') {
+            cls   = "done";
+            const viewHref = item.id ? `/view-content?id=${encodeURIComponent(item.id)}` : '#';
+            right = `<span style="font-size:12px;color:#2a7a1a;font-family:'Inter',sans-serif;">Done</span>
+                     <a href="${viewHref}" class="btn btn-secondary" style="padding:4px 10px;font-size:12px;">View</a>`;
+        } else if (item.status === 'failed') {
+            cls   = "failed";
+            right = `<span style="font-size:12px;color:var(--red);font-family:'Inter',sans-serif;" title="${escapeHtml(item.error || '')}">Failed</span>`;
+        } else {
+            right = `<span style="font-size:12px;color:var(--text-muted);font-family:'Inter',sans-serif;">Pending</span>`;
+        }
+        return `<div class="bulk-item ${cls}">
+            <span class="bulk-item-kw">${escapeHtml(toTitleCase(item.keyword))}</span>
+            <div class="bulk-item-right">${right}</div>
+        </div>`;
+    }).join("");
+}
+
+async function runBulkGeneration() {
+    const groupId = document.getElementById("groupSelect").value;
+    if (!groupId)        { showAlert("Please select a content group before generating."); return; }
+    if (!bulkQueue.length) { return; }
+
+    const btn = document.getElementById("bulkGenerateBtn");
+    btn.disabled = true;
+
+    for (let i = 0; i < bulkQueue.length; i++) {
+        if (bulkQueue[i].status !== 'pending') continue;
+        bulkQueue[i].status = 'running';
+        renderBulkProgress();
+
+        try {
+            // Phase 1
+            const p1res = await fetch(`${API_URL}/api/phase1.php`, {
+                method: 'POST', headers: authHeaders(),
+                body: JSON.stringify({ keyword: bulkQueue[i].keyword, group_id: groupId })
+            });
+            let p1data;
+            try { p1data = await p1res.json(); } catch { throw new Error("Server returned unexpected response"); }
+            if (!p1res.ok) throw new Error(p1data.detail || "Phase 1 failed");
+
+            // Phase 2 (auto-proceed with generated brief)
+            const p2res = await fetch(`${API_URL}/api/phase2.php`, {
+                method: 'POST', headers: authHeaders(),
+                body: JSON.stringify({
+                    keyword:       bulkQueue[i].keyword,
+                    edited_brief:  p1data.brief,
+                    serpapi_text:  p1data.serpapi_raw,
+                    generation_id: p1data.generation_id,
+                    group_id:      groupId
+                })
+            });
+            let p2data;
+            try { p2data = await p2res.json(); } catch { throw new Error("Server returned unexpected response"); }
+            if (!p2res.ok) throw new Error(p2data.detail || "Phase 2 failed");
+
+            bulkQueue[i].status = 'done';
+            bulkQueue[i].id     = p1data.generation_id;
+        } catch (err) {
+            bulkQueue[i].status = 'failed';
+            bulkQueue[i].error  = err.message;
+        }
+        renderBulkProgress();
+    }
+
+    btn.disabled = false;
+    updateBulkBtn();
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("navGenerate").classList.add("active");
     initAuth(async () => {

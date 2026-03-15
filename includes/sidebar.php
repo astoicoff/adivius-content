@@ -20,6 +20,10 @@
 
     <nav class="sidebar-nav">
         <div class="nav-section-label">Workspace</div>
+        <a class="nav-item" href="/dashboard" id="navDashboard">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            Dashboard
+        </a>
         <a class="nav-item" href="/new-content" id="navGenerate">
             <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
             New Content
