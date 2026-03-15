@@ -8,6 +8,30 @@ $id      = $_GET['id'] ?? '';
 
 if (!$id) { http_response_code(400); echo json_encode(['detail' => 'Generation ID is required.']); exit; }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Duplicate: copy keyword, group_id, content into a new completed generation
+    $src     = supabase_call('GET',
+        '/rest/v1/content_generations?id=eq.' . urlencode($id)
+        . '&user_id=eq.' . urlencode($user_id)
+        . '&select=keyword,group_id,content'
+    );
+    $srcData = json_decode($src['body'], true);
+    if (empty($srcData)) { http_response_code(404); echo json_encode(['detail' => 'Generation not found.']); exit; }
+    $s = $srcData[0];
+
+    $res = supabase_call('POST', '/rest/v1/content_generations', [
+        'user_id'  => $user_id,
+        'keyword'  => $s['keyword'],
+        'group_id' => $s['group_id'] ?? null,
+        'content'  => $s['content']  ?? null,
+        'status'   => 'completed',
+    ], ['Prefer: return=representation']);
+    if ($res['status'] >= 400) { http_response_code(500); echo $res['body']; exit; }
+    $newRow = json_decode($res['body'], true);
+    echo json_encode(['id' => $newRow[0]['id']]);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     $res = supabase_call('DELETE',
         '/rest/v1/content_generations?id=eq.' . urlencode($id) . '&user_id=eq.' . urlencode($user_id)

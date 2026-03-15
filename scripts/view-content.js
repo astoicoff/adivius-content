@@ -182,6 +182,28 @@ function closeDensityModal() {
     document.getElementById("densityOverlay").classList.remove("visible");
 }
 
+async function duplicateContent() {
+    const id      = new URLSearchParams(window.location.search).get('id');
+    const groupId = new URLSearchParams(window.location.search).get('group');
+    const btn     = event.target.closest('.btn');
+    const orig    = btn.innerHTML;
+    btn.disabled  = true;
+    btn.textContent = 'Duplicating...';
+    try {
+        const res  = await fetch(API_URL + '/api/generation.php?id=' + encodeURIComponent(id), {
+            method: 'POST', headers: authHeaders()
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to duplicate.');
+        const dest = '/view-content?id=' + encodeURIComponent(data.id) + (groupId ? '&group=' + encodeURIComponent(groupId) : '');
+        window.location.href = dest;
+    } catch (err) {
+        alert(err.message);
+        btn.disabled = false;
+        btn.innerHTML = orig;
+    }
+}
+
 async function deleteContent() {
     if (!confirm("Delete this content? This cannot be undone.")) return;
     const id      = new URLSearchParams(window.location.search).get("id");
