@@ -60,6 +60,22 @@
 
             <div id="groupEditAlert" class="alert" style="margin-bottom:16px;"></div>
 
+            <!-- Analytics chart (group detail) -->
+            <div id="analyticsCard" style="display:none;margin-bottom:16px;">
+                <div class="card">
+                    <div class="card-accent blue"></div>
+                    <div class="card-header" style="padding-bottom:0;">
+                        <div><div class="card-title">Content Analytics</div></div>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn btn-secondary btn-view-active" id="chartWeekBtn" onclick="setChartMode('week')" style="padding:5px 12px;font-size:12px;">Weeks</button>
+                            <button class="btn btn-secondary" id="chartMonthBtn" onclick="setChartMode('month')" style="padding:5px 12px;font-size:12px;">Months</button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="padding-top:10px;">
+                        <canvas id="analyticsChart" height="80"></canvas>
+                    </div>
+                </div>
+            </div>
             <div id="groupContentList"></div>
         </div>
 
@@ -124,6 +140,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="/scripts/shared.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script src="/scripts/content-groups.js"></script>
 </body>
 </html>

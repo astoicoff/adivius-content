@@ -85,7 +85,8 @@ function statusBadge(status) {
         instructions_ready:      { cls: "badge-blue",   label: "Brief Ready" },
         generating_content:      { cls: "badge-red",    label: "Writing Content" },
         completed:               { cls: "badge-green",  label: "Complete" },
-        failed:                  { cls: "badge-red",    label: "Failed" }
+        failed:                  { cls: "badge-red",    label: "Failed" },
+        scheduled:               { cls: "badge-gray",   label: "Scheduled" }
     };
     const s = map[status] || { cls: "badge-yellow", label: status };
     return `<span class="badge ${s.cls}"><span class="badge-dot"></span>${s.label}</span>`;

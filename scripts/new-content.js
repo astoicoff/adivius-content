@@ -309,3 +309,41 @@ function resetToNew() {
     clearAlert();
     setStep(1);
 }
+
+async function handleSchedule() {
+    const kw       = document.getElementById("scheduleKeyword").value.trim();
+    const groupId  = document.getElementById("groupSelect").value;
+    const datetime = document.getElementById("scheduleDateTime").value;
+    const btn      = document.getElementById("scheduleBtn");
+    const result   = document.getElementById("scheduleResult");
+
+    if (!kw)       { showAlert("Please enter a keyword."); return; }
+    if (!groupId)  { showAlert("Please select a content group."); return; }
+    if (!datetime) { showAlert("Please select a scheduled time."); return; }
+
+    clearAlert();
+    btn.disabled = true;
+    result.style.display = "none";
+
+    try {
+        const res  = await fetch(API_URL + '/api/schedule.php', {
+            method: 'POST', headers: authHeaders(),
+            body: JSON.stringify({ keyword: kw, group_id: groupId, scheduled_for: datetime + ':00' })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to schedule.');
+
+        const when = new Date(data.scheduled_for).toLocaleString('en-US', {
+            month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC', timeZoneName: 'short'
+        });
+        result.innerHTML = '<div style="font-size:13px;color:#2a7a1a;font-family:'Inter',sans-serif;">'
+            + '<strong>' + escapeHtml(toTitleCase(kw)) + '</strong> scheduled for ' + when + '.'
+            + ' It will appear in <a href="/history" style="color:var(--blue);">History</a> when done.</div>';
+        result.style.display = "";
+        document.getElementById("scheduleKeyword").value = "";
+    } catch (err) {
+        showAlert(err.message);
+    } finally {
+        btn.disabled = false;
+    }
+}

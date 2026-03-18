@@ -63,6 +63,7 @@
                     <div class="mode-toggle">
                         <button id="modeSingleBtn" class="btn btn-secondary btn-view-active" onclick="setMode('single')">Single</button>
                         <button id="modeBulkBtn"   class="btn btn-secondary" onclick="setMode('bulk')">Bulk</button>
+                        <button id="modeScheduleBtn" class="btn btn-secondary" onclick="setMode('schedule')">Schedule</button>
                     </div>
 
                     <!-- Shared: group selector -->
@@ -110,6 +111,23 @@
                         <div id="bulkChips" class="kw-chips" style="display:none;"></div>
                         <div id="bulkNote" class="bulk-note" style="display:none;"></div>
                         <div id="bulkProgress" class="bulk-progress" style="display:none;"></div>
+                    </div>
+
+                    <!-- Schedule mode -->
+                    <div id="scheduleMode" style="display:none;">
+                        <div class="form-group">
+                            <label class="form-label" for="scheduleKeyword">Target Keyword</label>
+                            <input type="text" class="form-input" id="scheduleKeyword" placeholder="e.g. best running shoes for flat feet">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="scheduleDateTime">Scheduled Time (UTC)</label>
+                            <input type="datetime-local" class="form-input" id="scheduleDateTime">
+                        </div>
+                        <button class="btn btn-primary" id="scheduleBtn" onclick="handleSchedule()">
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            Schedule Generation
+                        </button>
+                        <div id="scheduleResult" style="margin-top:14px;display:none;"></div>
                     </div>
                 </div>
             </div>

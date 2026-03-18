@@ -110,7 +110,8 @@ async function saveGroupName() {
 
 // ── Content items — simple links to view-content ──────────────────────────────
 
-function renderContentItems(generations) {
+function renderContentItems(generations) {    renderAnalyticsChart(generations);
+
     const list = document.getElementById("groupContentList");
     if (!generations.length) {
         list.innerHTML = `<div class="history-empty">
@@ -249,4 +250,91 @@ async function saveRules() {
     const ind = document.getElementById("rulesSaveIndicator");
     ind.classList.add("visible");
     setTimeout(() => ind.classList.remove("visible"), 2500);
+}
+// ── Group-level analytics chart ───────────────────────────────────────────────
+
+let analyticsChartInstance = null;
+let analyticsChartMode     = 'week';
+
+function getISOWeek(date) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const day = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - day);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+function computeChartData(generations, mode) {
+    const labels = [];
+    const counts = {};
+    const now    = new Date();
+
+    if (mode === 'week') {
+        for (let i = 7; i >= 0; i--) {
+            const d   = new Date(now);
+            d.setDate(d.getDate() - i * 7);
+            const key = 'Wk ' + String(getISOWeek(d)).padStart(2, '0');
+            if (!counts.hasOwnProperty(key)) { labels.push(key); counts[key] = 0; }
+        }
+        generations.forEach(g => {
+            const d   = new Date(g.created_at);
+            const key = 'Wk ' + String(getISOWeek(d)).padStart(2, '0');
+            if (key in counts) counts[key]++;
+        });
+    } else {
+        for (let i = 5; i >= 0; i--) {
+            const d   = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const key = d.toLocaleString('en-US', { month: 'short', year: '2-digit' });
+            labels.push(key);
+            counts[key] = 0;
+        }
+        generations.forEach(g => {
+            const d   = new Date(g.created_at);
+            const key = d.toLocaleString('en-US', { month: 'short', year: '2-digit' });
+            if (key in counts) counts[key]++;
+        });
+    }
+
+    return { labels, data: labels.map(l => counts[l]) };
+}
+
+function renderAnalyticsChart(generations) {
+    const card = document.getElementById("analyticsCard");
+    if (!generations || !generations.length) { card.style.display = "none"; return; }
+    card.style.display = "";
+
+    const { labels, data } = computeChartData(generations, analyticsChartMode);
+    const ctx = document.getElementById("analyticsChart").getContext("2d");
+
+    if (analyticsChartInstance) { analyticsChartInstance.destroy(); analyticsChartInstance = null; }
+
+    analyticsChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Generated',
+                data,
+                backgroundColor: 'rgba(52,152,219,0.55)',
+                borderColor:     'rgba(52,152,219,1)',
+                borderWidth: 1,
+                borderRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 }, grid: { color: '#f0f0f0' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+}
+
+function setChartMode(mode) {
+    analyticsChartMode = mode;
+    document.getElementById("chartWeekBtn").classList.toggle("btn-view-active", mode === 'week');
+    document.getElementById("chartMonthBtn").classList.toggle("btn-view-active", mode === 'month');
+    renderAnalyticsChart(currentGroupData?.generations || []);
 }
