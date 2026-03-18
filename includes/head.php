@@ -205,7 +205,6 @@
         /* ── Badges ── */
         .badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
         .badge-red    { background: var(--red-tint); color: var(--red); }
-    .badge-gray   { background: #f0f0f0; color: var(--text-muted); }
         .badge-blue   { background: #EDF7FF; color: var(--blue); }
         .badge-green  { background: #F0FAF0; color: #2a7a1a; }
         .badge-yellow { background: #FEFCE8; color: #7a6a00; }
