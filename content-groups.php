@@ -50,6 +50,10 @@
                             <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             Content Rules
                         </button>
+                        <button class="btn btn-secondary" onclick="openRulesPanel('wordpress')">
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
+                            WordPress
+                        </button>
                     </div>
                 </div>
             </div>
