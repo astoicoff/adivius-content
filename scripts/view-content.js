@@ -301,3 +301,86 @@ function buildDensityHTML(html) {
         <div class="density-section-title">Two-Word Keywords</div>${table(bi)}
         <div class="density-section-title">Three-Word Keywords</div>${table(tri)}`;
 }
+
+// ── WordPress Publish ─────────────────────────────────────────────────────────
+
+let groupWpConfig = null;  // { wp_configured, wp_site_url }
+
+async function loadGroupWpConfig(groupId) {
+    if (!groupId) return;
+    try {
+        const res  = await fetch(API_URL + '/api/groups.php?id=' + encodeURIComponent(groupId), { headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok || !data.wp_configured) return;
+        groupWpConfig = data;
+        const btn = document.getElementById("btnPublish");
+        if (btn) btn.style.display = "";
+    } catch (_) {}
+}
+
+function openPublishModal() {
+    const siteLabel = document.getElementById("publishSiteLabel");
+    siteLabel.textContent = groupWpConfig?.wp_site_url
+        ? 'Publishing to: ' + groupWpConfig.wp_site_url
+        : '';
+
+    const postUrlEl   = document.getElementById("publishPostUrl");
+    const postLinkEl  = document.getElementById("publishPostLink");
+    if (genData?.wp_post_url) {
+        postLinkEl.href        = genData.wp_post_url;
+        postLinkEl.textContent = genData.wp_post_url;
+        postUrlEl.style.display = "";
+    } else {
+        postUrlEl.style.display = "none";
+    }
+
+    document.getElementById("publishResult").style.display = "none";
+    document.getElementById("publishModal").classList.add("open");
+    document.getElementById("publishOverlay").classList.add("visible");
+}
+
+function closePublishModal() {
+    document.getElementById("publishModal").classList.remove("open");
+    document.getElementById("publishOverlay").classList.remove("visible");
+}
+
+async function publishContent(postStatus) {
+    const id       = new URLSearchParams(window.location.search).get("id");
+    const draftBtn = document.getElementById("btnPublishDraft");
+    const liveBtn  = document.getElementById("btnPublishLive");
+    const resultEl = document.getElementById("publishResult");
+
+    draftBtn.disabled = true;
+    liveBtn.disabled  = true;
+    resultEl.style.display = "none";
+
+    try {
+        const res  = await fetch(API_URL + '/api/publish.php', {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({ generation_id: id, post_status: postStatus })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Publish failed.');
+
+        genData.wp_post_url = data.post_url;
+
+        const label = postStatus === 'publish' ? 'Published live' : 'Saved as draft';
+        resultEl.innerHTML = '<div style="font-size:13px;color:var(--dark);font-family:\'Inter\',sans-serif;">'
+            + label + ': <a href="' + escapeHtml(data.post_url) + '" target="_blank" rel="noopener" style="color:var(--blue);word-break:break-all;">'
+            + escapeHtml(data.post_url) + '</a></div>';
+        resultEl.style.display = "";
+
+        const postUrlEl  = document.getElementById("publishPostUrl");
+        const postLinkEl = document.getElementById("publishPostLink");
+        postLinkEl.href        = data.post_url;
+        postLinkEl.textContent = data.post_url;
+        postUrlEl.style.display = "";
+    } catch (err) {
+        resultEl.innerHTML = '<div style="font-size:13px;color:var(--red);font-family:\'Inter\',sans-serif;">' + escapeHtml(err.message) + '</div>';
+        resultEl.style.display = "";
+    } finally {
+        draftBtn.disabled = false;
+        liveBtn.disabled  = false;
+    }
+}

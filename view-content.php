@@ -88,6 +88,10 @@
                     <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                     Copy HTML
                 </button>
+                <button id="btnPublish" class="btn btn-secondary" onclick="openPublishModal()" style="display:none;">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
+                    Publish
+                </button>
                 <button class="btn btn-secondary" onclick="duplicateContent()">
                     <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                     Duplicate
@@ -143,6 +147,29 @@
         </div>
     </div>
 </main>
+
+<!-- Publish Modal -->
+<div id="publishOverlay" class="rules-overlay" onclick="closePublishModal()"></div>
+<div id="publishModal" class="density-modal" style="max-width:380px;">
+    <div class="density-modal-header">
+        <div class="rules-panel-title">Publish to WordPress</div>
+        <button class="rules-panel-close" onclick="closePublishModal()">
+            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+    </div>
+    <div style="padding:0 20px 20px;">
+        <p id="publishSiteLabel" style="font-size:13px;color:var(--text-muted);margin-bottom:20px;font-family:'Inter',sans-serif;"></p>
+        <div id="publishPostUrl" style="display:none;margin-bottom:16px;">
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Already published at:</div>
+            <a id="publishPostLink" href="#" target="_blank" rel="noopener" style="font-size:13px;word-break:break-all;color:var(--blue);"></a>
+        </div>
+        <div style="display:flex;gap:10px;">
+            <button class="btn btn-secondary" style="flex:1;" onclick="publishContent('draft')" id="btnPublishDraft">Save as Draft</button>
+            <button class="btn btn-green"     style="flex:1;" onclick="publishContent('publish')" id="btnPublishLive">Publish Live</button>
+        </div>
+        <div id="publishResult" style="margin-top:14px;display:none;"></div>
+    </div>
+</div>
 
 <!-- Keyword Density Modal -->
 <div id="densityOverlay" class="rules-overlay" onclick="closeDensityModal()"></div>

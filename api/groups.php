@@ -24,6 +24,9 @@ if ($method === 'GET') {
         $data = json_decode($res['body'], true);
         if (empty($data)) { http_response_code(404); echo json_encode(['detail' => 'Group not found.']); exit; }
         $group = $data[0];
+        // Expose whether WP is configured without leaking the password
+        $group['wp_configured'] = !empty($group['wp_site_url']) && !empty($group['wp_username']) && !empty($group['wp_app_password']);
+        unset($group['wp_app_password']);
 
         $genRes = supabase_call('GET',
             '/rest/v1/content_generations?group_id=eq.' . urlencode($id)
@@ -85,6 +88,9 @@ if ($method === 'GET') {
     if (isset($body['name']))                $update['name']                = $body['name'];
     if (isset($body['instructions_rules']))  $update['instructions_rules']  = $body['instructions_rules'];
     if (isset($body['content_rules']))       $update['content_rules']       = $body['content_rules'];
+    if (array_key_exists('wp_site_url',      $body)) $update['wp_site_url']      = $body['wp_site_url'];
+    if (array_key_exists('wp_username',      $body)) $update['wp_username']      = $body['wp_username'];
+    if (array_key_exists('wp_app_password',  $body)) $update['wp_app_password']  = $body['wp_app_password'];
 
     $res = supabase_call('PATCH',
         '/rest/v1/content_groups?id=eq.' . urlencode($id) . '&user_id=eq.' . urlencode($user_id),

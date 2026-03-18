@@ -147,33 +147,71 @@ function renderContentItems(generations) {
 
 function openRulesPanel(type) {
     activePanelType = type;
+    const isWP   = type === 'wordpress';
     const isInst = type === 'instructions';
-    document.getElementById("rulesPanelTitle").textContent = isInst ? "Instructions Rules" : "Content Rules";
-    document.getElementById("rulesPanelDesc").textContent  = isInst
-        ? "Used in Phase 1 to guide the content brief generation."
-        : "Used in Phase 2 to guide the final article writing.";
-    document.getElementById("rulesTextarea").value = isInst
-        ? (currentGroupData?.instructions_rules || '')
-        : (currentGroupData?.content_rules || '');
+
+    const titles = { instructions: 'Instructions Rules', content: 'Content Rules', wordpress: 'WordPress Integration' };
+    const descs  = {
+        instructions: 'Used in Phase 1 to guide the content brief generation.',
+        content:      'Used in Phase 2 to guide the final article writing.',
+        wordpress:    'Connect this group to a WordPress site for one-click publishing.',
+    };
+    document.getElementById("rulesPanelTitle").textContent = titles[type] || type;
+    document.getElementById("rulesPanelDesc").textContent  = descs[type]  || '';
+
+    document.getElementById("rulesTextarea").style.display   = isWP ? "none" : "";
+    document.getElementById("wpFieldsSection").style.display = isWP ? "flex" : "none";
+
+    if (!isWP) {
+        document.getElementById("rulesTextarea").value = isInst
+            ? (currentGroupData?.instructions_rules || '')
+            : (currentGroupData?.content_rules || '');
+    } else {
+        document.getElementById("wpSiteUrl").value     = currentGroupData?.wp_site_url || '';
+        document.getElementById("wpUsername").value    = currentGroupData?.wp_username  || '';
+        document.getElementById("wpAppPassword").value = '';
+    }
 
     const isNew = !editingGroupId;
-    document.getElementById("groupNameRow").style.display = isNew ? "" : "none";
-    if (isNew) document.getElementById("groupNameInput").value = currentGroupData?.name || '';
+    document.getElementById("groupNameRow").style.display = (isNew && !isWP) ? "" : "none";
+    if (isNew && !isWP) document.getElementById("groupNameInput").value = currentGroupData?.name || '';
 
     document.getElementById("rulesSaveIndicator").classList.remove("visible");
     document.getElementById("rulesPanel").classList.add("open");
     document.getElementById("rulesOverlay").classList.add("visible");
 }
-
 function closeRulesPanel() {
     document.getElementById("rulesPanel").classList.remove("open");
     document.getElementById("rulesOverlay").classList.remove("visible");
 }
 
 async function saveRules() {
+    const isWP   = activePanelType === 'wordpress';
     const text   = document.getElementById("rulesTextarea").value;
     const isNew  = !editingGroupId;
     const isInst = activePanelType === 'instructions';
+
+    if (isWP) {
+        if (!editingGroupId) { alert('Save the group first before configuring WordPress.'); return; }
+        const payload = {
+            wp_site_url:  document.getElementById("wpSiteUrl").value.trim(),
+            wp_username:  document.getElementById("wpUsername").value.trim(),
+        };
+        const pwd = document.getElementById("wpAppPassword").value.trim();
+        if (pwd) payload.wp_app_password = pwd;
+        try {
+            const res = await fetch(API_URL + '/api/groups.php?id=' + encodeURIComponent(editingGroupId), {
+                method: 'PATCH', headers: authHeaders(), body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error('Failed to save WordPress settings.');
+            currentGroupData.wp_site_url = payload.wp_site_url;
+            currentGroupData.wp_username = payload.wp_username;
+            const ind = document.getElementById("rulesSaveIndicator");
+            ind.classList.add("visible");
+            setTimeout(() => ind.classList.remove("visible"), 2500);
+        } catch (err) { alert(err.message); }
+        return;
+    }
 
     if (isNew) {
         const name = document.getElementById("groupNameInput").value.trim();
@@ -184,7 +222,7 @@ async function saveRules() {
             content_rules:       isInst ? (currentGroupData?.content_rules || '') : text
         };
         try {
-            const res  = await fetch(`${API_URL}/api/groups.php`, { method: 'POST', headers: authHeaders(), body: JSON.stringify(payload) });
+            const res  = await fetch(API_URL + '/api/groups.php', { method: 'POST', headers: authHeaders(), body: JSON.stringify(payload) });
             const data = await res.json();
             if (!res.ok) throw new Error(data.detail || 'Failed to create.');
             editingGroupId   = data.id;
@@ -192,17 +230,14 @@ async function saveRules() {
             document.getElementById("groupDetailName").value      = name;
             document.getElementById("topBarTitle").textContent    = toTitleCase(name);
             document.getElementById("topBarSubtitle").textContent = "Content group details";
-            document.getElementById("groupContentList").innerHTML = `<div class="history-empty">
-                <svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                No content generated in this group yet.
-            </div>`;
+            document.getElementById("groupContentList").innerHTML = '<div class="history-empty"><svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>No content generated in this group yet.</div>';
             document.getElementById("groupNameRow").style.display = "none";
             await loadGroups(); renderGroups(cachedGroups);
         } catch (err) { alert(err.message); return; }
     } else {
         const payload = isInst ? { instructions_rules: text } : { content_rules: text };
         try {
-            const res = await fetch(`${API_URL}/api/groups.php?id=${encodeURIComponent(editingGroupId)}`, {
+            const res = await fetch(API_URL + '/api/groups.php?id=' + encodeURIComponent(editingGroupId), {
                 method: 'PATCH', headers: authHeaders(), body: JSON.stringify(payload)
             });
             if (!res.ok) throw new Error('Failed to save.');

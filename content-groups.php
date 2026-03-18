@@ -77,6 +77,23 @@
         <input type="text" class="form-input" id="groupNameInput" placeholder="e.g. Blog Posts, Product Descriptions...">
     </div>
     <textarea class="form-textarea" id="rulesTextarea" rows="20" style="flex:1;resize:vertical;margin-bottom:16px;"></textarea>
+
+    <!-- WordPress fields (shown instead of textarea in wordpress mode) -->
+    <div id="wpFieldsSection" style="display:none;flex-direction:column;gap:14px;margin-bottom:16px;">
+        <div class="form-group">
+            <label class="form-label">Site URL</label>
+            <input type="url" class="form-input" id="wpSiteUrl" placeholder="https://yoursite.com">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Username</label>
+            <input type="text" class="form-input" id="wpUsername" placeholder="WordPress username">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Application Password</label>
+            <input type="password" class="form-input" id="wpAppPassword" placeholder="xxxx xxxx xxxx xxxx xxxx xxxx">
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Generate in WordPress → Users → Profile → Application Passwords</div>
+        </div>
+    </div>
     <div style="display:flex;align-items:center;gap:12px;">
         <button class="btn btn-green" onclick="saveRules()">
             <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
