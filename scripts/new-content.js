@@ -343,7 +343,7 @@ async function resumeGeneration(id) {
         const res  = await fetch(API_URL + '/api/generation.php?id=' + encodeURIComponent(id), { headers: authHeaders() });
         const data = await res.json();
         if (!res.ok) { showAlert(data.detail || 'Failed to load generation.'); return; }
-        if (data.status !== 'instructions_ready') { showAlert('This generation cannot be resumed (status: ' + data.status + ').'); return; }
+        if (data.status !== 'instructions_ready' && data.status !== 'completed') { showAlert('This generation cannot be resumed (status: ' + data.status + ').'); return; }
 
         currentGenerationId = data.id;
         currentGroupId      = data.group_id;
