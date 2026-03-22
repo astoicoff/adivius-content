@@ -128,10 +128,20 @@
                         <label class="form-label" for="briefEditor">Content Brief</label>
                         <textarea class="form-textarea" id="briefEditor" rows="18"></textarea>
                     </div>
-                    <button class="btn btn-blue" id="proceedToPhase2Btn">
-                        <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
-                        Confirm Brief & Write Content
-                    </button>
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <button class="btn btn-secondary" id="saveBriefBtn" onclick="saveBrief()">
+                            <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                            Save Brief
+                        </button>
+                        <button class="btn btn-blue" id="proceedToPhase2Btn">
+                            <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+                            Confirm Brief & Write Content
+                        </button>
+                        <span class="save-indicator" id="briefSaveIndicator">
+                            <svg style="width:14px;height:14px;stroke:#2a7a1a;fill:none;stroke-width:2;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                            Saved!
+                        </span>
+                    </div>
                     <div class="loading-bar" id="phase2Loading">
                         <div class="spinner"></div>
                         Drafting content using E-E-A-T framework... this may take a minute.

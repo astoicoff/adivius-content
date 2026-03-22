@@ -42,13 +42,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
-    $body    = json_decode(file_get_contents('php://input'), true) ?: [];
-    $content = $body['content'] ?? null;
-    if ($content === null) { http_response_code(400); echo json_encode(['detail' => 'content is required.']); exit; }
+    $body         = json_decode(file_get_contents('php://input'), true) ?: [];
+    $content      = $body['content']      ?? null;
+    $instructions = $body['instructions'] ?? null;
+    if ($content === null && $instructions === null) { http_response_code(400); echo json_encode(['detail' => 'content or instructions is required.']); exit; }
+
+    $patch = [];
+    if ($content      !== null) $patch['content']      = $content;
+    if ($instructions !== null) $patch['instructions'] = $instructions;
 
     $res = supabase_call('PATCH',
         '/rest/v1/content_generations?id=eq.' . urlencode($id) . '&user_id=eq.' . urlencode($user_id),
-        ['content' => $content],
+        $patch,
         ['Prefer: return=representation']
     );
     if ($res['status'] >= 400) { http_response_code($res['status']); echo $res['body']; exit; }

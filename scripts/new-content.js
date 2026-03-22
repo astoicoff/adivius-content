@@ -255,6 +255,26 @@ async function handlePhase1(e) {
     }
 }
 
+async function saveBrief() {
+    if (!currentGenerationId) return;
+    const btn  = document.getElementById("saveBriefBtn");
+    const instructions = document.getElementById("briefEditor").value.trim();
+    btn.disabled = true;
+    try {
+        const res = await fetch(API_URL + '/api/generation.php?id=' + encodeURIComponent(currentGenerationId), {
+            method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ instructions })
+        });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Save failed.'); }
+        const ind = document.getElementById("briefSaveIndicator");
+        ind.classList.add("visible");
+        setTimeout(() => ind.classList.remove("visible"), 2000);
+    } catch (err) {
+        showAlert('Could not save brief: ' + err.message);
+    } finally {
+        btn.disabled = false;
+    }
+}
+
 async function handlePhase2() {
     const kw    = document.getElementById("keywordInput").value.trim();
     const brief = document.getElementById("briefEditor").value.trim();
