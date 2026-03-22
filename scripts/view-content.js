@@ -122,8 +122,8 @@ function setViewMode(mode) {
     document.getElementById("btnClean").classList.toggle("btn-view-active", mode === 'clean');
     document.getElementById("btnEdit").classList.toggle("btn-view-active",  mode === 'edit');
 
-    document.getElementById("copyHtmlIcon").style.display  = mode === 'html'  ? "" : "none";
-    document.getElementById("copyCleanIcon").style.display = mode === 'clean' ? "" : "none";
+    document.getElementById("copyHtmlRow").style.display  = mode === 'html'  ? "" : "none";
+    document.getElementById("copyCleanRow").style.display = mode === 'clean' ? "" : "none";
 
     if (mode === 'clean') document.getElementById("cleanOutput").innerHTML = genCleanContent || '';
     if (mode === 'edit')  document.getElementById("editOutput").value      = genData?.content || '';
