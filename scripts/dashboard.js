@@ -42,9 +42,12 @@ function renderRecent(items) {
         const date     = new Date(g.created_at).toLocaleDateString("en-US", {
             month: "short", day: "numeric", year: "numeric"
         });
-        const isComplete = g.status === "completed";
-        const viewLink = isComplete
+        const isComplete  = g.status === "completed";
+        const isResumable = g.status === "instructions_ready";
+        const viewLink    = isComplete
             ? `<a href="/view-content?id=${encodeURIComponent(g.id)}&group=${encodeURIComponent(g.group_id || '')}" class="btn btn-secondary" style="padding:5px 10px;font-size:12px;">View</a>`
+            : isResumable
+            ? `<a href="/new-content?resume=${encodeURIComponent(g.id)}" class="btn btn-secondary" style="padding:5px 10px;font-size:12px;">Continue</a>`
             : '';
         return `<div class="activity-item">
             <div>

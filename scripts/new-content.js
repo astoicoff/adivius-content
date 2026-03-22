@@ -158,11 +158,16 @@ document.addEventListener("DOMContentLoaded", () => {
     initAuth(async () => {
         await loadGroups();
         populateGroupSelector();
-        const params = new URLSearchParams(window.location.search);
-        const kw = params.get('keyword');
-        const gp = params.get('group');
-        if (kw) document.getElementById("keywordInput").value = kw;
-        if (gp) document.getElementById("groupSelect").value  = gp;
+        const params    = new URLSearchParams(window.location.search);
+        const resumeId  = params.get('resume');
+        const kw        = params.get('keyword');
+        const gp        = params.get('group');
+        if (resumeId) {
+            await resumeGeneration(resumeId);
+        } else {
+            if (kw) document.getElementById("keywordInput").value = kw;
+            if (gp) document.getElementById("groupSelect").value  = gp;
+        }
     });
     document.getElementById("phase1Form").addEventListener("submit", handlePhase1);
     document.getElementById("proceedToPhase2Btn").addEventListener("click", handlePhase2);
@@ -308,4 +313,24 @@ function resetToNew() {
     rawSerpapiText      = "";
     clearAlert();
     setStep(1);
+}
+
+async function resumeGeneration(id) {
+    try {
+        const res  = await fetch(API_URL + '/api/generation.php?id=' + encodeURIComponent(id), { headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok || data.status !== 'instructions_ready') return;
+
+        currentGenerationId = data.id;
+        currentGroupId      = data.group_id;
+        rawSerpapiText      = data.serpapi_raw || '';
+
+        document.getElementById("keywordInput").value = data.keyword || '';
+        if (data.group_id) document.getElementById("groupSelect").value = data.group_id;
+        document.getElementById("briefEditor").value = data.instructions || '';
+
+        document.getElementById("phase2Section").classList.remove("hidden");
+        setStep(2);
+        document.getElementById("phase2Section").scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (_) {}
 }

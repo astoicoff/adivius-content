@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
 $res  = supabase_call('GET',
     '/rest/v1/content_generations?id=eq.' . urlencode($id)
     . '&user_id=eq.' . urlencode($user_id)
-    . '&select=id,keyword,status,content,created_at,group_id,wp_post_url'
+    . '&select=id,keyword,status,content,instructions,serpapi_raw,created_at,group_id,wp_post_url'
 );
 $data = json_decode($res['body'], true);
 if (empty($data)) { http_response_code(404); echo json_encode(['detail' => 'Generation not found.']); exit; }

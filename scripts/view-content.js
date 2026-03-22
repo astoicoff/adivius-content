@@ -122,6 +122,9 @@ function setViewMode(mode) {
     document.getElementById("btnClean").classList.toggle("btn-view-active", mode === 'clean');
     document.getElementById("btnEdit").classList.toggle("btn-view-active",  mode === 'edit');
 
+    document.getElementById("copyHtmlIcon").style.display  = mode === 'html'  ? "" : "none";
+    document.getElementById("copyCleanIcon").style.display = mode === 'clean' ? "" : "none";
+
     if (mode === 'clean') document.getElementById("cleanOutput").innerHTML = genCleanContent || '';
     if (mode === 'edit')  document.getElementById("editOutput").value      = genData?.content || '';
 }
@@ -160,13 +163,21 @@ function regenerate() {
     window.location.href = '/new-content' + (params.toString() ? '?' + params.toString() : '');
 }
 
-function copyContent() {
-    navigator.clipboard.writeText(genData?.content || '').then(() => {
-        const btn  = document.getElementById("btnCopy");
-        const orig = btn.innerHTML;
-        btn.innerHTML = `<svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
-        setTimeout(() => { btn.innerHTML = orig; }, 2000);
-    });
+function copyHtml() {
+    navigator.clipboard.writeText(genCleanContent || '').then(() => flashCopyIcon('copyHtmlIcon'));
+}
+
+function copyClean() {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = genCleanContent || '';
+    navigator.clipboard.writeText(tmp.textContent || tmp.innerText || '').then(() => flashCopyIcon('copyCleanIcon'));
+}
+
+function flashCopyIcon(btnId) {
+    const btn  = document.getElementById(btnId);
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+    setTimeout(() => { btn.innerHTML = orig; }, 1800);
 }
 
 // ── Keyword Density ───────────────────────────────────────────────────────────

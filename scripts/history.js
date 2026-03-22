@@ -73,11 +73,17 @@ function renderHistory(generations) {
         });
         const group      = cachedGroups.find(gr => gr.id === g.group_id);
         const groupBadge = group ? `<span style="font-size:11px;color:var(--text-muted);font-weight:500;">${escapeHtml(group.name)}</span>` : '';
-        const isComplete = g.status === "completed";
-        const viewLink   = isComplete
+        const isComplete   = g.status === "completed";
+        const isResumable  = g.status === "instructions_ready";
+        const viewLink     = isComplete
             ? `<a href="/view-content?id=${encodeURIComponent(g.id)}&group=${encodeURIComponent(g.group_id || '')}" class="btn btn-secondary" style="padding:6px 12px;font-size:12px;">
                 <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 View
+               </a>`
+            : isResumable
+            ? `<a href="/new-content?resume=${encodeURIComponent(g.id)}" class="btn btn-secondary" style="padding:6px 12px;font-size:12px;">
+                <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
+                Continue
                </a>`
             : '';
         return `<div class="history-item">

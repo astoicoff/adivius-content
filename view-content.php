@@ -9,6 +9,9 @@
     #htmlOutput, #editOutput { flex: 1; min-height: 300px; resize: none; }
     #cleanOutput        { flex: 1; min-height: 300px; }
     .content-view-bar .btn { padding: 6px 10px; }
+    .card-copy-btn      { position:absolute; top:10px; right:12px; background:none; border:1px solid var(--light-gray); border-radius:6px; cursor:pointer; padding:5px 7px; display:flex; align-items:center; color:var(--text-muted); transition:color 0.15s,border-color 0.15s; z-index:1; }
+    .card-copy-btn:hover { color:var(--dark); border-color:#aaa; }
+    .card-copy-btn svg  { width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 
     /* Meta panel */
     #metaPanel          { margin-bottom: 16px; }
@@ -84,14 +87,11 @@
                     <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                     Keyword Density
                 </button>
-                <button class="btn btn-yellow" onclick="regenerate()">
+                <button class="btn btn-green" onclick="regenerate()">
                     <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
                     Regenerate
                 </button>
-                <button id="btnCopy" class="btn btn-green" onclick="copyContent()">
-                    <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                    Copy HTML
-                </button>
+
                 <button id="btnPublish" class="btn btn-secondary" onclick="openPublishModal()" style="display:none;">
                     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
                     Publish
@@ -125,7 +125,9 @@
 
             <div class="card">
                 <div class="card-accent red"></div>
-                <div class="card-body">
+                <div class="card-body" style="position:relative;">
+                    <button id="copyHtmlIcon" class="card-copy-btn" onclick="copyHtml()" title="Copy HTML"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>
+                    <button id="copyCleanIcon" class="card-copy-btn" onclick="copyClean()" title="Copy text" style="display:none;"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>
                     <textarea class="form-textarea" id="htmlOutput" readonly></textarea>
                     <div class="content-rendered" id="cleanOutput" style="display:none;"></div>
                     <textarea class="form-textarea" id="editOutput" style="display:none;"></textarea>
