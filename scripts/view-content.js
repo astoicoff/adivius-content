@@ -1,6 +1,7 @@
-let genData        = null;
+let genData         = null;
 let genCleanContent = null;   // raw content with meta lines stripped
-let viewMode       = 'html';
+let viewMode        = 'html';
+let versionsData    = [];
 
 // Parse h1/title/url meta lines from the top of raw content.
 // Returns { meta: {h1,title,url} | null, content: string }
@@ -98,6 +99,9 @@ async function loadGeneration(id) {
 
         document.getElementById("loadingState").style.display = "none";
         document.getElementById("contentArea").style.display  = "";
+
+        loadGroupWpConfig(data.group_id);
+        loadVersions(data.id);
     } catch (err) {
         showError(err.message);
     }
@@ -156,11 +160,8 @@ async function saveContent() {
 }
 
 function regenerate() {
-    const params  = new URLSearchParams();
-    const groupId = new URLSearchParams(window.location.search).get("group") || genData?.group_id || '';
-    if (genData?.keyword) params.set('keyword', genData.keyword);
-    if (groupId)          params.set('group', groupId);
-    window.location.href = '/new-content' + (params.toString() ? '?' + params.toString() : '');
+    if (!genData?.id) return;
+    window.location.href = '/new-content?resume=' + encodeURIComponent(genData.id);
 }
 
 function copyHtml() {
@@ -311,6 +312,65 @@ function buildDensityHTML(html) {
         <div class="density-section-title">Single-Word Keywords</div>${table(uni)}
         <div class="density-section-title">Two-Word Keywords</div>${table(bi)}
         <div class="density-section-title">Three-Word Keywords</div>${table(tri)}`;
+}
+
+// ── Version History ───────────────────────────────────────────────────────────
+
+async function loadVersions(generationId) {
+    try {
+        const res  = await fetch(API_URL + '/api/versions.php?generation_id=' + encodeURIComponent(generationId), { headers: authHeaders() });
+        const data = await res.json();
+        versionsData = data.versions || [];
+        if (versionsData.length) {
+            document.getElementById("versionsCount").textContent = '(' + versionsData.length + ')';
+            document.getElementById("btnVersions").style.display = "";
+        }
+    } catch (_) {}
+}
+
+function openVersionsModal() {
+    const el = document.getElementById("versionsContent");
+    el.innerHTML = versionsData.map((v, i) => {
+        const num  = versionsData.length - i;
+        const date = new Date(v.created_at).toLocaleDateString("en-US", {
+            month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit"
+        });
+        return `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--light-gray);">
+            <div>
+                <div style="font-size:13px;font-weight:600;color:var(--dark);font-family:'Inter',sans-serif;">Version ${num}</div>
+                <div style="font-size:12px;color:var(--text-muted);font-family:'Inter',sans-serif;margin-top:2px;">${date}</div>
+            </div>
+            <button class="btn btn-secondary" style="padding:5px 12px;font-size:12px;flex-shrink:0;" onclick="restoreVersion(${i})">Restore</button>
+        </div>`;
+    }).join('');
+    document.getElementById("versionsModal").classList.add("open");
+    document.getElementById("versionsOverlay").classList.add("visible");
+}
+
+function closeVersionsModal() {
+    document.getElementById("versionsModal").classList.remove("open");
+    document.getElementById("versionsOverlay").classList.remove("visible");
+}
+
+async function restoreVersion(index) {
+    if (!confirm('Restore Version ' + (versionsData.length - index) + '? The current content will be overwritten.')) return;
+    const id      = new URLSearchParams(window.location.search).get("id");
+    const content = versionsData[index].content;
+    try {
+        const res = await fetch(API_URL + '/api/generation.php?id=' + encodeURIComponent(id), {
+            method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ content })
+        });
+        if (!res.ok) throw new Error('Restore failed.');
+        genData.content = content;
+        const reparsed  = parseContentMeta(content);
+        genCleanContent = reparsed.content;
+        showMetaPanel(reparsed.meta);
+        document.getElementById("htmlOutput").value = genCleanContent;
+        if (viewMode === 'clean') document.getElementById("cleanOutput").innerHTML = genCleanContent;
+        closeVersionsModal();
+    } catch (err) {
+        alert(err.message);
+    }
 }
 
 // ── WordPress Publish ─────────────────────────────────────────────────────────

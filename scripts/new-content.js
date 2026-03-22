@@ -1,6 +1,7 @@
 let currentGenerationId = null;
 let currentGroupId      = null;
 let rawSerpapiText      = "";
+let isResumeMode        = false;
 
 // ── Mode toggle ────────────────────────────────────────────────────────────────
 
@@ -328,9 +329,11 @@ function resetToNew() {
     document.getElementById("htmlEditor").value   = "";
     document.getElementById("phase2Section").classList.add("hidden");
     document.getElementById("phase3Section").classList.add("hidden");
+    document.getElementById("regenInstructionsBtn").style.display = "none";
     currentGenerationId = null;
     currentGroupId      = null;
     rawSerpapiText      = "";
+    isResumeMode        = false;
     clearAlert();
     setStep(1);
 }
@@ -352,10 +355,42 @@ async function resumeGeneration(id) {
 
         if (!data.instructions) showAlert('Brief data not found — the server may need to be updated. You can re-generate the brief manually.', 'error');
 
+        isResumeMode = true;
+        document.getElementById("regenInstructionsBtn").style.display = "";
         document.getElementById("phase2Section").classList.remove("hidden");
         setStep(2);
         document.getElementById("phase2Section").scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err) {
         showAlert('Failed to resume: ' + err.message);
+    }
+}
+
+async function regenInstructions() {
+    if (!currentGenerationId) return;
+    const kw  = document.getElementById("keywordInput").value.trim();
+    const btn = document.getElementById("regenInstructionsBtn");
+    btn.disabled = true;
+    document.getElementById("phase1Loading").classList.add("visible");
+    document.getElementById("proceedToPhase2Btn").disabled = true;
+    clearAlert();
+
+    try {
+        const res = await fetch(`${API_URL}/api/phase1.php`, {
+            method:  'POST',
+            headers: authHeaders(),
+            body:    JSON.stringify({ keyword: kw, group_id: currentGroupId, generation_id: currentGenerationId })
+        });
+        let data;
+        try { data = await res.json(); } catch { throw new Error('Server returned an unexpected response.'); }
+        if (!res.ok) throw new Error(data.detail || 'Failed to regenerate instructions.');
+
+        rawSerpapiText = data.serpapi_raw;
+        document.getElementById("briefEditor").value = data.brief;
+    } catch (err) {
+        showAlert('Regenerate failed: ' + err.message);
+    } finally {
+        document.getElementById("phase1Loading").classList.remove("visible");
+        btn.disabled = false;
+        document.getElementById("proceedToPhase2Btn").disabled = false;
     }
 }

@@ -43,6 +43,16 @@ try {
     $final_content = call_openai($system_prompt, $user_prompt, $openai_key);
 
     if ($generation_id) {
+        // Snapshot existing content as a version before overwriting
+        $snap     = supabase_call('GET', '/rest/v1/content_generations?id=eq.' . urlencode($generation_id) . '&user_id=eq.' . urlencode($user_id) . '&select=content');
+        $snapData = json_decode($snap['body'], true);
+        if (!empty($snapData[0]['content'])) {
+            supabase_call('POST', '/rest/v1/content_generation_versions', [
+                'generation_id' => $generation_id,
+                'user_id'       => $user_id,
+                'content'       => $snapData[0]['content'],
+            ]);
+        }
         update_generation_row($generation_id, [
             'status'  => 'completed',
             'content' => $final_content,

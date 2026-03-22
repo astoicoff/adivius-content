@@ -92,6 +92,10 @@
                     <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
                     Regenerate
                 </button>
+                <button id="btnVersions" class="btn btn-secondary" onclick="openVersionsModal()" style="display:none;">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Versions <span id="versionsCount"></span>
+                </button>
 
                 <button id="btnPublish" class="btn btn-secondary" onclick="openPublishModal()" style="display:none;">
                     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
@@ -194,6 +198,18 @@
         </button>
     </div>
     <div id="densityContent" class="density-content"></div>
+</div>
+
+<!-- Version History Modal -->
+<div id="versionsOverlay" class="rules-overlay" onclick="closeVersionsModal()"></div>
+<div id="versionsModal" class="density-modal" style="max-width:460px;">
+    <div class="density-modal-header">
+        <div class="rules-panel-title">Version History</div>
+        <button class="rules-panel-close" onclick="closeVersionsModal()">
+            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+    </div>
+    <div id="versionsContent" style="padding:0 20px 20px;max-height:60vh;overflow-y:auto;"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>

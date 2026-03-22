@@ -25,7 +25,15 @@ try {
     $group_data = json_decode($group_res['body'], true);
     if (empty($group_data)) { http_response_code(400); ob_end_clean(); echo json_encode(['detail' => 'Content group not found.']); exit; }
 
-    $generation_id = create_generation_row($user_id, $keyword, $group_id);
+    $generation_id = trim($body['generation_id'] ?? '');
+
+    if ($generation_id) {
+        $check = supabase_call('GET', '/rest/v1/content_generations?id=eq.' . urlencode($generation_id) . '&user_id=eq.' . urlencode($user_id) . '&select=id');
+        if (empty(json_decode($check['body'], true))) { http_response_code(404); ob_end_clean(); echo json_encode(['detail' => 'Generation not found.']); exit; }
+        update_generation_row($generation_id, ['status' => 'generating_instructions']);
+    } else {
+        $generation_id = create_generation_row($user_id, $keyword, $group_id);
+    }
 
     // 1. SerpAPI
     $serp        = call_serpapi($keyword, $serp_key);
