@@ -86,7 +86,10 @@ function renderHistory(generations) {
                 Continue
                </a>`
             : '';
-        return `<div class="history-item">
+        const deleteBtn = `<button class="btn btn-red" style="padding:6px 10px;font-size:12px;" onclick="deleteGeneration('${escapeHtml(g.id)}', this)">
+                <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+            </button>`;
+        return `<div class="history-item" id="hitem-${escapeHtml(g.id)}">
             <div>
                 <div class="history-keyword">${escapeHtml(toTitleCase(g.keyword))}</div>
                 <div class="history-date">${date}</div>
@@ -95,7 +98,24 @@ function renderHistory(generations) {
                 ${groupBadge}
                 ${statusBadge(g.status)}
                 ${viewLink}
+                ${deleteBtn}
             </div>
         </div>`;
     }).join("");
+}
+
+async function deleteGeneration(id, btn) {
+    if (!confirm('Delete this generation? This cannot be undone.')) return;
+    btn.disabled = true;
+    try {
+        const res = await fetch(API_URL + '/api/generation.php?id=' + encodeURIComponent(id), {
+            method: 'DELETE', headers: authHeaders()
+        });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Delete failed.'); }
+        allGenerations = allGenerations.filter(g => g.id !== id);
+        applyFilters();
+    } catch (err) {
+        alert(err.message);
+        btn.disabled = false;
+    }
 }
