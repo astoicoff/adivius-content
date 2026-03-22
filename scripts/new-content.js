@@ -319,7 +319,9 @@ async function resumeGeneration(id) {
     try {
         const res  = await fetch(API_URL + '/api/generation.php?id=' + encodeURIComponent(id), { headers: authHeaders() });
         const data = await res.json();
-        if (!res.ok || data.status !== 'instructions_ready') return;
+        if (!res.ok) { showAlert(data.detail || 'Failed to load generation.'); return; }
+        if (data.status !== 'instructions_ready') { showAlert('This generation cannot be resumed (status: ' + data.status + ').'); return; }
+        if (!data.instructions) { showAlert('No instructions found for this generation.'); return; }
 
         currentGenerationId = data.id;
         currentGroupId      = data.group_id;
@@ -327,10 +329,12 @@ async function resumeGeneration(id) {
 
         document.getElementById("keywordInput").value = data.keyword || '';
         if (data.group_id) document.getElementById("groupSelect").value = data.group_id;
-        document.getElementById("briefEditor").value = data.instructions || '';
+        document.getElementById("briefEditor").value = data.instructions;
 
         document.getElementById("phase2Section").classList.remove("hidden");
         setStep(2);
         document.getElementById("phase2Section").scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } catch (_) {}
+    } catch (err) {
+        showAlert('Failed to resume: ' + err.message);
+    }
 }
