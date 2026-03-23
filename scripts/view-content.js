@@ -329,6 +329,17 @@ async function loadVersions(generationId) {
 }
 
 function openVersionsModal() {
+    renderVersionsList();
+    document.getElementById("versionsModal").classList.add("open");
+    document.getElementById("versionsOverlay").classList.add("visible");
+}
+
+function closeVersionsModal() {
+    document.getElementById("versionsModal").classList.remove("open");
+    document.getElementById("versionsOverlay").classList.remove("visible");
+}
+
+function renderVersionsList() {
     const el = document.getElementById("versionsContent");
     el.innerHTML = versionsData.map((v, i) => {
         const num  = versionsData.length - i;
@@ -340,16 +351,32 @@ function openVersionsModal() {
                 <div style="font-size:13px;font-weight:600;color:var(--dark);font-family:'Inter',sans-serif;">Version ${num}</div>
                 <div style="font-size:12px;color:var(--text-muted);font-family:'Inter',sans-serif;margin-top:2px;">${date}</div>
             </div>
-            <button class="btn btn-secondary" style="padding:5px 12px;font-size:12px;flex-shrink:0;" onclick="restoreVersion(${i})">Restore</button>
+            <button class="btn btn-secondary" style="padding:5px 12px;font-size:12px;flex-shrink:0;" onclick="viewVersion(${i})">View</button>
         </div>`;
     }).join('');
-    document.getElementById("versionsModal").classList.add("open");
-    document.getElementById("versionsOverlay").classList.add("visible");
 }
 
-function closeVersionsModal() {
-    document.getElementById("versionsModal").classList.remove("open");
-    document.getElementById("versionsOverlay").classList.remove("visible");
+function viewVersion(index) {
+    const num     = versionsData.length - index;
+    const date    = new Date(versionsData[index].created_at).toLocaleDateString("en-US", {
+        month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit"
+    });
+    const parsed  = parseContentMeta(versionsData[index].content);
+    const preview = parsed.content || versionsData[index].content || '';
+
+    const el = document.getElementById("versionsContent");
+    el.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+            <div>
+                <div style="font-size:13px;font-weight:600;color:var(--dark);font-family:'Inter',sans-serif;">Version ${num}</div>
+                <div style="font-size:12px;color:var(--text-muted);font-family:'Inter',sans-serif;">${date}</div>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button class="btn btn-secondary" style="padding:5px 12px;font-size:12px;" onclick="renderVersionsList()">← Back</button>
+                <button class="btn btn-green" style="padding:5px 12px;font-size:12px;" onclick="restoreVersion(${index})">Restore</button>
+            </div>
+        </div>
+        <textarea class="form-textarea" readonly style="min-height:340px;font-size:12px;font-family:monospace;resize:none;">${escapeHtml(preview)}</textarea>`;
 }
 
 async function restoreVersion(index) {

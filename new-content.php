@@ -120,7 +120,7 @@
             <div class="card">
                 <div class="card-accent blue"></div>
                 <div class="card-header">
-                    <div><div class="card-title">Phase 1 Output — Editable Brief</div><div class="card-subtitle">Review and edit the content brief before proceeding</div></div>
+                    <div><div class="card-title">Content Brief</div><div class="card-subtitle">Review and edit the brief before generating content</div></div>
                     <span class="badge badge-blue"><span class="badge-dot"></span>Step 2</span>
                 </div>
                 <div class="card-body">
@@ -129,11 +129,11 @@
                         <textarea class="form-textarea" id="briefEditor" rows="18"></textarea>
                     </div>
                     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                        <button id="regenInstructionsBtn" class="btn btn-secondary" onclick="regenInstructions()" style="display:none;">
+                        <button id="regenInstructionsBtn" class="btn btn-red" onclick="regenInstructions()" style="display:none;">
                             <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
                             Regenerate Instructions
                         </button>
-                        <button class="btn btn-secondary" id="saveBriefBtn" onclick="saveBrief()">
+                        <button class="btn btn-yellow" id="saveBriefBtn" onclick="saveBrief()">
                             <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                             Save Brief
                         </button>

@@ -247,12 +247,14 @@ async function handlePhase1(e) {
         document.getElementById("phase1Loading").classList.remove("visible");
         document.getElementById("phase2Section").classList.remove("hidden");
         setStep(2);
+        const gb = document.getElementById("generateBriefBtn");
+        gb.disabled = true;
+        gb.classList.replace("btn-primary", "btn-secondary");
     } catch (err) {
         showAlert(`Phase 1 Failed: ${err.message}`);
         document.getElementById("phase1Loading").classList.remove("visible");
-        setStep(1);
-    } finally {
         document.getElementById("generateBriefBtn").disabled = false;
+        setStep(1);
     }
 }
 
@@ -330,6 +332,9 @@ function resetToNew() {
     document.getElementById("phase2Section").classList.add("hidden");
     document.getElementById("phase3Section").classList.add("hidden");
     document.getElementById("regenInstructionsBtn").style.display = "none";
+    const gb = document.getElementById("generateBriefBtn");
+    gb.disabled = false;
+    gb.classList.replace("btn-secondary", "btn-primary");
     currentGenerationId = null;
     currentGroupId      = null;
     rawSerpapiText      = "";
@@ -357,6 +362,9 @@ async function resumeGeneration(id) {
 
         isResumeMode = true;
         document.getElementById("regenInstructionsBtn").style.display = "";
+        const gb = document.getElementById("generateBriefBtn");
+        gb.disabled = true;
+        gb.classList.replace("btn-primary", "btn-secondary");
         document.getElementById("phase2Section").classList.remove("hidden");
         setStep(2);
         document.getElementById("phase2Section").scrollIntoView({ behavior: 'smooth', block: 'start' });

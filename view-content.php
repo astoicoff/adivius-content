@@ -84,6 +84,10 @@
                     <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                     Keyword Density
                 </button>
+                <button id="btnVersions" class="btn btn-secondary" onclick="openVersionsModal()" style="display:none;">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Versions <span id="versionsCount"></span>
+                </button>
                 <button class="btn btn-yellow" onclick="duplicateContent()">
                     <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                     Duplicate
@@ -91,10 +95,6 @@
                 <button class="btn btn-green" onclick="regenerate()">
                     <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
                     Regenerate
-                </button>
-                <button id="btnVersions" class="btn btn-secondary" onclick="openVersionsModal()" style="display:none;">
-                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    Versions <span id="versionsCount"></span>
                 </button>
 
                 <button id="btnPublish" class="btn btn-secondary" onclick="openPublishModal()" style="display:none;">
