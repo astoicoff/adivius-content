@@ -14,6 +14,17 @@
     .card-copy-btn svg  { width:13px; height:13px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; }
     .card-copy-row      { display:flex; margin-bottom:10px; }
 
+    /* Table of Contents */
+    .toc-nav            { background:var(--off-white); border:1px solid var(--light-gray); border-radius:8px; padding:14px 18px; margin-bottom:24px; }
+    .toc-title          { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted); margin-bottom:10px; }
+    .toc-list           { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px; }
+    .toc-item a         { text-decoration:none; color:var(--dark); font-size:13px; font-family:'Inter',sans-serif; line-height:1.4; }
+    .toc-item a:hover   { color:var(--blue); }
+    .toc-h1 a           { font-weight:600; }
+    .toc-h2 a           { padding-left:12px; }
+    .toc-h3 a           { padding-left:24px; font-size:12px; color:var(--text-muted); }
+    .toc-h3 a:hover     { color:var(--blue); }
+
     /* Meta panel */
     #metaPanel          { margin-bottom: 16px; }
     #metaPanel .card    { flex: unset; margin-bottom: 0; }
@@ -202,14 +213,14 @@
 
 <!-- Version History Modal -->
 <div id="versionsOverlay" class="rules-overlay" onclick="closeVersionsModal()"></div>
-<div id="versionsModal" class="density-modal" style="max-width:460px;">
+<div id="versionsModal" class="density-modal" style="max-width:760px;width:90vw;">
     <div class="density-modal-header">
         <div class="rules-panel-title">Version History</div>
         <button class="rules-panel-close" onclick="closeVersionsModal()">
             <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
     </div>
-    <div id="versionsContent" style="padding:0 20px 20px;max-height:60vh;overflow-y:auto;"></div>
+    <div id="versionsContent" style="padding:0 20px 20px;max-height:75vh;overflow-y:auto;"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>

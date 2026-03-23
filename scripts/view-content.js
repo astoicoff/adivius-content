@@ -113,6 +113,26 @@ function showError(msg) {
     document.getElementById("errorText").textContent      = msg;
 }
 
+// ── Table of Contents ─────────────────────────────────────────────────────────
+
+function renderWithTOC(html) {
+    if (!html) return '';
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    const headings = [...div.querySelectorAll('h1,h2,h3')];
+    if (headings.length < 2) return html;
+
+    headings.forEach((h, i) => { h.id = 'toc-' + i; });
+
+    const items = headings.map((h, i) => {
+        const level = h.tagName.toLowerCase();
+        return `<li class="toc-item toc-${level}"><a href="#toc-${i}">${escapeHtml(h.textContent.trim())}</a></li>`;
+    }).join('');
+
+    const toc = `<nav class="toc-nav"><div class="toc-title">Table of Contents</div><ul class="toc-list">${items}</ul></nav>`;
+    return toc + div.innerHTML;
+}
+
 // ── View modes ────────────────────────────────────────────────────────────────
 
 function setViewMode(mode) {
@@ -129,7 +149,7 @@ function setViewMode(mode) {
     document.getElementById("copyHtmlRow").style.display  = mode === 'html'  ? "" : "none";
     document.getElementById("copyCleanRow").style.display = mode === 'clean' ? "" : "none";
 
-    if (mode === 'clean') document.getElementById("cleanOutput").innerHTML = genCleanContent || '';
+    if (mode === 'clean') document.getElementById("cleanOutput").innerHTML = renderWithTOC(genCleanContent || '');
     if (mode === 'edit')  document.getElementById("editOutput").value      = genData?.content || '';
 }
 
@@ -357,8 +377,8 @@ function renderVersionsList() {
 }
 
 function viewVersion(index) {
-    const num     = versionsData.length - index;
-    const date    = new Date(versionsData[index].created_at).toLocaleDateString("en-US", {
+    const num    = versionsData.length - index;
+    const date   = new Date(versionsData[index].created_at).toLocaleDateString("en-US", {
         month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit"
     });
     const parsed  = parseContentMeta(versionsData[index].content);
@@ -366,24 +386,30 @@ function viewVersion(index) {
 
     const el = document.getElementById("versionsContent");
     el.innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
             <div>
-                <div style="font-size:13px;font-weight:600;color:var(--dark);font-family:'Inter',sans-serif;">Version ${num}</div>
-                <div style="font-size:12px;color:var(--text-muted);font-family:'Inter',sans-serif;">${date}</div>
+                <div style="font-size:14px;font-weight:700;color:var(--dark);font-family:'Inter',sans-serif;">Version ${num}</div>
+                <div style="font-size:12px;color:var(--text-muted);font-family:'Inter',sans-serif;margin-top:2px;">${date}</div>
             </div>
             <div style="display:flex;gap:8px;">
                 <button class="btn btn-secondary" style="padding:5px 12px;font-size:12px;" onclick="renderVersionsList()">← Back</button>
                 <button class="btn btn-green" style="padding:5px 12px;font-size:12px;" onclick="restoreVersion(${index})">Restore</button>
             </div>
         </div>
-        <textarea class="form-textarea" readonly style="min-height:340px;font-size:12px;font-family:monospace;resize:none;">${escapeHtml(preview)}</textarea>`;
+        <div class="content-rendered">${renderWithTOC(preview)}</div>`;
 }
 
 async function restoreVersion(index) {
-    if (!confirm('Restore Version ' + (versionsData.length - index) + '? The current content will be overwritten.')) return;
+    if (!confirm('Restore Version ' + (versionsData.length - index) + '? The current content will be saved as a new version first.')) return;
     const id      = new URLSearchParams(window.location.search).get("id");
     const content = versionsData[index].content;
     try {
+        // Save current content as a version before overwriting
+        if (genData?.content) {
+            await fetch(API_URL + '/api/versions.php?generation_id=' + encodeURIComponent(id), {
+                method: 'POST', headers: authHeaders(), body: JSON.stringify({ content: genData.content })
+            });
+        }
         const res = await fetch(API_URL + '/api/generation.php?id=' + encodeURIComponent(id), {
             method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ content })
         });
@@ -393,8 +419,9 @@ async function restoreVersion(index) {
         genCleanContent = reparsed.content;
         showMetaPanel(reparsed.meta);
         document.getElementById("htmlOutput").value = genCleanContent;
-        if (viewMode === 'clean') document.getElementById("cleanOutput").innerHTML = genCleanContent;
+        if (viewMode === 'clean') document.getElementById("cleanOutput").innerHTML = renderWithTOC(genCleanContent);
         closeVersionsModal();
+        await loadVersions(id);
     } catch (err) {
         alert(err.message);
     }
