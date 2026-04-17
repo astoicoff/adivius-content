@@ -27,8 +27,12 @@ function set_headers() {
 }
 
 function get_authed_user() {
-    $headers = getallheaders();
-    $auth = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+    // $_SERVER works in FastCGI/Vercel; getallheaders() works in Apache/cPanel
+    $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+    if (!$auth && function_exists('getallheaders')) {
+        $h    = getallheaders();
+        $auth = $h['Authorization'] ?? $h['authorization'] ?? '';
+    }
     if (!preg_match('/^Bearer\s+(.+)$/i', $auth, $m)) {
         http_response_code(401);
         echo json_encode(['detail' => 'Missing authorization token.']);
