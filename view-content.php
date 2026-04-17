@@ -91,6 +91,10 @@
                     <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     Edit
                 </button>
+                <button id="btnSeo" class="btn btn-secondary" onclick="openSeoModal()">
+                    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                    SEO Score
+                </button>
                 <button id="btnDensity" class="btn btn-secondary" onclick="openDensityModal()">
                     <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                     Keyword Density
@@ -197,6 +201,18 @@
         </div>
         <div id="publishResult" style="margin-top:14px;display:none;"></div>
     </div>
+</div>
+
+<!-- SEO Score Modal -->
+<div id="seoOverlay" class="rules-overlay" onclick="closeSeoModal()"></div>
+<div id="seoModal" class="density-modal" style="max-width:480px;">
+    <div class="density-modal-header">
+        <div class="rules-panel-title">SEO Score</div>
+        <button class="rules-panel-close" onclick="closeSeoModal()">
+            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+    </div>
+    <div id="seoModalBody" style="padding:24px 28px;text-align:center;"></div>
 </div>
 
 <!-- Keyword Density Modal -->

@@ -334,6 +334,74 @@ function buildDensityHTML(html) {
         <div class="density-section-title">Three-Word Keywords</div>${table(tri)}`;
 }
 
+// ── SEO Score ─────────────────────────────────────────────────────────────────
+
+function openSeoModal() {
+    document.getElementById("seoModal").classList.add("open");
+    document.getElementById("seoOverlay").classList.add("visible");
+    loadSeoScore();
+}
+
+function closeSeoModal() {
+    document.getElementById("seoModal").classList.remove("open");
+    document.getElementById("seoOverlay").classList.remove("visible");
+}
+
+async function loadSeoScore() {
+    const id   = new URLSearchParams(window.location.search).get("id");
+    const body = document.getElementById("seoModalBody");
+    body.innerHTML = '<div class="loading-bar visible" style="justify-content:center;"><div class="spinner"></div> Analysing…</div>';
+
+    try {
+        const res  = await fetch(`${API_URL}/api/neuronwriter.php?action=score&id=${encodeURIComponent(id)}`, {
+            method: 'POST', headers: authHeaders()
+        });
+        const data = await res.json();
+
+        if (!res.ok) { body.innerHTML = `<p style="color:var(--red);font-size:13px;">${escapeHtml(data.detail || 'Error')}</p>`; return; }
+
+        // No project set — show project picker
+        if (data.needs_project) {
+            const opts = (data.projects || []).map(p =>
+                `<li><button class="btn btn-secondary" style="width:100%;text-align:left;" onclick="selectSeoProject('${escapeHtml(p.id)}')">${escapeHtml(p.name)}</button></li>`
+            ).join('');
+            body.innerHTML = `<p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;text-align:left;">Select your NeuronWriter project:</p>
+                <ul class="seo-project-list">${opts || '<li style="font-size:13px;color:var(--text-muted);">No projects found.</li>'}</ul>`;
+            return;
+        }
+
+        // Query still processing
+        if (data.pending) {
+            body.innerHTML = `<p style="font-size:13px;color:var(--text-muted);">NeuronWriter is still building the analysis. Try again in ~30 seconds.</p>`;
+            return;
+        }
+
+        // Score result
+        const score = data.score ?? 0;
+        const color = score >= 70 ? 'var(--green)' : score >= 40 ? '#e6a817' : 'var(--red)';
+        const note  = data.is_new ? '<p style="font-size:12px;color:var(--text-muted);margin-top:16px;">Analysis created — future scores are instant.</p>' : '';
+        const link  = data.query_url
+            ? `<a href="${escapeHtml(data.query_url)}" target="_blank" rel="noopener" class="btn btn-secondary" style="margin-top:20px;display:inline-flex;gap:6px;">
+                   View Full Analysis
+                   <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+               </a>` : '';
+        body.innerHTML = `<div class="seo-score-number" style="color:${color};">${score}</div>
+            <div class="seo-score-label">out of 100</div>
+            ${note}${link}`;
+    } catch (err) {
+        body.innerHTML = `<p style="color:var(--red);font-size:13px;">${escapeHtml(err.message)}</p>`;
+    }
+}
+
+async function selectSeoProject(projectId) {
+    const body = document.getElementById("seoModalBody");
+    body.innerHTML = '<div class="loading-bar visible" style="justify-content:center;"><div class="spinner"></div> Saving…</div>';
+    await fetch(`${API_URL}/api/neuronwriter.php?action=set_project`, {
+        method: 'POST', headers: authHeaders(), body: JSON.stringify({ project_id: projectId })
+    });
+    loadSeoScore();
+}
+
 // ── Version History ───────────────────────────────────────────────────────────
 
 async function loadVersions(generationId) {
