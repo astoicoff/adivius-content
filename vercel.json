@@ -1,28 +1,14 @@
 {
-  "functions": {
-    "api/*.php": { "runtime": "vercel-php@0.7.2", "maxDuration": 60 },
-    "*.php":     { "runtime": "vercel-php@0.7.2", "maxDuration": 10 }
-  },
-  "redirects": [
-    {
-      "source": "/:page(login|dashboard|new-content|content-groups|history|api-keys|view-content).html",
-      "destination": "/:page",
-      "permanent": true
-    },
-    {
-      "source": "/:page(login|dashboard|new-content|content-groups|history|api-keys|view-content).php",
-      "destination": "/:page",
-      "permanent": true
-    }
+  "version": 2,
+  "builds": [
+    { "src": "*.php",     "use": "vercel-php@0.6.2" },
+    { "src": "api/*.php", "use": "vercel-php@0.6.2" }
   ],
-  "rewrites": [
-    { "source": "/", "destination": "/dashboard.php" },
-    { "source": "/:page(login|dashboard|new-content|content-groups|history|api-keys|view-content)", "destination": "/$page.php" }
-  ],
-  "headers": [
-    {
-      "source": "/includes/(.*)",
-      "headers": [{ "key": "x-content-type-options", "value": "nosniff" }]
-    }
+  "routes": [
+    { "src": "/(login|dashboard|new-content|content-groups|history|api-keys|view-content)\\.html$", "headers": { "Location": "/$1" }, "status": 301 },
+    { "src": "/(login|dashboard|new-content|content-groups|history|api-keys|view-content)\\.php$",  "headers": { "Location": "/$1" }, "status": 301 },
+    { "src": "^/(login|dashboard|new-content|content-groups|history|api-keys|view-content)$", "dest": "/$1.php" },
+    { "src": "^/$", "dest": "/dashboard.php" },
+    { "src": "^/(.*)", "dest": "/$1" }
   ]
 }
