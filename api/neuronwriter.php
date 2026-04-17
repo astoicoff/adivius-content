@@ -124,22 +124,38 @@ if ($action === 'score' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // Evaluate content
+    // Evaluate content + fetch full query analysis in parallel (sequential here)
     $html = $gen_data['content'] ?? '';
-    $eval = nw_call('POST', '/evaluate-content', [
-        'query' => $query_id,
-        'html'  => $html,
-    ]);
+    $eval = nw_call('POST', '/evaluate-content', ['query' => $query_id, 'html' => $html]);
     if ($eval['status'] !== 200 || !isset($eval['body']['content_score'])) {
         http_response_code(502);
         echo json_encode(['detail' => 'Failed to evaluate content: ' . ($eval['body']['message'] ?? 'unknown')]);
         exit;
     }
 
+    $analysis = nw_call('POST', '/get-query', ['query' => $query_id]);
+    $adata    = ($analysis['status'] === 200) ? ($analysis['body'] ?? []) : [];
+
+    // Extract the most useful fields for the report
+    $metrics     = $adata['metrics']      ?? [];
+    $ideas       = $adata['ideas']        ?? [];
+    $competitors = $adata['competitors']  ?? [];
+    $serp        = $adata['serp_summary'] ?? [];
+    $terms_basic = $adata['terms']['content_basic'] ?? [];
+
     echo json_encode([
-        'score'     => $eval['body']['content_score'],
-        'query_url' => $query_url,
-        'is_new'    => $is_new,
+        'score'       => $eval['body']['content_score'],
+        'query_url'   => $query_url,
+        'is_new'      => $is_new,
+        'word_count_target' => $metrics['word_count']['median'] ?? null,
+        'readability_target' => $metrics['readability']['median'] ?? null,
+        'top_terms'   => array_slice($terms_basic, 0, 15),
+        'questions'   => array_merge(
+            $ideas['people_also_ask']   ?? [],
+            $ideas['suggest_questions'] ?? []
+        ),
+        'competitors' => array_slice($competitors, 0, 5),
+        'intent'      => $serp['top_intent'] ?? null,
     ]);
     exit;
 }

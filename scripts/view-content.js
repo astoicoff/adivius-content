@@ -377,20 +377,95 @@ async function loadSeoScore() {
         }
 
         // Score result
-        const score = data.score ?? 0;
-        const color = score >= 70 ? 'var(--green)' : score >= 40 ? '#e6a817' : 'var(--red)';
-        const note  = data.is_new ? '<p style="font-size:12px;color:var(--text-muted);margin-top:16px;">Analysis created — future scores are instant.</p>' : '';
-        const link  = data.query_url
-            ? `<a href="${escapeHtml(data.query_url)}" target="_blank" rel="noopener" class="btn btn-secondary" style="margin-top:20px;display:inline-flex;gap:6px;">
-                   View Full Analysis
-                   <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-               </a>` : '';
-        body.innerHTML = `<div class="seo-score-number" style="color:${color};">${score}</div>
-            <div class="seo-score-label">out of 100</div>
-            ${note}${link}`;
+        body.innerHTML = buildSeoReportHTML(data);
     } catch (err) {
         body.innerHTML = `<p style="color:var(--red);font-size:13px;">${escapeHtml(err.message)}</p>`;
     }
+}
+
+function buildSeoReportHTML(data) {
+    const score     = data.score ?? 0;
+    const scoreColor = score >= 70 ? 'var(--green)' : score >= 40 ? '#e6a817' : 'var(--red)';
+    const currentWC  = wordCount(genCleanContent || '');
+    const targetWC   = data.word_count_target;
+
+    // Score + word count row
+    const scoreBlock = `
+        <div style="display:flex;align-items:flex-end;justify-content:center;gap:32px;padding:20px 0 16px;border-bottom:1px solid var(--light-gray);">
+            <div style="text-align:center;">
+                <div class="seo-score-number" style="color:${scoreColor};">${score}</div>
+                <div class="seo-score-label">SEO score / 100</div>
+            </div>
+            ${targetWC ? `<div style="text-align:center;">
+                <div class="seo-score-number" style="font-size:48px;color:${currentWC >= targetWC ? 'var(--green)' : currentWC >= targetWC * 0.8 ? '#e6a817' : 'var(--red)'};">${currentWC.toLocaleString()}</div>
+                <div class="seo-score-label">words · target ${targetWC.toLocaleString()}</div>
+            </div>` : ''}
+            ${data.intent ? `<div style="text-align:center;">
+                <div style="font-size:13px;font-weight:700;text-transform:capitalize;background:var(--off-white);border:1px solid var(--light-gray);border-radius:20px;padding:6px 14px;font-family:'Inter',sans-serif;">${escapeHtml(data.intent)}</div>
+                <div class="seo-score-label" style="margin-top:6px;">search intent</div>
+            </div>` : ''}
+        </div>`;
+
+    // Top terms
+    const terms = (data.top_terms || []).slice(0, 12);
+    const termsBlock = terms.length ? `
+        <div class="seo-section">
+            <div class="seo-section-title">Top Terms to Include</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                ${terms.map(t => {
+                    const phrase = t.t || '';
+                    const usage  = t.sugg_usage || '';
+                    return `<span style="font-size:12px;font-family:'Inter',sans-serif;background:var(--off-white);border:1px solid var(--light-gray);border-radius:6px;padding:4px 8px;">
+                        ${escapeHtml(phrase)}${usage ? `<span style="color:var(--text-muted);margin-left:4px;">${escapeHtml(usage)}×</span>` : ''}
+                    </span>`;
+                }).join('')}
+            </div>
+        </div>` : '';
+
+    // Questions
+    const questions = (data.questions || []).slice(0, 6);
+    const qBlock = questions.length ? `
+        <div class="seo-section">
+            <div class="seo-section-title">Questions to Address</div>
+            <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;">
+                ${questions.map(q => `<li style="font-size:13px;font-family:'Inter',sans-serif;color:var(--dark);padding:6px 10px;background:var(--off-white);border-radius:6px;border-left:3px solid var(--blue);">${escapeHtml(q.q || q)}</li>`).join('')}
+            </ul>
+        </div>` : '';
+
+    // Competitors
+    const comps = (data.competitors || []).slice(0, 5);
+    const compBlock = comps.length ? `
+        <div class="seo-section">
+            <div class="seo-section-title">Top Competitors</div>
+            <table style="width:100%;border-collapse:collapse;font-size:12px;font-family:'Inter',sans-serif;">
+                <thead><tr>
+                    <th style="text-align:left;padding:4px 8px;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--light-gray);">#</th>
+                    <th style="text-align:left;padding:4px 8px;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--light-gray);">Page</th>
+                    <th style="text-align:right;padding:4px 8px;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--light-gray);">Score</th>
+                </tr></thead>
+                <tbody>${comps.map((c, i) => {
+                    const domain = (() => { try { return new URL(c.url).hostname.replace('www.',''); } catch(_) { return c.url; } })();
+                    const cs = c.content_score ?? '—';
+                    const csColor = cs >= 70 ? 'var(--green)' : cs >= 40 ? '#e6a817' : 'var(--red)';
+                    return `<tr>
+                        <td style="padding:6px 8px;color:var(--text-muted);">${i+1}</td>
+                        <td style="padding:6px 8px;"><a href="${escapeHtml(c.url)}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none;">${escapeHtml(domain)}</a></td>
+                        <td style="padding:6px 8px;text-align:right;font-weight:600;color:${csColor};">${cs}</td>
+                    </tr>`;
+                }).join('')}</tbody>
+            </table>
+        </div>` : '';
+
+    const newNote = data.is_new ? `<p style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:4px;">Analysis created — future scores are instant.</p>` : '';
+    const link = data.query_url
+        ? `<div style="text-align:center;padding:16px 0 4px;">
+            <a href="${escapeHtml(data.query_url)}" target="_blank" rel="noopener" class="btn btn-secondary" style="display:inline-flex;gap:6px;">
+                View Full Analysis in NeuronWriter
+                <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </a>
+          </div>` : '';
+
+    return scoreBlock + newNote + termsBlock + qBlock + compBlock + link;
 }
 
 async function selectSeoProject(projectId) {
@@ -504,7 +579,17 @@ async function loadGroupWpConfig(groupId) {
     try {
         const res  = await fetch(API_URL + '/api/groups.php?id=' + encodeURIComponent(groupId), { headers: authHeaders() });
         const data = await res.json();
-        if (!res.ok || !data.wp_configured) return;
+        if (!res.ok) return;
+
+        // Show group name in top-bar
+        if (data.name) {
+            const groupLink = document.getElementById("topBarGroup");
+            document.getElementById("topBarGroupName").textContent = data.name;
+            groupLink.href = `/content-groups?group=${encodeURIComponent(groupId)}`;
+            groupLink.style.display = "flex";
+        }
+
+        if (!data.wp_configured) return;
         groupWpConfig = data;
         const btn = document.getElementById("btnPublish");
         if (btn) btn.style.display = "";

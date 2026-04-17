@@ -371,8 +371,11 @@
         .density-section-title { font-size: 11px; font-weight: 700; color: var(--text-muted); margin: 20px 0 8px; text-transform: uppercase; letter-spacing: 0.7px; }
         .density-section-title:first-child { margin-top: 0; }
         .seo-score-number { font-size: 72px; font-weight: 700; line-height: 1; font-family: 'Poppins', sans-serif; }
-        .seo-score-label  { font-size: 13px; color: var(--text-muted); margin-top: 4px; font-family: 'Inter', sans-serif; }
+        .seo-score-label  { font-size: 12px; color: var(--text-muted); margin-top: 4px; font-family: 'Inter', sans-serif; }
         .seo-project-list { list-style: none; margin: 0; padding: 0; text-align: left; display: flex; flex-direction: column; gap: 6px; }
+        .seo-section      { padding: 16px 0; border-bottom: 1px solid var(--light-gray); }
+        .seo-section:last-of-type { border-bottom: none; }
+        .seo-section-title { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
         .density-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 4px; }
         .density-table th { text-align: left; padding: 8px 12px; background: var(--off-white); font-weight: 600; color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
         .density-table td { padding: 8px 12px; border-top: 1px solid var(--light-gray); }

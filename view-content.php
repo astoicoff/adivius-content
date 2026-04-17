@@ -44,6 +44,10 @@
             <div class="top-bar-title" id="topBarTitle">Content</div>
             <div class="top-bar-subtitle" id="topBarSubtitle">Generated WordPress HTML</div>
         </div>
+        <a id="topBarGroup" href="/content-groups" style="display:none;align-items:center;gap:6px;font-size:13px;font-family:'Inter',sans-serif;font-weight:500;color:var(--text-muted);text-decoration:none;white-space:nowrap;">
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            <span id="topBarGroupName"></span>
+        </a>
     </div>
     <div class="content-area">
 
@@ -205,14 +209,14 @@
 
 <!-- SEO Score Modal -->
 <div id="seoOverlay" class="rules-overlay" onclick="closeSeoModal()"></div>
-<div id="seoModal" class="density-modal" style="max-width:480px;">
+<div id="seoModal" class="density-modal" style="max-width:680px;">
     <div class="density-modal-header">
         <div class="rules-panel-title">SEO Score</div>
         <button class="rules-panel-close" onclick="closeSeoModal()">
             <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
     </div>
-    <div id="seoModalBody" style="padding:24px 28px;text-align:center;"></div>
+    <div id="seoModalBody" style="padding:0 24px 20px;overflow-y:auto;max-height:72vh;"></div>
 </div>
 
 <!-- Keyword Density Modal -->
