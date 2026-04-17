@@ -1,9 +1,23 @@
 <?php
-require_once __DIR__ . '/../../adcontent_config.php';
+// Load from env vars (Vercel) or fall back to adcontent_config.php (cPanel)
+if (!defined('SUPABASE_URL')) {
+    $cfg = __DIR__ . '/../../adcontent_config.php';
+    if (file_exists($cfg)) require_once $cfg;
+}
+if (!defined('SUPABASE_URL')) {
+    define('SUPABASE_URL',         getenv('SUPABASE_URL')         ?: '');
+    define('SUPABASE_ANON_KEY',    getenv('SUPABASE_ANON_KEY')    ?: '');
+    define('SUPABASE_SERVICE_KEY', getenv('SUPABASE_SERVICE_KEY') ?: '');
+    define('DIRECTIVES_DIR',       getenv('DIRECTIVES_DIR')       ?: __DIR__ . '/../directives');
+    define('NEURONWRITER_API_KEY', getenv('NEURONWRITER_API_KEY') ?: '');
+    define('NEURONWRITER_API_URL', getenv('NEURONWRITER_API_URL') ?: 'https://app.neuronwriter.com/neuron-api/0.5/writer');
+}
 
 function set_headers() {
     header('Content-Type: application/json');
-    $allowed = ['https://adivius.com', 'https://www.adivius.com', 'http://localhost:8000'];
+    $allowed = ['https://adivius.com', 'https://www.adivius.com', 'http://localhost:8000',
+                getenv('VERCEL_URL') ? 'https://' . getenv('VERCEL_URL') : ''];
+    $allowed  = array_filter($allowed);
     $origin  = $_SERVER['HTTP_ORIGIN'] ?? '';
     if (in_array($origin, $allowed, true)) header('Access-Control-Allow-Origin: ' . $origin);
     header('Vary: Origin');

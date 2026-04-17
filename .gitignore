@@ -3,8 +3,7 @@ adcontent_config.php
 config.php
 .env
 
-# Directives live outside public_html on server (~/Content Creator/directives/)
-directives/
+# adcontent_config.php is used on cPanel only — secrets are env vars on Vercel
 
 # PHP/Python artifacts
 .venv/

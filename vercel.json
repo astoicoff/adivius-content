@@ -1,0 +1,28 @@
+{
+  "functions": {
+    "api/*.php": { "runtime": "vercel-php@0.7.2", "maxDuration": 60 },
+    "*.php":     { "runtime": "vercel-php@0.7.2", "maxDuration": 10 }
+  },
+  "redirects": [
+    {
+      "source": "/:page(login|dashboard|new-content|content-groups|history|api-keys|view-content).html",
+      "destination": "/:page",
+      "permanent": true
+    },
+    {
+      "source": "/:page(login|dashboard|new-content|content-groups|history|api-keys|view-content).php",
+      "destination": "/:page",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    { "source": "/", "destination": "/dashboard.php" },
+    { "source": "/:page(login|dashboard|new-content|content-groups|history|api-keys|view-content)", "destination": "/$page.php" }
+  ],
+  "headers": [
+    {
+      "source": "/includes/(.*)",
+      "headers": [{ "key": "x-content-type-options", "value": "nosniff" }]
+    }
+  ]
+}
