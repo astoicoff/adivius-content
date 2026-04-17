@@ -1,8 +1,10 @@
 {
   "version": 2,
   "builds": [
-    { "src": "*.php",     "use": "vercel-php@0.6.2" },
-    { "src": "api/*.php", "use": "vercel-php@0.6.2" }
+    { "src": "*.php",         "use": "vercel-php@0.6.2" },
+    { "src": "api/*.php",     "use": "vercel-php@0.6.2" },
+    { "src": "scripts/**",    "use": "@vercel/static" },
+    { "src": "favicon.svg",   "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/(login|dashboard|new-content|content-groups|history|api-keys|view-content)\\.html$", "headers": { "Location": "/$1" }, "status": 301 },
