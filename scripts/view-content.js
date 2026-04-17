@@ -414,7 +414,8 @@ function buildSeoReportHTML(data) {
             <div style="display:flex;flex-wrap:wrap;gap:6px;">
                 ${terms.map(t => {
                     const phrase = t.t || '';
-                    const usage  = t.sugg_usage || '';
+                    const raw    = t.sugg_usage;
+                    const usage  = raw == null ? '' : (typeof raw === 'object' ? (raw.min ?? '') + (raw.max != null ? '–' + raw.max : '') : String(raw));
                     return `<span style="font-size:12px;font-family:'Inter',sans-serif;background:var(--off-white);border:1px solid var(--light-gray);border-radius:6px;padding:4px 8px;">
                         ${escapeHtml(phrase)}${usage ? `<span style="color:var(--text-muted);margin-left:4px;">${escapeHtml(usage)}×</span>` : ''}
                     </span>`;
@@ -428,7 +429,7 @@ function buildSeoReportHTML(data) {
         <div class="seo-section">
             <div class="seo-section-title">Questions to Address</div>
             <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;">
-                ${questions.map(q => `<li style="font-size:13px;font-family:'Inter',sans-serif;color:var(--dark);padding:6px 10px;background:var(--off-white);border-radius:6px;border-left:3px solid var(--blue);">${escapeHtml(q.q || q)}</li>`).join('')}
+                ${questions.map(q => { const txt = typeof q === 'string' ? q : (q.q || q.question || ''); return txt ? `<li style="font-size:13px;font-family:'Inter',sans-serif;color:var(--dark);padding:6px 10px;background:var(--off-white);border-radius:6px;border-left:3px solid var(--blue);">${escapeHtml(txt)}</li>` : ''; }).join('')}
             </ul>
         </div>` : '';
 
