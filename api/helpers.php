@@ -84,12 +84,14 @@ function get_user_settings($user_id) {
     return $data[0] ?? [];
 }
 
-function upsert_user_settings($user_id, $openai_key, $perplexity_key, $serpapi_key) {
+function upsert_user_settings($user_id, $openai_key, $perplexity_key, $serpapi_key, $claude_key = '', $gemini_key = '') {
     return supabase_call('POST', '/rest/v1/user_settings?on_conflict=user_id', [
         'user_id'        => $user_id,
         'openai_key'     => $openai_key,
         'perplexity_key' => $perplexity_key,
         'serpapi_key'    => $serpapi_key,
+        'claude_key'     => $claude_key,
+        'gemini_key'     => $gemini_key,
     ], ['Prefer: resolution=merge-duplicates,return=representation']);
 }
 
