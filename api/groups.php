@@ -91,6 +91,7 @@ if ($method === 'GET') {
     if (array_key_exists('wp_site_url',      $body)) $update['wp_site_url']      = $body['wp_site_url'];
     if (array_key_exists('wp_username',      $body)) $update['wp_username']      = $body['wp_username'];
     if (array_key_exists('wp_app_password',  $body)) $update['wp_app_password']  = $body['wp_app_password'];
+    if (array_key_exists('webhook_url',      $body)) $update['webhook_url']      = $body['webhook_url'];
 
     $res = supabase_call('PATCH',
         '/rest/v1/content_groups?id=eq.' . urlencode($id) . '&user_id=eq.' . urlencode($user_id),

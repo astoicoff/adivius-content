@@ -149,33 +149,39 @@ function renderContentItems(generations) {    renderAnalyticsChart(generations)
 function openRulesPanel(type) {
     activePanelType = type;
     const isWP   = type === 'wordpress';
+    const isWH   = type === 'webhook';
     const isInst = type === 'instructions';
+    const isRulesText = !isWP && !isWH;
 
-    const titles = { instructions: 'Instructions Rules', content: 'Content Rules', wordpress: 'WordPress Integration' };
+    const titles = { instructions: 'Instructions Rules', content: 'Content Rules', wordpress: 'WordPress Integration', webhook: 'Webhook on Completion' };
     const descs  = {
         instructions: 'Used in Phase 1 to guide the content brief generation.',
         content:      'Used in Phase 2 to guide the final article writing.',
         wordpress:    'Connect this group to a WordPress site for one-click publishing.',
+        webhook:      'POST every completed generation to a custom URL (Zapier, Make, your own endpoint).',
     };
     document.getElementById("rulesPanelTitle").textContent = titles[type] || type;
     document.getElementById("rulesPanelDesc").textContent  = descs[type]  || '';
 
-    document.getElementById("rulesTextarea").style.display   = isWP ? "none" : "";
-    document.getElementById("wpFieldsSection").style.display = isWP ? "flex" : "none";
+    document.getElementById("rulesTextarea").style.display        = isRulesText ? "" : "none";
+    document.getElementById("wpFieldsSection").style.display      = isWP ? "flex" : "none";
+    document.getElementById("webhookFieldsSection").style.display = isWH ? "flex" : "none";
 
-    if (!isWP) {
+    if (isRulesText) {
         document.getElementById("rulesTextarea").value = isInst
             ? (currentGroupData?.instructions_rules || '')
             : (currentGroupData?.content_rules || '');
-    } else {
+    } else if (isWP) {
         document.getElementById("wpSiteUrl").value     = currentGroupData?.wp_site_url || '';
         document.getElementById("wpUsername").value    = currentGroupData?.wp_username  || '';
         document.getElementById("wpAppPassword").value = '';
+    } else if (isWH) {
+        document.getElementById("webhookUrl").value = currentGroupData?.webhook_url || '';
     }
 
     const isNew = !editingGroupId;
-    document.getElementById("groupNameRow").style.display = (isNew && !isWP) ? "" : "none";
-    if (isNew && !isWP) document.getElementById("groupNameInput").value = currentGroupData?.name || '';
+    document.getElementById("groupNameRow").style.display = (isNew && isRulesText) ? "" : "none";
+    if (isNew && isRulesText) document.getElementById("groupNameInput").value = currentGroupData?.name || '';
 
     document.getElementById("rulesSaveIndicator").classList.remove("visible");
     document.getElementById("rulesPanel").classList.add("open");
@@ -188,6 +194,7 @@ function closeRulesPanel() {
 
 async function saveRules() {
     const isWP   = activePanelType === 'wordpress';
+    const isWH   = activePanelType === 'webhook';
     const text   = document.getElementById("rulesTextarea").value;
     const isNew  = !editingGroupId;
     const isInst = activePanelType === 'instructions';
@@ -207,6 +214,23 @@ async function saveRules() {
             if (!res.ok) throw new Error('Failed to save WordPress settings.');
             currentGroupData.wp_site_url = payload.wp_site_url;
             currentGroupData.wp_username = payload.wp_username;
+            const ind = document.getElementById("rulesSaveIndicator");
+            ind.classList.add("visible");
+            setTimeout(() => ind.classList.remove("visible"), 2500);
+        } catch (err) { alert(err.message); }
+        return;
+    }
+
+    if (isWH) {
+        if (!editingGroupId) { alert('Save the group first before configuring a webhook.'); return; }
+        const url = document.getElementById("webhookUrl").value.trim();
+        if (url && !/^https?:\/\//i.test(url)) { alert('Webhook URL must start with http:// or https://'); return; }
+        try {
+            const res = await fetch(API_URL + '/api/groups.php?id=' + encodeURIComponent(editingGroupId), {
+                method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ webhook_url: url })
+            });
+            if (!res.ok) throw new Error('Failed to save webhook URL.');
+            currentGroupData.webhook_url = url;
             const ind = document.getElementById("rulesSaveIndicator");
             ind.classList.add("visible");
             setTimeout(() => ind.classList.remove("visible"), 2500);

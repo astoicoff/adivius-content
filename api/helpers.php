@@ -163,6 +163,54 @@ function call_perplexity($messages, $api_key) {
     return json_decode($body, true)['choices'][0]['message']['content'];
 }
 
+function parse_content_meta($raw) {
+    $lines     = explode("\n", (string)$raw);
+    $meta      = [];
+    $bodyStart = 0;
+    foreach ($lines as $i => $line) {
+        $trim = trim($line);
+        if (!$trim) { if (!empty($meta)) { $bodyStart = $i + 1; break; } continue; }
+        if ($trim[0] === '<') { $bodyStart = $i; break; }
+        if (preg_match('/^(h1|title|url)\s*:\s*(.+)$/i', $trim, $m)) {
+            $meta[strtolower($m[1])] = trim($m[2]);
+            $bodyStart = $i + 1;
+        } else break;
+    }
+    return ['meta' => $meta, 'body' => trim(implode("\n", array_slice($lines, $bodyStart)))];
+}
+
+function fire_webhook($url, $payload) {
+    $delays   = [0, 2, 5];
+    $attempts = 0;
+    $lastErr  = null;
+    foreach ($delays as $delay) {
+        if ($delay) sleep($delay);
+        $attempts++;
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => json_encode($payload),
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'User-Agent: AdiviusContentCreator/1.0',
+            ],
+            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_SSL_VERIFYPEER => true,
+        ]);
+        $body = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err  = curl_error($ch);
+        curl_close($ch);
+        if (!$err && $code >= 200 && $code < 300) {
+            return ['ok' => true, 'attempts' => $attempts, 'status' => $code];
+        }
+        $lastErr = $err ?: ('HTTP ' . $code . ': ' . substr((string)$body, 0, 300));
+    }
+    return ['ok' => false, 'attempts' => $attempts, 'error' => $lastErr];
+}
+
 function call_openai($system_prompt, $user_prompt, $api_key) {
     if (!$api_key) { http_response_code(400); echo json_encode(['detail' => 'OpenAI API key is required. Please add it in API Keys settings.']); exit; }
     $ch = curl_init('https://api.openai.com/v1/chat/completions');

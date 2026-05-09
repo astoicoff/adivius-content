@@ -54,6 +54,10 @@
                             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
                             WordPress
                         </button>
+                        <button class="btn btn-secondary" onclick="openRulesPanel('webhook')">
+                            <svg viewBox="0 0 24 24"><path d="M10 14a3.5 3.5 0 11-3.5-3.5"/><path d="M19.5 8.5a3.5 3.5 0 11-3.5 3.5"/><path d="M14 10a3.5 3.5 0 11-3.5 3.5"/><line x1="9" y1="14" x2="13" y2="14"/></svg>
+                            Webhook
+                        </button>
                     </div>
                 </div>
             </div>
@@ -112,6 +116,17 @@
             <label class="form-label">Application Password</label>
             <input type="password" class="form-input" id="wpAppPassword" placeholder="xxxx xxxx xxxx xxxx xxxx xxxx">
             <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Generate in WordPress → Users → Profile → Application Passwords</div>
+        </div>
+    </div>
+
+    <!-- Webhook fields (shown instead of textarea in webhook mode) -->
+    <div id="webhookFieldsSection" style="display:none;flex-direction:column;gap:14px;margin-bottom:16px;">
+        <div class="form-group">
+            <label class="form-label">Webhook URL</label>
+            <input type="url" class="form-input" id="webhookUrl" placeholder="https://hooks.zapier.com/...">
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.5;">
+                Fires <code>POST</code> with <code>event</code>, <code>generation_id</code>, <code>keyword</code>, <code>meta</code>, <code>content</code>, <code>html</code> when a generation completes. Retries up to 3× on failure.
+            </div>
         </div>
     </div>
     <div style="display:flex;align-items:center;gap:12px;">

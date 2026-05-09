@@ -102,6 +102,7 @@ async function loadGeneration(id) {
 
         loadGroupWpConfig(data.group_id);
         loadVersions(data.id);
+        renderWebhookStatus();
     } catch (err) {
         showError(err.message);
     }
@@ -590,11 +591,72 @@ async function loadGroupWpConfig(groupId) {
             groupLink.style.display = "flex";
         }
 
-        if (!data.wp_configured) return;
         groupWpConfig = data;
-        const btn = document.getElementById("btnPublish");
-        if (btn) btn.style.display = "";
+        if (data.wp_configured) {
+            const btn = document.getElementById("btnPublish");
+            if (btn) btn.style.display = "";
+        }
+        renderWebhookStatus();
     } catch (_) {}
+}
+
+// ── Webhook status ────────────────────────────────────────────────────────────
+
+function renderWebhookStatus() {
+    const badge = document.getElementById("webhookBadge");
+    const alert = document.getElementById("webhookAlert");
+    if (!badge || !alert) return;
+
+    const hasGroupWebhook = !!(groupWpConfig && groupWpConfig.webhook_url);
+    const delivered       = genData?.webhook_delivered_at;
+    const error           = genData?.webhook_error;
+
+    badge.style.display = "none";
+    alert.style.display = "none";
+
+    // No webhook configured on the group — nothing to show.
+    if (!hasGroupWebhook && !delivered && !error) return;
+
+    if (delivered) {
+        const when = new Date(delivered).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+        badge.className   = "badge badge-green";
+        badge.innerHTML   = `<span class="badge-dot"></span>Webhook · ${escapeHtml(when)}`;
+        badge.style.display = "";
+    } else if (error) {
+        document.getElementById("webhookAlertError").textContent = error;
+        alert.style.display = "flex";
+    }
+    // No third state — if a webhook is configured but never fired (e.g. legacy
+    // generation, duplicated row), we stay silent. The user can regenerate.
+}
+
+async function retryWebhook() {
+    const btn = document.getElementById("webhookRetryBtn");
+    if (!genData?.id) return;
+    btn.disabled = true;
+    const orig   = btn.innerHTML;
+    btn.innerHTML = '<div class="spinner" style="width:13px;height:13px;border-width:2px;"></div> Retrying...';
+    try {
+        const res  = await fetch(API_URL + '/api/webhook.php', {
+            method: 'POST', headers: authHeaders(),
+            body: JSON.stringify({ generation_id: genData.id })
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+            genData.webhook_delivered_at = data.delivered_at;
+            genData.webhook_error        = null;
+        } else {
+            genData.webhook_delivered_at = null;
+            genData.webhook_error        = data.error || data.detail || 'Retry failed.';
+        }
+        renderWebhookStatus();
+    } catch (err) {
+        genData.webhook_error = err.message;
+        renderWebhookStatus();
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+    }
 }
 
 function openPublishModal() {

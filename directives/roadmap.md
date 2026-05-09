@@ -39,7 +39,7 @@ description: Feature ideas and next-phase improvements for the Content Creator w
 
 ## Phase 3 · Power Features (Higher effort)
 
-- [ ] **WordPress / CMS publish**
+- [x] **WordPress / CMS publish**
   One-click push to a WordPress site via the WP REST API. Fields: site URL, application password, post status (draft / publish).
 
 - [x] **Group-level analytics**
@@ -48,8 +48,8 @@ description: Feature ideas and next-phase improvements for the Content Creator w
 - [x] **Content scheduling**
   Schedule a generation to run at a specific date/time rather than immediately. Requires a cron job or background queue.
 
-- [ ] **Webhook on completion**
-  After a generation finishes, POST the result to a user-configured URL (Zapier, Make, custom endpoint), enabling downstream automation.
+- [x] **Webhook on completion**
+  After a generation finishes, POST the result to a user-configured URL (Zapier, Make, custom endpoint), enabling downstream automation. Configured per content group; retries up to 3× with backoff; delivery status stored on the generation row.
 
 ---
 

@@ -21,7 +21,7 @@ try {
 
     if (!$openai_key) { http_response_code(400); ob_end_clean(); echo json_encode(['detail' => 'OpenAI API key is required. Please add it in API Keys settings.']); exit; }
 
-    $group_res  = supabase_call('GET', '/rest/v1/content_groups?id=eq.' . urlencode($group_id) . '&user_id=eq.' . urlencode($user_id) . '&select=content_rules');
+    $group_res  = supabase_call('GET', '/rest/v1/content_groups?id=eq.' . urlencode($group_id) . '&user_id=eq.' . urlencode($user_id) . '&select=content_rules,webhook_url,name');
     $group_data = json_decode($group_res['body'], true);
     if (empty($group_data)) { http_response_code(400); ob_end_clean(); echo json_encode(['detail' => 'Content group not found.']); exit; }
 
@@ -57,6 +57,35 @@ try {
             'status'  => 'completed',
             'content' => $final_content,
         ]);
+    }
+
+    // Fire webhook if configured on the group. Failure does not fail the request.
+    $webhook_url = trim($group_data[0]['webhook_url'] ?? '');
+    if ($generation_id && $webhook_url) {
+        $parsed  = parse_content_meta($final_content);
+        $payload = [
+            'event'         => 'content.completed',
+            'generation_id' => $generation_id,
+            'keyword'       => $keyword,
+            'group_id'      => $group_id,
+            'group_name'    => $group_data[0]['name'] ?? null,
+            'completed_at'  => date('c'),
+            'meta'          => $parsed['meta'],
+            'content'       => $final_content,
+            'html'          => $parsed['body'],
+        ];
+        $result = fire_webhook($webhook_url, $payload);
+        if ($result['ok']) {
+            update_generation_row($generation_id, [
+                'webhook_delivered_at' => date('c'),
+                'webhook_error'        => null,
+            ]);
+        } else {
+            update_generation_row($generation_id, [
+                'webhook_delivered_at' => null,
+                'webhook_error'        => substr($result['error'] ?? 'unknown error', 0, 500),
+            ]);
+        }
     }
 
     ob_end_clean();

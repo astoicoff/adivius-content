@@ -60,6 +60,7 @@
                 </a>
                 <div style="display:flex;gap:10px;align-items:center;">
                     <span id="viewBadge"></span>
+                    <span id="webhookBadge" style="display:none;"></span>
                     <div id="viewDate" style="font-size:12px;color:var(--text-muted);font-family:'Inter',sans-serif;"></div>
                 </div>
             </div>
@@ -123,6 +124,19 @@
                 <button id="btnDelete" class="btn btn-red" onclick="deleteContent()">
                     <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
                     Delete
+                </button>
+            </div>
+
+            <!-- Webhook failure alert -->
+            <div id="webhookAlert" class="alert alert-error" style="display:none;align-items:flex-start;gap:10px;margin-bottom:16px;">
+                <svg viewBox="0 0 24 24" style="margin-top:2px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <div style="flex:1;">
+                    <div style="font-weight:600;margin-bottom:2px;">Webhook delivery failed</div>
+                    <div id="webhookAlertError" style="font-family:'Inter',monospace;font-size:12px;color:var(--red);word-break:break-all;"></div>
+                </div>
+                <button id="webhookRetryBtn" class="btn btn-red" onclick="retryWebhook()" style="padding:6px 14px;font-size:12px;flex-shrink:0;">
+                    <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
+                    Retry
                 </button>
             </div>
 
