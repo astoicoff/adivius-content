@@ -10,16 +10,14 @@ try {
     $body     = json_decode(file_get_contents('php://input'), true);
     $keyword  = trim($body['keyword']  ?? '');
     $group_id = trim($body['group_id'] ?? '');
+    $model    = trim($body['model']    ?? 'gpt-5');
 
     if (!$keyword)  { http_response_code(400); ob_end_clean(); echo json_encode(['detail' => 'Keyword is required.']); exit; }
     if (!$group_id) { http_response_code(400); ob_end_clean(); echo json_encode(['detail' => 'Content group is required.']); exit; }
 
-    $settings    = get_user_settings($user_id);
-    $openai_key  = $settings['openai_key']     ?: '';
-    $perp_key    = $settings['perplexity_key'] ?: '';
-    $serp_key    = $settings['serpapi_key']    ?: '';
-
-    if (!$openai_key) { http_response_code(400); ob_end_clean(); echo json_encode(['detail' => 'OpenAI API key is required. Please add it in API Keys settings.']); exit; }
+    $settings = get_user_settings($user_id);
+    $perp_key = $settings['perplexity_key'] ?: '';
+    $serp_key = $settings['serpapi_key']    ?: '';
 
     $group_res  = supabase_call('GET', '/rest/v1/content_groups?id=eq.' . urlencode($group_id) . '&user_id=eq.' . urlencode($user_id) . '&select=instructions_rules');
     $group_data = json_decode($group_res['body'], true);
@@ -30,9 +28,10 @@ try {
     if ($generation_id) {
         $check = supabase_call('GET', '/rest/v1/content_generations?id=eq.' . urlencode($generation_id) . '&user_id=eq.' . urlencode($user_id) . '&select=id');
         if (empty(json_decode($check['body'], true))) { http_response_code(404); ob_end_clean(); echo json_encode(['detail' => 'Generation not found.']); exit; }
-        update_generation_row($generation_id, ['status' => 'generating_instructions']);
+        update_generation_row($generation_id, ['status' => 'generating_instructions', 'model' => $model]);
     } else {
         $generation_id = create_generation_row($user_id, $keyword, $group_id);
+        update_generation_row($generation_id, ['model' => $model]);
     }
 
     // 1. SerpAPI
@@ -58,7 +57,7 @@ try {
         . "2. If you include an FAQ section, you MUST format the title exactly as an <h2> tag as specified in the rules, but the questions MUST be <h3> and ONLY capitalize the first letter of the first word.\n"
         . "3. In the Output section, you MUST explicitly list ALL 5 competitor URLs provided to you. Do not abbreviate with 'etc.'.";
 
-    $brief = call_openai($system_prompt, $user_prompt, $openai_key);
+    $brief = call_ai($system_prompt, $user_prompt, $model, $settings);
 
     if ($generation_id) {
         update_generation_row($generation_id, [
@@ -74,6 +73,7 @@ try {
         'serpapi_raw'    => $serp_text,
         'perplexity_raw' => $competitor_analysis,
         'generation_id'  => $generation_id,
+        'model'          => $model,
     ]);
 
 } catch (Throwable $e) {

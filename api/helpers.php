@@ -213,7 +213,7 @@ function fire_webhook($url, $payload) {
     return ['ok' => false, 'attempts' => $attempts, 'error' => $lastErr];
 }
 
-function call_openai($system_prompt, $user_prompt, $api_key) {
+function call_openai($system_prompt, $user_prompt, $api_key, $model = 'gpt-5') {
     if (!$api_key) { http_response_code(400); echo json_encode(['detail' => 'OpenAI API key is required. Please add it in API Keys settings.']); exit; }
     $ch = curl_init('https://api.openai.com/v1/chat/completions');
     curl_setopt_array($ch, [
@@ -221,7 +221,7 @@ function call_openai($system_prompt, $user_prompt, $api_key) {
         CURLOPT_POST           => true,
         CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $api_key, 'Content-Type: application/json'],
         CURLOPT_POSTFIELDS     => json_encode([
-            'model'    => 'gpt-5',
+            'model'    => $model,
             'messages' => [
                 ['role' => 'system', 'content' => $system_prompt],
                 ['role' => 'user',   'content' => $user_prompt],
@@ -234,4 +234,59 @@ function call_openai($system_prompt, $user_prompt, $api_key) {
     curl_close($ch);
     if ($status !== 200) { http_response_code(500); echo json_encode(['detail' => 'OpenAI API Error: ' . $body]); exit; }
     return json_decode($body, true)['choices'][0]['message']['content'] ?? 'Error: empty response.';
+}
+
+function call_claude($system_prompt, $user_prompt, $api_key, $model = 'claude-sonnet-4-6') {
+    if (!$api_key) { http_response_code(400); echo json_encode(['detail' => 'Anthropic API key is required. Please add it in API Keys settings.']); exit; }
+    $ch = curl_init('https://api.anthropic.com/v1/messages');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_HTTPHEADER     => [
+            'x-api-key: ' . $api_key,
+            'anthropic-version: 2023-06-01',
+            'Content-Type: application/json',
+        ],
+        CURLOPT_POSTFIELDS => json_encode([
+            'model'      => $model,
+            'max_tokens' => 16000,
+            'system'     => $system_prompt,
+            'messages'   => [['role' => 'user', 'content' => $user_prompt]],
+        ]),
+        CURLOPT_TIMEOUT => 300,
+    ]);
+    $body   = curl_exec($ch);
+    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($status !== 200) { http_response_code(500); echo json_encode(['detail' => 'Claude API Error: ' . $body]); exit; }
+    return json_decode($body, true)['content'][0]['text'] ?? 'Error: empty response.';
+}
+
+function call_gemini($system_prompt, $user_prompt, $api_key, $model = 'gemini-2.5-pro') {
+    if (!$api_key) { http_response_code(400); echo json_encode(['detail' => 'Google API key is required. Please add it in API Keys settings.']); exit; }
+    $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . urlencode($model) . ':generateContent?key=' . urlencode($api_key);
+    $ch  = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        CURLOPT_POSTFIELDS     => json_encode([
+            'system_instruction' => ['parts' => [['text' => $system_prompt]]],
+            'contents'           => [['role' => 'user', 'parts' => [['text' => $user_prompt]]]],
+            'generationConfig'   => ['maxOutputTokens' => 8192],
+        ]),
+        CURLOPT_TIMEOUT => 300,
+    ]);
+    $body   = curl_exec($ch);
+    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($status !== 200) { http_response_code(500); echo json_encode(['detail' => 'Gemini API Error: ' . $body]); exit; }
+    return json_decode($body, true)['candidates'][0]['content']['parts'][0]['text'] ?? 'Error: empty response.';
+}
+
+// Routes to the correct AI provider based on model string prefix.
+function call_ai($system_prompt, $user_prompt, $model, $settings) {
+    if (str_starts_with($model, 'claude-')) return call_claude($system_prompt, $user_prompt, $settings['claude_key'] ?? '', $model);
+    if (str_starts_with($model, 'gemini-')) return call_gemini($system_prompt, $user_prompt, $settings['gemini_key'] ?? '', $model);
+    return call_openai($system_prompt, $user_prompt, $settings['openai_key'] ?? '', $model);
 }

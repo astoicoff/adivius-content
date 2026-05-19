@@ -118,9 +118,10 @@ async function runBulkGeneration() {
 
         try {
             // Phase 1
+            const bulkModel = document.getElementById("modelSelect")?.value || 'gpt-5';
             const p1res = await fetch(`${API_URL}/api/phase1.php`, {
                 method: 'POST', headers: authHeaders(),
-                body: JSON.stringify({ keyword: bulkQueue[i].keyword, group_id: groupId })
+                body: JSON.stringify({ keyword: bulkQueue[i].keyword, group_id: groupId, model: bulkModel })
             });
             let p1data;
             try { p1data = await p1res.json(); } catch { throw new Error("Server returned unexpected response"); }
@@ -230,10 +231,11 @@ async function handlePhase1(e) {
     setStep(1);
 
     try {
+        const model = document.getElementById("modelSelect")?.value || 'gpt-5';
         const res = await fetch(`${API_URL}/api/phase1.php`, {
             method:  "POST",
             headers: authHeaders(),
-            body:    JSON.stringify({ keyword: kw, group_id: groupId })
+            body:    JSON.stringify({ keyword: kw, group_id: groupId, model })
         });
         let data;
         try { data = await res.json(); } catch { throw new Error("Server returned an unexpected response."); }

@@ -73,6 +73,23 @@
                         </select>
                     </div>
 
+                    <!-- Shared: model selector -->
+                    <div class="form-group" style="margin-bottom:16px;">
+                        <label class="form-label" for="modelSelect">AI Model</label>
+                        <select class="form-input" id="modelSelect">
+                            <optgroup label="OpenAI">
+                                <option value="gpt-5" selected>GPT-5</option>
+                            </optgroup>
+                            <optgroup label="Anthropic">
+                                <option value="claude-opus-4-7">Claude Opus 4.7</option>
+                                <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
+                            </optgroup>
+                            <optgroup label="Google">
+                                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
                     <!-- Single mode -->
                     <div id="singleMode">
                         <form id="phase1Form">

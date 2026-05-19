@@ -111,7 +111,7 @@ if ($action === 'score' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         for ($i = 0; $i < 18; $i++) {
             sleep(5);
             $check = nw_call('POST', '/get-query', ['query' => $query_id]);
-            if (isset($check['body']['status']) && $check['body']['status'] === 'done') {
+            if (isset($check['body']['status']) && $check['body']['status'] === 'ready') {
                 $ready = true;
                 break;
             }

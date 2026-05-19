@@ -15,11 +15,8 @@ try {
     $generation_id = trim($body['generation_id'] ?? '');
     $group_id      = trim($body['group_id']      ?? '');
 
-    $settings   = get_user_settings($user_id);
-    $openai_key = $settings['openai_key']     ?: '';
-    $perp_key   = $settings['perplexity_key'] ?: '';
-
-    if (!$openai_key) { http_response_code(400); ob_end_clean(); echo json_encode(['detail' => 'OpenAI API key is required. Please add it in API Keys settings.']); exit; }
+    $settings = get_user_settings($user_id);
+    $perp_key = $settings['perplexity_key'] ?: '';
 
     $group_res  = supabase_call('GET', '/rest/v1/content_groups?id=eq.' . urlencode($group_id) . '&user_id=eq.' . urlencode($user_id) . '&select=content_rules,webhook_url,name');
     $group_data = json_decode($group_res['body'], true);
@@ -40,12 +37,14 @@ try {
         . "Competitors (from SerpApi Phase 1):\n$serpapi_text\n\n"
         . "Perplexity Fact Research:\n$research_data";
 
-    $final_content = call_openai($system_prompt, $user_prompt, $openai_key);
+    // Read model + snapshot existing content (same DB call)
+    $snap     = $generation_id ? supabase_call('GET', '/rest/v1/content_generations?id=eq.' . urlencode($generation_id) . '&user_id=eq.' . urlencode($user_id) . '&select=content,model') : null;
+    $snapData = $snap ? (json_decode($snap['body'], true) ?? []) : [];
+    $model    = $snapData[0]['model'] ?? 'gpt-5';
+
+    $final_content = call_ai($system_prompt, $user_prompt, $model, $settings);
 
     if ($generation_id) {
-        // Snapshot existing content as a version before overwriting
-        $snap     = supabase_call('GET', '/rest/v1/content_generations?id=eq.' . urlencode($generation_id) . '&user_id=eq.' . urlencode($user_id) . '&select=content');
-        $snapData = json_decode($snap['body'], true);
         if (!empty($snapData[0]['content'])) {
             supabase_call('POST', '/rest/v1/content_generation_versions', [
                 'generation_id' => $generation_id,
