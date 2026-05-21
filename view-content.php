@@ -234,6 +234,10 @@
 <div id="seoModal" class="density-modal" style="max-width:680px;">
     <div class="density-modal-header">
         <div class="rules-panel-title">SEO Score</div>
+        <button class="btn btn-secondary" onclick="loadSeoScore()" style="padding:4px 12px;font-size:12px;display:flex;align-items:center;gap:5px;margin-left:auto;">
+            <svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
+            Refresh
+        </button>
         <button class="rules-panel-close" onclick="closeSeoModal()">
             <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>

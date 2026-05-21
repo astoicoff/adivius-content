@@ -545,22 +545,23 @@ function buildSeoChecklist(data) {
     (data.top_terms || []).forEach(t => {
         const phrase = t.t || '';
         if (!phrase) return;
-        const raw = t.sugg_usage;
-        const min = raw == null ? 0 : (typeof raw === 'object' ? (raw.min ?? 0) : (Number(raw) || 0));
+        const raw    = t.sugg_usage;
+        const min    = raw == null ? 0 : (typeof raw === 'object' ? (raw.min ?? 0) : (Number(raw) || 0));
         if (!min) return;
         const pattern = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const count   = (content.match(new RegExp(pattern, 'gi')) || []).length;
         const needed  = min - count;
-        if (needed > 0) items.push({ kind: 'term', label: `Add "${phrase}" ${needed} more time${needed !== 1 ? 's' : ''} — currently ${count}×, target ${min}×` });
+        if (needed > 0) items.push({ kind: 'term', phrase, needed, count, min,
+            label: `Add "${phrase}" ${needed} more time${needed !== 1 ? 's' : ''} — currently ${count}×, target ${min}×` });
     });
 
-    // Questions — manual checkboxes persisted to localStorage
+    // Questions — show until AI has fixed them (persisted to localStorage)
     (data.questions || []).forEach(q => {
         const txt = typeof q === 'string' ? q : (q.q || q.question || '');
         if (!txt) return;
-        const key     = `seo_${genId}_${txt.slice(0, 60)}`;
-        const checked = localStorage.getItem(key) === '1';
-        items.push({ kind: 'question', label: `Answer: "${txt}"`, key, checked });
+        const fixedKey = `seo_fixed_${genId}_${txt.slice(0, 60)}`;
+        if (localStorage.getItem(fixedKey) === '1') return; // AI already handled it
+        items.push({ kind: 'question', txt, fixedKey, label: `Answer: "${txt}"` });
     });
 
     if (!items.length) return `
@@ -569,41 +570,55 @@ function buildSeoChecklist(data) {
             <span style="font-size:13px;font-family:'Inter',sans-serif;color:var(--green);font-weight:600;">All checklist items complete!</span>
         </div>`;
 
-    const doneCount  = items.filter(i => i.kind === 'question' && i.checked).length;
-    const totalCount = items.length;
-    const rows = items.map(item => {
-        const isTerm    = item.kind === 'term';
-        const isChecked = !isTerm && item.checked;
-        const boxStyle  = isChecked
-            ? 'border-color:var(--green);background:var(--green);'
-            : 'border-color:var(--light-gray);background:transparent;';
-        const checkMark = isChecked
-            ? `<svg viewBox="0 0 10 10" style="width:8px;height:8px;stroke:white;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;"><polyline points="1.5 5 4 7.5 8.5 2"/></svg>`
-            : '';
-        const textStyle = isChecked ? 'text-decoration:line-through;color:var(--text-muted);' : 'color:var(--dark);';
-        const onClick   = isTerm ? '' : `onclick="toggleSeoCheck('${item.key.replace(/'/g, "\\'")}')"`;
-        const cursor    = isTerm ? '' : 'cursor:pointer;';
-        return `<li style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;${cursor}" ${onClick}>
-            <span style="width:15px;height:15px;margin-top:1px;border-radius:3px;border:1.5px solid;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;${boxStyle}">${checkMark}</span>
-            <span style="font-size:13px;font-family:'Inter',sans-serif;line-height:1.4;${textStyle}">${escapeHtml(item.label)}</span>
+    const rows = items.map((item, idx) => {
+        const btnId   = `seoFixBtn_${idx}`;
+        const onClick = item.kind === 'term'
+            ? `applySeoFix('term','${item.phrase.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',${item.needed},'${btnId}')`
+            : `applySeoFix('question','${item.txt.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',1,'${btnId}')`;
+        return `<li style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--light-gray);">
+            <span style="flex:1;font-size:13px;font-family:'Inter',sans-serif;line-height:1.45;color:var(--dark);padding-top:2px;">${escapeHtml(item.label)}</span>
+            <button id="${btnId}" class="btn btn-secondary" style="flex-shrink:0;padding:3px 10px;font-size:12px;" onclick="${onClick}">Fix</button>
         </li>`;
     }).join('');
 
-    const progress = doneCount > 0
-        ? `<span style="font-size:11px;font-family:'Inter',sans-serif;color:var(--text-muted);margin-left:auto;">${doneCount}/${totalCount} done</span>`
-        : '';
-
     return `
         <div class="seo-section">
-            <div class="seo-section-title" style="display:flex;align-items:center;"># What to Fix ${progress}</div>
+            <div class="seo-section-title">What to Fix</div>
             <ul style="margin:0;padding:0;list-style:none;">${rows}</ul>
         </div>`;
 }
 
-function toggleSeoCheck(key) {
-    if (localStorage.getItem(key) === '1') localStorage.removeItem(key);
-    else localStorage.setItem(key, '1');
-    if (lastSeoData) document.getElementById('seoModalBody').innerHTML = buildSeoReportHTML(lastSeoData);
+async function applySeoFix(type, payload, needed, btnId) {
+    const genId = new URLSearchParams(window.location.search).get('id');
+    const btn   = document.getElementById(btnId);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:11px;height:11px;border-width:2px;display:inline-block;"></div>'; }
+
+    try {
+        const res  = await fetch(`${API_URL}/api/seo-apply.php`, {
+            method: 'POST', headers: authHeaders(),
+            body: JSON.stringify({ generation_id: genId, type, payload, needed })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Fix failed');
+
+        // Update state from returned full content
+        genData.content = data.content;
+        const reparsed  = parseContentMeta(data.content);
+        genCleanContent = reparsed.content;
+        showMetaPanel(reparsed.meta);
+        document.getElementById('htmlOutput').value = genCleanContent;
+        if (viewMode === 'clean') document.getElementById('cleanOutput').innerHTML = renderWithTOC(genCleanContent);
+        if (viewMode === 'edit')  document.getElementById('editOutput').value      = data.content;
+
+        // Mark question as AI-fixed so it leaves the checklist
+        if (type === 'question') localStorage.setItem(`seo_fixed_${genId}_${payload.slice(0, 60)}`, '1');
+
+        // Re-render checklist with updated content
+        if (lastSeoData) document.getElementById('seoModalBody').innerHTML = buildSeoReportHTML(lastSeoData);
+    } catch (err) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Fix'; }
+        alert('SEO fix failed: ' + err.message);
+    }
 }
 
 // ── Version History ───────────────────────────────────────────────────────────
