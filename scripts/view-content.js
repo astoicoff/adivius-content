@@ -2,6 +2,7 @@ let genData         = null;
 let genCleanContent = null;   // raw content with meta lines stripped
 let viewMode        = 'html';
 let versionsData    = [];
+let lastSeoData     = null;
 
 // Parse h1/title/url meta lines from the top of raw content.
 // Returns { meta: {h1,title,url} | null, content: string }
@@ -432,6 +433,7 @@ async function loadSeoScore() {
         }
 
         // Score result
+        lastSeoData = data;
         body.innerHTML = buildSeoReportHTML(data);
     } catch (err) {
         body.innerHTML = `<p style="color:var(--red);font-size:13px;">${escapeHtml(err.message)}</p>`;
@@ -512,7 +514,8 @@ function buildSeoReportHTML(data) {
             </table>
         </div>` : '';
 
-    const newNote = data.is_new ? `<p style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:4px;">Analysis created — future scores are instant.</p>` : '';
+    const newNote     = data.is_new ? `<p style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:4px;">Analysis created — future scores are instant.</p>` : '';
+    const checklistBlock = buildSeoChecklist(data);
     const link = data.query_url
         ? `<div style="text-align:center;padding:16px 0 4px;">
             <a href="${escapeHtml(data.query_url)}" target="_blank" rel="noopener" class="btn btn-secondary" style="display:inline-flex;gap:6px;">
@@ -521,7 +524,7 @@ function buildSeoReportHTML(data) {
             </a>
           </div>` : '';
 
-    return scoreBlock + newNote + termsBlock + qBlock + compBlock + link;
+    return scoreBlock + newNote + checklistBlock + termsBlock + qBlock + compBlock + link;
 }
 
 async function selectSeoProject(projectId) {
@@ -531,6 +534,76 @@ async function selectSeoProject(projectId) {
         method: 'POST', headers: authHeaders(), body: JSON.stringify({ project_id: projectId })
     });
     loadSeoScore();
+}
+
+function buildSeoChecklist(data) {
+    const genId   = new URLSearchParams(window.location.search).get('id') || '';
+    const content = (genCleanContent || '').toLowerCase();
+    const items   = [];
+
+    // Terms below their suggested minimum — auto-computed from current content
+    (data.top_terms || []).forEach(t => {
+        const phrase = t.t || '';
+        if (!phrase) return;
+        const raw = t.sugg_usage;
+        const min = raw == null ? 0 : (typeof raw === 'object' ? (raw.min ?? 0) : (Number(raw) || 0));
+        if (!min) return;
+        const pattern = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const count   = (content.match(new RegExp(pattern, 'gi')) || []).length;
+        const needed  = min - count;
+        if (needed > 0) items.push({ kind: 'term', label: `Add "${phrase}" ${needed} more time${needed !== 1 ? 's' : ''} — currently ${count}×, target ${min}×` });
+    });
+
+    // Questions — manual checkboxes persisted to localStorage
+    (data.questions || []).forEach(q => {
+        const txt = typeof q === 'string' ? q : (q.q || q.question || '');
+        if (!txt) return;
+        const key     = `seo_${genId}_${txt.slice(0, 60)}`;
+        const checked = localStorage.getItem(key) === '1';
+        items.push({ kind: 'question', label: `Answer: "${txt}"`, key, checked });
+    });
+
+    if (!items.length) return `
+        <div class="seo-section" style="display:flex;align-items:center;gap:8px;padding-bottom:4px;">
+            <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--green);fill:none;stroke-width:2.5;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+            <span style="font-size:13px;font-family:'Inter',sans-serif;color:var(--green);font-weight:600;">All checklist items complete!</span>
+        </div>`;
+
+    const doneCount  = items.filter(i => i.kind === 'question' && i.checked).length;
+    const totalCount = items.length;
+    const rows = items.map(item => {
+        const isTerm    = item.kind === 'term';
+        const isChecked = !isTerm && item.checked;
+        const boxStyle  = isChecked
+            ? 'border-color:var(--green);background:var(--green);'
+            : 'border-color:var(--light-gray);background:transparent;';
+        const checkMark = isChecked
+            ? `<svg viewBox="0 0 10 10" style="width:8px;height:8px;stroke:white;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;"><polyline points="1.5 5 4 7.5 8.5 2"/></svg>`
+            : '';
+        const textStyle = isChecked ? 'text-decoration:line-through;color:var(--text-muted);' : 'color:var(--dark);';
+        const onClick   = isTerm ? '' : `onclick="toggleSeoCheck('${item.key.replace(/'/g, "\\'")}')"`;
+        const cursor    = isTerm ? '' : 'cursor:pointer;';
+        return `<li style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;${cursor}" ${onClick}>
+            <span style="width:15px;height:15px;margin-top:1px;border-radius:3px;border:1.5px solid;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;${boxStyle}">${checkMark}</span>
+            <span style="font-size:13px;font-family:'Inter',sans-serif;line-height:1.4;${textStyle}">${escapeHtml(item.label)}</span>
+        </li>`;
+    }).join('');
+
+    const progress = doneCount > 0
+        ? `<span style="font-size:11px;font-family:'Inter',sans-serif;color:var(--text-muted);margin-left:auto;">${doneCount}/${totalCount} done</span>`
+        : '';
+
+    return `
+        <div class="seo-section">
+            <div class="seo-section-title" style="display:flex;align-items:center;"># What to Fix ${progress}</div>
+            <ul style="margin:0;padding:0;list-style:none;">${rows}</ul>
+        </div>`;
+}
+
+function toggleSeoCheck(key) {
+    if (localStorage.getItem(key) === '1') localStorage.removeItem(key);
+    else localStorage.setItem(key, '1');
+    if (lastSeoData) document.getElementById('seoModalBody').innerHTML = buildSeoReportHTML(lastSeoData);
 }
 
 // ── Version History ───────────────────────────────────────────────────────────
