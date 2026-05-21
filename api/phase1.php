@@ -19,7 +19,10 @@ try {
     $perp_key = $settings['perplexity_key'] ?: '';
     $serp_key = $settings['serpapi_key']    ?: '';
 
-    $group_res  = supabase_call('GET', '/rest/v1/content_groups?id=eq.' . urlencode($group_id) . '&user_id=eq.' . urlencode($user_id) . '&select=instructions_rules');
+    if (!check_group_access($user_id, $group_id, 'moderator')) {
+        http_response_code(403); ob_end_clean(); echo json_encode(['detail' => 'Content group not found or insufficient permissions.']); exit;
+    }
+    $group_res  = supabase_call('GET', '/rest/v1/content_groups?id=eq.' . urlencode($group_id) . '&select=instructions_rules');
     $group_data = json_decode($group_res['body'], true);
     if (empty($group_data)) { http_response_code(400); ob_end_clean(); echo json_encode(['detail' => 'Content group not found.']); exit; }
 

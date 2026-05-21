@@ -202,6 +202,60 @@ function flashCopyIcon(btnId) {
     setTimeout(() => { btn.innerHTML = orig; }, 1800);
 }
 
+// ── Export ────────────────────────────────────────────────────────────────────
+
+function slugifyKeyword(kw) {
+    return (kw || 'content').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function exportDocx() {
+    if (!genCleanContent) { alert('No content to export.'); return; }
+    const btn  = document.getElementById('btnExportDocx');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = 'Exporting…';
+    try {
+        const html  = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${genCleanContent}</body></html>`;
+        const blob  = htmlDocx.asBlob(html);
+        const url   = URL.createObjectURL(blob);
+        const a     = document.createElement('a');
+        a.href      = url;
+        a.download  = slugifyKeyword(genData?.keyword) + '.docx';
+        a.click();
+        URL.revokeObjectURL(url);
+    } catch (err) {
+        alert('DOCX export failed: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+    }
+}
+
+function exportPdf() {
+    if (!genCleanContent) { alert('No content to export.'); return; }
+    const btn  = document.getElementById('btnExportPdf');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = 'Exporting…';
+    const container = document.createElement('div');
+    container.style.cssText = 'font-family:Georgia,serif;font-size:14px;line-height:1.7;color:#111;padding:0;';
+    container.innerHTML = genCleanContent;
+    html2pdf().set({
+        margin:      [15, 15, 15, 15],
+        filename:    slugifyKeyword(genData?.keyword) + '.pdf',
+        image:       { type: 'jpeg', quality: 0.95 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    }).from(container).save().then(() => {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+    }).catch(err => {
+        alert('PDF export failed: ' + err.message);
+        btn.disabled = false;
+        btn.innerHTML = orig;
+    });
+}
+
 // ── Keyword Density ───────────────────────────────────────────────────────────
 
 function openDensityModal() {

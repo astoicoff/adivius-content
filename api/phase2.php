@@ -18,7 +18,10 @@ try {
     $settings = get_user_settings($user_id);
     $perp_key = $settings['perplexity_key'] ?: '';
 
-    $group_res  = supabase_call('GET', '/rest/v1/content_groups?id=eq.' . urlencode($group_id) . '&user_id=eq.' . urlencode($user_id) . '&select=content_rules,webhook_url,name');
+    if (!check_group_access($user_id, $group_id, 'moderator')) {
+        http_response_code(403); ob_end_clean(); echo json_encode(['detail' => 'Content group not found or insufficient permissions.']); exit;
+    }
+    $group_res  = supabase_call('GET', '/rest/v1/content_groups?id=eq.' . urlencode($group_id) . '&select=content_rules,webhook_url,name');
     $group_data = json_decode($group_res['body'], true);
     if (empty($group_data)) { http_response_code(400); ob_end_clean(); echo json_encode(['detail' => 'Content group not found.']); exit; }
 

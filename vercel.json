@@ -7,9 +7,9 @@
     { "src": "favicon.svg",   "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/(login|dashboard|new-content|content-groups|history|api-keys|view-content)\\.html$", "headers": { "Location": "/$1" }, "status": 301 },
-    { "src": "/(login|dashboard|new-content|content-groups|history|api-keys|view-content)\\.php$",  "headers": { "Location": "/$1" }, "status": 301 },
-    { "src": "^/(login|dashboard|new-content|content-groups|history|api-keys|view-content)$", "dest": "/$1.php" },
+    { "src": "/(login|dashboard|new-content|content-groups|history|api-keys|view-content|accept-invite)\\.html$", "headers": { "Location": "/$1" }, "status": 301 },
+    { "src": "/(login|dashboard|new-content|content-groups|history|api-keys|view-content|accept-invite)\\.php$",  "headers": { "Location": "/$1" }, "status": 301 },
+    { "src": "^/(login|dashboard|new-content|content-groups|history|api-keys|view-content|accept-invite)$", "dest": "/$1.php" },
     { "src": "^/$", "dest": "/dashboard.php" },
     { "src": "^/(.*)", "dest": "/$1" }
   ]

@@ -70,14 +70,19 @@ if ($action === 'score' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // Load generation
+    // Load generation (check viewer+ access)
     $gen_res  = supabase_call('GET',
         '/rest/v1/content_generations?id=eq.' . urlencode($gen_id)
-        . '&user_id=eq.' . urlencode($user_id)
-        . '&select=id,keyword,content,nw_query_id,nw_query_url'
+        . '&select=id,keyword,content,nw_query_id,nw_query_url,user_id,group_id'
     );
     $gen_data = json_decode($gen_res['body'], true)[0] ?? null;
     if (!$gen_data) { http_response_code(404); echo json_encode(['detail' => 'Generation not found.']); exit; }
+    if ($gen_data['user_id'] !== $user_id) {
+        $gid = $gen_data['group_id'] ?? '';
+        if (!$gid || !check_group_access($user_id, $gid, 'viewer')) {
+            http_response_code(403); echo json_encode(['detail' => 'Access denied.']); exit;
+        }
+    }
 
     $query_id  = $gen_data['nw_query_id'] ?? '';
     $query_url = $gen_data['nw_query_url'] ?? '';

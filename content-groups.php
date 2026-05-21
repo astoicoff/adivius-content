@@ -58,6 +58,10 @@
                             <svg viewBox="0 0 24 24"><path d="M10 14a3.5 3.5 0 11-3.5-3.5"/><path d="M19.5 8.5a3.5 3.5 0 11-3.5 3.5"/><path d="M14 10a3.5 3.5 0 11-3.5 3.5"/><line x1="9" y1="14" x2="13" y2="14"/></svg>
                             Webhook
                         </button>
+                        <button id="btnMembers" class="btn btn-secondary" onclick="openMembersPanel()" style="display:none;">
+                            <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                            Members
+                        </button>
                     </div>
                 </div>
             </div>
@@ -138,6 +142,55 @@
             <svg style="width:14px;height:14px;stroke:#2a7a1a;fill:none;stroke-width:2;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
             Saved!
         </span>
+    </div>
+</div>
+
+<!-- Members Panel -->
+<div id="membersOverlay" class="rules-overlay" onclick="closeMembersPanel()"></div>
+<div id="membersPanel" class="rules-panel" style="max-width:420px;">
+    <div class="rules-panel-header">
+        <div class="rules-panel-title">Team Members</div>
+        <button class="rules-panel-close" onclick="closeMembersPanel()">
+            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+    </div>
+    <div id="membersPanelBody" style="flex:1;overflow-y:auto;">
+        <div class="loading-bar visible"><div class="spinner"></div> Loading…</div>
+    </div>
+    <div style="padding-top:12px;border-top:1px solid var(--light-gray);">
+        <button class="btn btn-green" onclick="openInviteForm()" style="width:100%;">
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            Invite Someone
+        </button>
+    </div>
+</div>
+
+<!-- Invite Modal -->
+<div id="inviteOverlay" class="rules-overlay" onclick="closeInviteModal()"></div>
+<div id="inviteModal" class="density-modal" style="max-width:400px;">
+    <div class="density-modal-header">
+        <div class="rules-panel-title">Invite Team Member</div>
+        <button class="rules-panel-close" onclick="closeInviteModal()">
+            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+    </div>
+    <div style="padding:0 20px 20px;display:flex;flex-direction:column;gap:14px;">
+        <div class="form-group">
+            <label class="form-label">Email address</label>
+            <input type="email" class="form-input" id="inviteEmail" placeholder="colleague@company.com">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Role</label>
+            <select class="form-input" id="inviteRole">
+                <option value="moderator">Moderator — can generate &amp; edit content</option>
+                <option value="viewer">Viewer — read-only access</option>
+            </select>
+        </div>
+        <button class="btn btn-green" id="inviteBtn" onclick="sendInvite()">
+            <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Generate Invite Link
+        </button>
+        <div id="inviteResult" style="display:none;"></div>
     </div>
 </div>
 

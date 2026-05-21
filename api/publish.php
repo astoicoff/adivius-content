@@ -21,11 +21,10 @@ try {
         echo json_encode(['detail' => 'generation_id is required.']); exit;
     }
 
-    // Load generation
+    // Load generation (no user filter — access checked below)
     $genRes = supabase_call('GET',
         '/rest/v1/content_generations?id=eq.' . urlencode($gen_id)
-        . '&user_id=eq.' . urlencode($user_id)
-        . '&select=id,keyword,content,group_id'
+        . '&select=id,keyword,content,group_id,user_id'
     );
     $genData = json_decode($genRes['body'], true);
     if (empty($genData)) {
@@ -39,10 +38,15 @@ try {
         echo json_encode(['detail' => 'This content has no group. Assign it to a group with WordPress configured.']); exit;
     }
 
+    // Verify moderator+ access
+    if ($gen['user_id'] !== $user_id && !check_group_access($user_id, $gen['group_id'], 'moderator')) {
+        http_response_code(403); ob_end_clean();
+        echo json_encode(['detail' => 'Insufficient permissions to publish this content.']); exit;
+    }
+
     // Load group WP credentials
     $grpRes = supabase_call('GET',
         '/rest/v1/content_groups?id=eq.' . urlencode($gen['group_id'])
-        . '&user_id=eq.' . urlencode($user_id)
         . '&select=wp_site_url,wp_username,wp_app_password'
     );
     $grpData = json_decode($grpRes['body'], true);
@@ -118,7 +122,7 @@ try {
     // Save wp_post_url back to the generation
     if ($postUrl) {
         supabase_call('PATCH',
-            '/rest/v1/content_generations?id=eq.' . urlencode($gen_id) . '&user_id=eq.' . urlencode($user_id),
+            '/rest/v1/content_generations?id=eq.' . urlencode($gen_id),
             ['wp_post_url' => $postUrl]
         );
     }

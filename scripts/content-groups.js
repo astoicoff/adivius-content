@@ -1,4 +1,4 @@
-let editingGroupId   = null;
+﻿let editingGroupId   = null;
 let currentGroupData = null;
 let activePanelType  = null;
 
@@ -42,10 +42,13 @@ function renderGroups(groups) {
         const countBadge = count > 0
             ? `<span class="badge badge-blue" style="margin-left:8px;">${count} content${count !== 1 ? 's' : ''}</span>`
             : `<span class="badge badge-yellow" style="margin-left:8px;">No content yet</span>`;
+        const sharedBadge = g.is_shared
+            ? `<span class="badge badge-green" style="margin-left:6px;">${escapeHtml(g.my_role)}</span>`
+            : '';
         return `<div class="group-card" onclick="openGroupEdit('${g.id}')">
             <div>
-                <div class="group-card-name">${escapeHtml(g.name)} ${countBadge}</div>
-                <div class="group-card-date">Created ${date}</div>
+                <div class="group-card-name">${escapeHtml(g.name)} ${countBadge}${sharedBadge}</div>
+                <div class="group-card-date">${g.is_shared ? 'Shared with you' : 'Created ' + date}</div>
             </div>
             <div class="group-card-arrow"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div>
         </div>`;
@@ -82,11 +85,30 @@ async function openGroupEdit(id) {
         try {
             const res  = await fetch(`${API_URL}/api/groups.php?id=${encodeURIComponent(id)}`, { headers: authHeaders() });
             const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Failed to load group.');
             currentGroupData = data;
             document.getElementById("groupDetailName").value      = data.name;
             document.getElementById("topBarTitle").textContent    = toTitleCase(data.name);
             document.getElementById("topBarSubtitle").textContent = "Content group details";
-            renderContentItems(data.generations || []);
+
+            // Role-based UI gating
+            const role   = data.my_role || 'owner';
+            const isOwner = role === 'owner';
+            const isMod   = role === 'moderator' || isOwner;
+
+            // Settings buttons only for owner
+            document.querySelectorAll('.group-detail-title-row .btn').forEach(btn => {
+                if (btn.id === 'btnMembers') return;
+                btn.style.display = isOwner ? '' : 'none';
+            });
+            // Group name editable only for owner
+            document.getElementById("groupDetailName").readOnly = !isOwner;
+
+            // Members button visible to owner only
+            const btnMem = document.getElementById("btnMembers");
+            if (btnMem) btnMem.style.display = isOwner ? '' : 'none';
+
+            renderContentItems(data.generations || [], role);
         } catch (_) {
             document.getElementById("groupEditAlert").className   = "alert alert-error visible";
             document.getElementById("groupEditAlert").textContent = "Failed to load group.";
@@ -361,4 +383,174 @@ function setChartMode(mode) {
     document.getElementById("chartWeekBtn").classList.toggle("btn-view-active", mode === 'week');
     document.getElementById("chartMonthBtn").classList.toggle("btn-view-active", mode === 'month');
     renderAnalyticsChart(currentGroupData?.generations || []);
+}
+
+// ── Members panel ─────────────────────────────────────────────────────────────
+
+function openMembersPanel() {
+    document.getElementById("membersPanel").classList.add("open");
+    document.getElementById("membersOverlay").classList.add("visible");
+    loadMembers();
+}
+
+function closeMembersPanel() {
+    document.getElementById("membersPanel").classList.remove("open");
+    document.getElementById("membersOverlay").classList.remove("visible");
+}
+
+async function loadMembers() {
+    const body = document.getElementById("membersPanelBody");
+    body.innerHTML = '<div class="loading-bar visible"><div class="spinner"></div> Loading…</div>';
+    try {
+        const res  = await fetch(`${API_URL}/api/members.php?action=list&group_id=${encodeURIComponent(editingGroupId)}`, { headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to load members.');
+        renderMembersPanel(data.members || [], data.invites || []);
+    } catch (err) {
+        body.innerHTML = `<p style="color:var(--red);font-size:13px;padding:12px 0;">${escapeHtml(err.message)}</p>`;
+    }
+}
+
+function renderMembersPanel(members, invites) {
+    const body = document.getElementById("membersPanelBody");
+    let html = '';
+
+    // Owner row
+    html += `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--light-gray);">
+        <div style="width:32px;height:32px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;flex-shrink:0;">O</div>
+        <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:600;color:var(--dark);font-family:'Inter',sans-serif;">You (owner)</div>
+        </div>
+        <span class="badge badge-blue">owner</span>
+    </div>`;
+
+    members.forEach(m => {
+        const initials = (m.display_name || '?')[0].toUpperCase();
+        const label    = escapeHtml(m.display_name || 'Member');
+        const roleColors = { moderator: 'badge-yellow', viewer: 'badge-green' };
+        html += `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--light-gray);">
+            <div style="width:32px;height:32px;border-radius:50%;background:var(--off-white);border:1px solid var(--light-gray);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--dark);flex-shrink:0;">${initials}</div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:13px;font-weight:600;color:var(--dark);font-family:'Inter',sans-serif;">${label}</div>
+            </div>
+            <select style="font-size:11px;padding:3px 6px;border:1px solid var(--light-gray);border-radius:4px;background:var(--off-white);color:var(--dark);font-family:'Inter',sans-serif;" onchange="changeMemberRole('${m.id}', this.value)">
+                <option value="moderator" ${m.role==='moderator'?'selected':''}>Moderator</option>
+                <option value="viewer" ${m.role==='viewer'?'selected':''}>Viewer</option>
+            </select>
+            <button style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:18px;line-height:1;" onclick="removeMember('${m.id}', 'member')" title="Remove">×</button>
+        </div>`;
+    });
+
+    if (invites.length) {
+        html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin:14px 0 6px;">Pending Invites</div>`;
+        invites.forEach(inv => {
+            html += `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--light-gray);">
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:12px;font-family:'Inter',sans-serif;color:var(--dark);">${escapeHtml(inv.email)}</div>
+                    <div style="font-size:11px;color:var(--text-muted);">${escapeHtml(inv.role)}</div>
+                </div>
+                <span class="badge badge-yellow">pending</span>
+                <button style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:18px;line-height:1;" onclick="removeMember('${inv.id}', 'invite')" title="Cancel">×</button>
+            </div>`;
+        });
+    }
+
+    if (!members.length && !invites.length) {
+        html += `<p style="font-size:13px;color:var(--text-muted);padding:16px 0;font-family:'Inter',sans-serif;">No team members yet. Invite someone below.</p>`;
+    }
+
+    body.innerHTML = html;
+}
+
+async function changeMemberRole(memberId, newRole) {
+    try {
+        const res = await fetch(`${API_URL}/api/members.php?action=update_role&id=${encodeURIComponent(memberId)}`, {
+            method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ role: newRole })
+        });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Failed.'); }
+    } catch (err) {
+        alert(err.message);
+        loadMembers();
+    }
+}
+
+async function removeMember(id, type) {
+    const label = type === 'invite' ? 'Cancel this invite?' : 'Remove this member?';
+    if (!confirm(label)) return;
+    try {
+        const res = await fetch(`${API_URL}/api/members.php?action=remove&id=${encodeURIComponent(id)}&type=${type}`, {
+            method: 'DELETE', headers: authHeaders()
+        });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Failed.'); }
+        loadMembers();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+// ── Invite modal ──────────────────────────────────────────────────────────────
+
+function openInviteForm() {
+    document.getElementById("inviteEmail").value  = '';
+    document.getElementById("inviteRole").value   = 'moderator';
+    document.getElementById("inviteResult").style.display = 'none';
+    document.getElementById("inviteModal").classList.add("open");
+    document.getElementById("inviteOverlay").classList.add("visible");
+}
+
+function closeInviteModal() {
+    document.getElementById("inviteModal").classList.remove("open");
+    document.getElementById("inviteOverlay").classList.remove("visible");
+}
+
+async function sendInvite() {
+    const email   = document.getElementById("inviteEmail").value.trim();
+    const role    = document.getElementById("inviteRole").value;
+    const btn     = document.getElementById("inviteBtn");
+    const result  = document.getElementById("inviteResult");
+    const origTxt = btn.innerHTML;
+
+    if (!email) { document.getElementById("inviteEmail").focus(); return; }
+
+    btn.disabled  = true;
+    btn.textContent = 'Generating…';
+    result.style.display = 'none';
+
+    try {
+        const res  = await fetch(`${API_URL}/api/members.php?action=invite`, {
+            method: 'POST', headers: authHeaders(),
+            body: JSON.stringify({ group_id: editingGroupId, email, role })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to create invite.');
+
+        result.style.display = '';
+        result.innerHTML = `
+            <div style="font-size:13px;font-weight:600;color:var(--dark);margin-bottom:8px;font-family:'Inter',sans-serif;">Invite link ready — copy and share it:</div>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <input type="text" class="form-input" readonly value="${escapeHtml(data.invite_url)}" style="font-size:11px;font-family:monospace;" id="inviteLinkInput">
+                <button class="btn btn-secondary" style="flex-shrink:0;" onclick="copyInviteLink()">Copy</button>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:6px;font-family:'Inter',sans-serif;">Expires in 7 days.</div>`;
+
+        // Refresh members list in background
+        loadMembers();
+    } catch (err) {
+        result.style.display = '';
+        result.innerHTML = `<div style="font-size:13px;color:var(--red);font-family:'Inter',sans-serif;">${escapeHtml(err.message)}</div>`;
+    } finally {
+        btn.disabled  = false;
+        btn.innerHTML = origTxt;
+    }
+}
+
+function copyInviteLink() {
+    const inp = document.getElementById("inviteLinkInput");
+    if (!inp) return;
+    navigator.clipboard.writeText(inp.value).then(() => {
+        const btn = inp.nextElementSibling;
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = orig; }, 1800);
+    });
 }

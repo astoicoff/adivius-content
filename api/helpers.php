@@ -84,6 +84,21 @@ function get_user_settings($user_id) {
     return $data[0] ?? [];
 }
 
+// Returns 'owner'|'moderator'|'viewer', or false if the user has no access.
+function check_group_access(string $user_id, string $group_id, string $min_role = 'viewer'): string|false {
+    $hierarchy = ['viewer' => 1, 'moderator' => 2, 'owner' => 3];
+
+    $own = supabase_call('GET', '/rest/v1/content_groups?id=eq.' . urlencode($group_id) . '&user_id=eq.' . urlencode($user_id) . '&select=id');
+    if (!empty(json_decode($own['body'], true))) return 'owner';
+
+    $mem  = supabase_call('GET', '/rest/v1/content_group_members?group_id=eq.' . urlencode($group_id) . '&user_id=eq.' . urlencode($user_id) . '&select=role');
+    $rows = json_decode($mem['body'], true);
+    if (empty($rows)) return false;
+
+    $role = $rows[0]['role'];
+    return ($hierarchy[$role] ?? 0) >= ($hierarchy[$min_role] ?? 0) ? $role : false;
+}
+
 function upsert_user_settings($user_id, $openai_key, $perplexity_key, $serpapi_key, $claude_key = '', $gemini_key = '') {
     return supabase_call('POST', '/rest/v1/user_settings?on_conflict=user_id', [
         'user_id'        => $user_id,
