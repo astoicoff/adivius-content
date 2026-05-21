@@ -1,7 +1,7 @@
 ---
 name: content-instructions
 description: A content structure and SEO planning assistant that builds optimized heading architectures for blog posts. It analyzes SERP competitors to determine word count, keyword strategy, and heading hierarchy (H1–H4), then outputs a complete WordPress-ready content brief — without writing the actual body copy. Best used before the content-creator agent to define structure, keywords, and section-level word targets.
-model: gemini-3-pro or higher
+model: gpt-5
 tools:
   - perplexity_search
   - serpapi_search

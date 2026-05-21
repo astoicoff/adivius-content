@@ -103,9 +103,61 @@ function renderBulkProgress() {
     }).join("");
 }
 
+// ── SSE stream helpers ─────────────────────────────────────────────────────────
+
+async function readStream(url, options, onToken, onProgress, onDone, onError) {
+    let res;
+    try {
+        res = await fetch(url, options);
+    } catch (err) {
+        onError(err.message);
+        return;
+    }
+    const ct = res.headers.get('Content-Type') || '';
+    if (!ct.includes('text/event-stream')) {
+        try { const d = await res.json(); onError(d.detail || `HTTP ${res.status}`); }
+        catch { onError(`HTTP ${res.status}`); }
+        return;
+    }
+    const reader = res.body.getReader();
+    const dec    = new TextDecoder();
+    let buf      = '';
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buf += dec.decode(value, { stream: true });
+            const lines = buf.split('\n');
+            buf = lines.pop();
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                const raw = line.slice(6).trim();
+                if (!raw) continue;
+                let ev;
+                try { ev = JSON.parse(raw); } catch { continue; }
+                if (ev.type === 'token')    { onToken(ev.text); }
+                if (ev.type === 'progress') { onProgress(ev.message); }
+                if (ev.type === 'done')     { onDone(ev); return; }
+                if (ev.type === 'error')    { onError(ev.message); return; }
+            }
+        }
+    } catch (err) {
+        onError(err.message);
+    }
+}
+
+// Discard tokens/progress; resolve with done payload (used by bulk mode)
+async function collectStream(url, options) {
+    return new Promise((resolve, reject) => {
+        readStream(url, options, () => {}, () => {}, resolve, msg => reject(new Error(msg)));
+    });
+}
+
+// ── Bulk generation ────────────────────────────────────────────────────────────
+
 async function runBulkGeneration() {
     const groupId = document.getElementById("groupSelect").value;
-    if (!groupId)        { showAlert("Please select a content group before generating."); return; }
+    if (!groupId)          { showAlert("Please select a content group before generating."); return; }
     if (!bulkQueue.length) { return; }
 
     const btn = document.getElementById("bulkGenerateBtn");
@@ -117,18 +169,14 @@ async function runBulkGeneration() {
         renderBulkProgress();
 
         try {
-            // Phase 1
             const bulkModel = document.getElementById("modelSelect")?.value || 'gpt-5';
-            const p1res = await fetch(`${API_URL}/api/phase1.php`, {
+
+            const p1data = await collectStream(`${API_URL}/api/phase1.php`, {
                 method: 'POST', headers: authHeaders(),
                 body: JSON.stringify({ keyword: bulkQueue[i].keyword, group_id: groupId, model: bulkModel })
             });
-            let p1data;
-            try { p1data = await p1res.json(); } catch { throw new Error("Server returned unexpected response"); }
-            if (!p1res.ok) throw new Error(p1data.detail || "Phase 1 failed");
 
-            // Phase 2 (auto-proceed with generated brief)
-            const p2res = await fetch(`${API_URL}/api/phase2.php`, {
+            const p2data = await collectStream(`${API_URL}/api/phase2.php`, {
                 method: 'POST', headers: authHeaders(),
                 body: JSON.stringify({
                     keyword:       bulkQueue[i].keyword,
@@ -138,9 +186,6 @@ async function runBulkGeneration() {
                     group_id:      groupId
                 })
             });
-            let p2data;
-            try { p2data = await p2res.json(); } catch { throw new Error("Server returned unexpected response"); }
-            if (!p2res.ok) throw new Error(p2data.detail || "Phase 2 failed");
 
             bulkQueue[i].status = 'done';
             bulkQueue[i].id     = p1data.generation_id;
@@ -226,25 +271,24 @@ async function handlePhase1(e) {
     clearAlert();
     document.getElementById("phase2Section").classList.add("hidden");
     document.getElementById("phase3Section").classList.add("hidden");
+    document.getElementById("briefEditor").value = "";
     document.getElementById("phase1Loading").classList.add("visible");
     document.getElementById("generateBriefBtn").disabled = true;
     setStep(1);
 
-    try {
-        const model = document.getElementById("modelSelect")?.value || 'gpt-5';
-        const res = await fetch(`${API_URL}/api/phase1.php`, {
-            method:  "POST",
-            headers: authHeaders(),
-            body:    JSON.stringify({ keyword: kw, group_id: groupId, model })
-        });
-        let data;
-        try { data = await res.json(); } catch { throw new Error("Server returned an unexpected response."); }
-        if (!res.ok) throw new Error(data.detail || "Phase 1 Error");
+    const model = document.getElementById("modelSelect")?.value || 'gpt-5';
 
-        document.getElementById("briefEditor").value = data.brief;
-        rawSerpapiText      = data.serpapi_raw;
-        currentGenerationId = data.generation_id;
-        currentGroupId      = groupId;
+    try {
+        await new Promise((resolve, reject) => {
+            readStream(
+                `${API_URL}/api/phase1.php`,
+                { method: 'POST', headers: authHeaders(), body: JSON.stringify({ keyword: kw, group_id: groupId, model }) },
+                text => { document.getElementById("briefEditor").value += text; },
+                msg  => { const s = document.getElementById("phase1LoadingText"); if (s) s.textContent = msg; },
+                ev   => { rawSerpapiText = ev.serpapi_raw || ''; currentGenerationId = ev.generation_id; currentGroupId = groupId; resolve(); },
+                msg  => reject(new Error(msg))
+            );
+        });
 
         document.getElementById("phase1Loading").classList.remove("visible");
         document.getElementById("phase2Section").classList.remove("hidden");
@@ -262,7 +306,7 @@ async function handlePhase1(e) {
 
 async function saveBrief() {
     if (!currentGenerationId) return;
-    const btn  = document.getElementById("saveBriefBtn");
+    const btn          = document.getElementById("saveBriefBtn");
     const instructions = document.getElementById("briefEditor").value.trim();
     btn.disabled = true;
     try {
@@ -285,27 +329,29 @@ async function handlePhase2() {
     const brief = document.getElementById("briefEditor").value.trim();
     clearAlert();
     document.getElementById("phase3Section").classList.add("hidden");
+    document.getElementById("htmlEditor").value = "";
     document.getElementById("phase2Loading").classList.add("visible");
     document.getElementById("proceedToPhase2Btn").disabled = true;
     setStep(2);
 
     try {
-        const res = await fetch(`${API_URL}/api/phase2.php`, {
-            method:  "POST",
-            headers: authHeaders(),
-            body:    JSON.stringify({
-                keyword:       kw,
-                edited_brief:  brief,
-                serpapi_text:  rawSerpapiText,
-                generation_id: currentGenerationId,
-                group_id:      currentGroupId
-            })
+        await new Promise((resolve, reject) => {
+            readStream(
+                `${API_URL}/api/phase2.php`,
+                { method: 'POST', headers: authHeaders(), body: JSON.stringify({
+                    keyword:       kw,
+                    edited_brief:  brief,
+                    serpapi_text:  rawSerpapiText,
+                    generation_id: currentGenerationId,
+                    group_id:      currentGroupId
+                }) },
+                text => { document.getElementById("htmlEditor").value += text; },
+                msg  => { const s = document.getElementById("phase2LoadingText"); if (s) s.textContent = msg; },
+                ev   => resolve(ev),
+                msg  => reject(new Error(msg))
+            );
         });
-        let data;
-        try { data = await res.json(); } catch { throw new Error("Server returned an unexpected response."); }
-        if (!res.ok) throw new Error(data.detail || "Phase 2 Error");
 
-        document.getElementById("htmlEditor").value = data.html_content;
         document.getElementById("phase2Loading").classList.remove("visible");
         document.getElementById("phase3Section").classList.remove("hidden");
         setStep(3);
@@ -380,22 +426,22 @@ async function regenInstructions() {
     const kw  = document.getElementById("keywordInput").value.trim();
     const btn = document.getElementById("regenInstructionsBtn");
     btn.disabled = true;
+    document.getElementById("briefEditor").value = "";
     document.getElementById("phase1Loading").classList.add("visible");
     document.getElementById("proceedToPhase2Btn").disabled = true;
     clearAlert();
 
     try {
-        const res = await fetch(`${API_URL}/api/phase1.php`, {
-            method:  'POST',
-            headers: authHeaders(),
-            body:    JSON.stringify({ keyword: kw, group_id: currentGroupId, generation_id: currentGenerationId })
+        await new Promise((resolve, reject) => {
+            readStream(
+                `${API_URL}/api/phase1.php`,
+                { method: 'POST', headers: authHeaders(), body: JSON.stringify({ keyword: kw, group_id: currentGroupId, generation_id: currentGenerationId }) },
+                text => { document.getElementById("briefEditor").value += text; },
+                msg  => { const s = document.getElementById("phase1LoadingText"); if (s) s.textContent = msg; },
+                ev   => { rawSerpapiText = ev.serpapi_raw || ''; resolve(); },
+                msg  => reject(new Error(msg))
+            );
         });
-        let data;
-        try { data = await res.json(); } catch { throw new Error('Server returned an unexpected response.'); }
-        if (!res.ok) throw new Error(data.detail || 'Failed to regenerate instructions.');
-
-        rawSerpapiText = data.serpapi_raw;
-        document.getElementById("briefEditor").value = data.brief;
     } catch (err) {
         showAlert('Regenerate failed: ' + err.message);
     } finally {

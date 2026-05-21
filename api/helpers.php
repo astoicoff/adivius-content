@@ -147,9 +147,9 @@ function call_serpapi($keyword, $api_key) {
     $body   = curl_exec($ch);
     $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    if ($status !== 200) { http_response_code(400); echo json_encode(['detail' => 'SerpApi HTTP Error: ' . $body]); exit; }
+    if ($status !== 200) throw new \RuntimeException('SerpApi HTTP Error: ' . $body);
     $results = json_decode($body, true);
-    if (isset($results['error'])) { http_response_code(400); echo json_encode(['detail' => 'SerpApi Error: ' . $results['error']]); exit; }
+    if (isset($results['error'])) throw new \RuntimeException('SerpApi Error: ' . $results['error']);
     $text = ''; $urls = [];
     foreach ($results['organic_results'] ?? [] as $item) {
         $link    = $item['link'] ?? null;
@@ -160,7 +160,7 @@ function call_serpapi($keyword, $api_key) {
         }
         if (count($urls) >= 5) break;
     }
-    if (empty($urls)) { http_response_code(404); echo json_encode(['detail' => 'SerpApi returned no valid organic URLs.']); exit; }
+    if (empty($urls)) throw new \RuntimeException('SerpApi returned no valid organic URLs.');
     return ['text' => $text, 'urls' => $urls];
 }
 
@@ -176,7 +176,7 @@ function call_perplexity($messages, $api_key) {
     $body   = curl_exec($ch);
     $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    if ($status !== 200) { http_response_code($status); echo json_encode(['detail' => 'Perplexity API Error: ' . $body]); exit; }
+    if ($status !== 200) throw new \RuntimeException('Perplexity API Error: ' . $body);
     return json_decode($body, true)['choices'][0]['message']['content'];
 }
 
@@ -304,4 +304,138 @@ function call_ai($system_prompt, $user_prompt, $model, $settings) {
     if (str_starts_with($model, 'claude-')) return call_claude($system_prompt, $user_prompt, $settings['claude_key'] ?? '', $model);
     if (str_starts_with($model, 'gemini-')) return call_gemini($system_prompt, $user_prompt, $settings['gemini_key'] ?? '', $model);
     return call_openai($system_prompt, $user_prompt, $settings['openai_key'] ?? '', $model);
+}
+
+// ── SSE streaming helpers ────────────────────────────────────────────────────
+
+function emit_sse(array $payload): void {
+    echo 'data: ' . json_encode($payload) . "\n\n";
+    if (ob_get_level() > 0) ob_flush();
+    flush();
+}
+
+function stream_openai(string $system_prompt, string $user_prompt, string $api_key, string $model): string {
+    if (!$api_key) throw new \RuntimeException('OpenAI API key is required. Please add it in API Keys settings.');
+    $full = '';
+    $buf  = '';
+    $ch   = curl_init('https://api.openai.com/v1/chat/completions');
+    curl_setopt_array($ch, [
+        CURLOPT_POST          => true,
+        CURLOPT_HTTPHEADER    => ['Authorization: Bearer ' . $api_key, 'Content-Type: application/json'],
+        CURLOPT_POSTFIELDS    => json_encode([
+            'model'    => $model,
+            'stream'   => true,
+            'messages' => [
+                ['role' => 'system', 'content' => $system_prompt],
+                ['role' => 'user',   'content' => $user_prompt],
+            ],
+        ]),
+        CURLOPT_TIMEOUT       => 300,
+        CURLOPT_WRITEFUNCTION => function ($ch, $data) use (&$full, &$buf) {
+            $buf .= $data;
+            $lines = explode("\n", $buf);
+            $buf   = array_pop($lines);
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (!str_starts_with($line, 'data: ')) continue;
+                $json = substr($line, 6);
+                if ($json === '[DONE]') continue;
+                $tok = json_decode($json, true)['choices'][0]['delta']['content'] ?? null;
+                if ($tok !== null && $tok !== '') { $full .= $tok; emit_sse(['type' => 'token', 'text' => $tok]); }
+            }
+            return strlen($data);
+        },
+    ]);
+    curl_exec($ch);
+    $err  = curl_error($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($err || $code >= 400) throw new \RuntimeException('OpenAI stream error: ' . ($err ?: 'HTTP ' . $code));
+    return $full;
+}
+
+function stream_claude(string $system_prompt, string $user_prompt, string $api_key, string $model): string {
+    if (!$api_key) throw new \RuntimeException('Anthropic API key is required. Please add it in API Keys settings.');
+    $full = '';
+    $buf  = '';
+    $ch   = curl_init('https://api.anthropic.com/v1/messages');
+    curl_setopt_array($ch, [
+        CURLOPT_POST          => true,
+        CURLOPT_HTTPHEADER    => [
+            'x-api-key: ' . $api_key,
+            'anthropic-version: 2023-06-01',
+            'Content-Type: application/json',
+        ],
+        CURLOPT_POSTFIELDS    => json_encode([
+            'model'      => $model,
+            'max_tokens' => 16000,
+            'stream'     => true,
+            'system'     => $system_prompt,
+            'messages'   => [['role' => 'user', 'content' => $user_prompt]],
+        ]),
+        CURLOPT_TIMEOUT       => 300,
+        CURLOPT_WRITEFUNCTION => function ($ch, $data) use (&$full, &$buf) {
+            $buf .= $data;
+            $lines = explode("\n", $buf);
+            $buf   = array_pop($lines);
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (!str_starts_with($line, 'data: ')) continue;
+                $ev = json_decode(substr($line, 6), true);
+                if (($ev['type'] ?? '') !== 'content_block_delta') continue;
+                $tok = $ev['delta']['text'] ?? null;
+                if ($tok !== null && $tok !== '') { $full .= $tok; emit_sse(['type' => 'token', 'text' => $tok]); }
+            }
+            return strlen($data);
+        },
+    ]);
+    curl_exec($ch);
+    $err  = curl_error($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($err || $code >= 400) throw new \RuntimeException('Claude stream error: ' . ($err ?: 'HTTP ' . $code));
+    return $full;
+}
+
+function stream_gemini(string $system_prompt, string $user_prompt, string $api_key, string $model): string {
+    if (!$api_key) throw new \RuntimeException('Google API key is required. Please add it in API Keys settings.');
+    $full = '';
+    $buf  = '';
+    $url  = 'https://generativelanguage.googleapis.com/v1beta/models/' . urlencode($model)
+          . ':streamGenerateContent?key=' . urlencode($api_key) . '&alt=sse';
+    $ch   = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_POST          => true,
+        CURLOPT_HTTPHEADER    => ['Content-Type: application/json'],
+        CURLOPT_POSTFIELDS    => json_encode([
+            'system_instruction' => ['parts' => [['text' => $system_prompt]]],
+            'contents'           => [['role' => 'user', 'parts' => [['text' => $user_prompt]]]],
+            'generationConfig'   => ['maxOutputTokens' => 8192],
+        ]),
+        CURLOPT_TIMEOUT       => 300,
+        CURLOPT_WRITEFUNCTION => function ($ch, $data) use (&$full, &$buf) {
+            $buf .= $data;
+            $lines = explode("\n", $buf);
+            $buf   = array_pop($lines);
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (!str_starts_with($line, 'data: ')) continue;
+                $tok = json_decode(substr($line, 6), true)['candidates'][0]['content']['parts'][0]['text'] ?? null;
+                if ($tok !== null && $tok !== '') { $full .= $tok; emit_sse(['type' => 'token', 'text' => $tok]); }
+            }
+            return strlen($data);
+        },
+    ]);
+    curl_exec($ch);
+    $err  = curl_error($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($err || $code >= 400) throw new \RuntimeException('Gemini stream error: ' . ($err ?: 'HTTP ' . $code));
+    return $full;
+}
+
+function stream_ai(string $system_prompt, string $user_prompt, string $model, array $settings): string {
+    if (str_starts_with($model, 'claude-')) return stream_claude($system_prompt, $user_prompt, $settings['claude_key'] ?? '', $model);
+    if (str_starts_with($model, 'gemini-')) return stream_gemini($system_prompt, $user_prompt, $settings['gemini_key'] ?? '', $model);
+    return stream_openai($system_prompt, $user_prompt, $settings['openai_key'] ?? '', $model);
 }

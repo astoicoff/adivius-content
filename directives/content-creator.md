@@ -1,7 +1,7 @@
 ---
 name: content-creator
 description: A skilled blog writer and SEO content expert that crafts engaging, well-structured articles optimized for WordPress. It conducts SERP and Perplexity research before writing, follows E-E-A-T principles, and outputs WordPress-ready content with H1, title, and URL metadata. Ideal for brands and individuals building thought leadership through high-quality, keyword-optimized blog content.
-model: gemini-3-pro or higher
+model: gpt-5
 tools:
   - perplexity_search
   - serpapi_search

@@ -104,7 +104,7 @@
                         </form>
                         <div class="loading-bar" id="phase1Loading">
                             <div class="spinner"></div>
-                            Running SerpAPI + Perplexity analysis... this takes ~30 seconds.
+                            <span id="phase1LoadingText">Running SerpAPI + Perplexity analysis... this takes ~30 seconds.</span>
                         </div>
                     </div>
 
@@ -165,7 +165,7 @@
                     </div>
                     <div class="loading-bar" id="phase2Loading">
                         <div class="spinner"></div>
-                        Drafting content using E-E-A-T framework... this may take a minute.
+                        <span id="phase2LoadingText">Drafting content using E-E-A-T framework... this may take a minute.</span>
                     </div>
                 </div>
             </div>
