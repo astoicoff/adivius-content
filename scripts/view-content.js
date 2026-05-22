@@ -3,6 +3,7 @@ let genCleanContent = null;   // raw content with meta lines stripped
 let viewMode        = 'html';
 let versionsData    = [];
 let lastSeoData     = null;
+let autoSaveTimer   = null;
 
 // Parse h1/title/url meta lines from the top of raw content.
 // Returns { meta: {h1,title,url} | null, content: string }
@@ -138,6 +139,7 @@ function renderWithTOC(html) {
 // ── View modes ────────────────────────────────────────────────────────────────
 
 function setViewMode(mode) {
+    if (viewMode === 'edit' && mode !== 'edit') stopAutoSave();
     viewMode = mode;
     document.getElementById("htmlOutput").style.display  = mode === 'html'  ? "" : "none";
     document.getElementById("cleanOutput").style.display = mode === 'clean' ? "" : "none";
@@ -152,7 +154,44 @@ function setViewMode(mode) {
     document.getElementById("copyCleanRow").style.display = mode === 'clean' ? "" : "none";
 
     if (mode === 'clean') document.getElementById("cleanOutput").innerHTML = renderWithTOC(genCleanContent || '');
-    if (mode === 'edit')  document.getElementById("editOutput").value      = genData?.content || '';
+    if (mode === 'edit')  { document.getElementById("editOutput").value = genData?.content || ''; startAutoSave(); }
+}
+
+function startAutoSave() {
+    stopAutoSave();
+    document.getElementById("editOutput").addEventListener('input', onEditInput);
+}
+
+function stopAutoSave() {
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = null;
+    const el = document.getElementById("editOutput");
+    if (el) el.removeEventListener('input', onEditInput);
+}
+
+function onEditInput() {
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(performAutoSave, 30000);
+}
+
+async function performAutoSave() {
+    autoSaveTimer = null;
+    const id      = new URLSearchParams(window.location.search).get("id");
+    const content = document.getElementById("editOutput").value;
+    try {
+        const res = await fetch(`${API_URL}/api/generation.php?id=${encodeURIComponent(id)}`, {
+            method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ content })
+        });
+        if (!res.ok) return;
+        genData.content = content;
+        const reparsed  = parseContentMeta(content);
+        genCleanContent = reparsed.content;
+        showMetaPanel(reparsed.meta);
+        document.getElementById("htmlOutput").value = genCleanContent;
+        const ind = document.getElementById("saveIndicator");
+        ind.classList.add("visible");
+        setTimeout(() => ind.classList.remove("visible"), 2500);
+    } catch (_) {}
 }
 
 async function saveContent() {
@@ -175,7 +214,7 @@ async function saveContent() {
         ind.classList.add("visible");
         setTimeout(() => ind.classList.remove("visible"), 2500);
     } catch (err) {
-        alert(err.message);
+        showToast(err.message);
     } finally {
         saveBtn.disabled = false;
     }
@@ -210,7 +249,7 @@ function slugifyKeyword(kw) {
 }
 
 function exportDocx() {
-    if (!genCleanContent) { alert('No content to export.'); return; }
+    if (!genCleanContent) { showToast('No content to export.', 'warning'); return; }
     const btn  = document.getElementById('btnExportDocx');
     const orig = btn.innerHTML;
     btn.disabled = true;
@@ -225,7 +264,7 @@ function exportDocx() {
         a.click();
         URL.revokeObjectURL(url);
     } catch (err) {
-        alert('DOCX export failed: ' + err.message);
+        showToast('DOCX export failed: ' + err.message);
     } finally {
         btn.disabled = false;
         btn.innerHTML = orig;
@@ -233,7 +272,7 @@ function exportDocx() {
 }
 
 function exportPdf() {
-    if (!genCleanContent) { alert('No content to export.'); return; }
+    if (!genCleanContent) { showToast('No content to export.', 'warning'); return; }
     const btn  = document.getElementById('btnExportPdf');
     const orig = btn.innerHTML;
     btn.disabled = true;
@@ -251,7 +290,7 @@ function exportPdf() {
         btn.disabled = false;
         btn.innerHTML = orig;
     }).catch(err => {
-        alert('PDF export failed: ' + err.message);
+        showToast('PDF export failed: ' + err.message);
         btn.disabled = false;
         btn.innerHTML = orig;
     });
@@ -286,7 +325,7 @@ async function duplicateContent() {
         const dest = '/view-content?id=' + encodeURIComponent(data.id) + (groupId ? '&group=' + encodeURIComponent(groupId) : '');
         window.location.href = dest;
     } catch (err) {
-        alert(err.message);
+        showToast(err.message);
         btn.disabled = false;
         btn.innerHTML = orig;
     }
@@ -305,7 +344,7 @@ async function deleteContent() {
         if (!res.ok) throw new Error('Failed to delete.');
         window.location.href = groupId ? `/content-groups?group=${encodeURIComponent(groupId)}` : '/content-groups';
     } catch (err) {
-        alert(err.message);
+        showToast(err.message);
         btn.disabled = false;
     }
 }
@@ -617,7 +656,7 @@ async function applySeoFix(type, payload, needed, btnId) {
         if (lastSeoData) document.getElementById('seoModalBody').innerHTML = buildSeoReportHTML(lastSeoData);
     } catch (err) {
         if (btn) { btn.disabled = false; btn.textContent = 'Fix'; }
-        alert('SEO fix failed: ' + err.message);
+        showToast('SEO fix failed: ' + err.message);
     }
 }
 
@@ -710,7 +749,7 @@ async function restoreVersion(index) {
         closeVersionsModal();
         await loadVersions(id);
     } catch (err) {
-        alert(err.message);
+        showToast(err.message);
     }
 }
 

@@ -115,7 +115,7 @@ async function deleteGeneration(id, btn) {
         allGenerations = allGenerations.filter(g => g.id !== id);
         applyFilters();
     } catch (err) {
-        alert(err.message);
+        showToast(err.message);
         btn.disabled = false;
     }
 }

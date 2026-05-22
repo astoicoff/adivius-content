@@ -222,7 +222,7 @@ async function saveRules() {
     const isInst = activePanelType === 'instructions';
 
     if (isWP) {
-        if (!editingGroupId) { alert('Save the group first before configuring WordPress.'); return; }
+        if (!editingGroupId) { showToast('Save the group first before configuring WordPress.', 'warning'); return; }
         const payload = {
             wp_site_url:  document.getElementById("wpSiteUrl").value.trim(),
             wp_username:  document.getElementById("wpUsername").value.trim(),
@@ -239,14 +239,14 @@ async function saveRules() {
             const ind = document.getElementById("rulesSaveIndicator");
             ind.classList.add("visible");
             setTimeout(() => ind.classList.remove("visible"), 2500);
-        } catch (err) { alert(err.message); }
+        } catch (err) { showToast(err.message); }
         return;
     }
 
     if (isWH) {
-        if (!editingGroupId) { alert('Save the group first before configuring a webhook.'); return; }
+        if (!editingGroupId) { showToast('Save the group first before configuring a webhook.', 'warning'); return; }
         const url = document.getElementById("webhookUrl").value.trim();
-        if (url && !/^https?:\/\//i.test(url)) { alert('Webhook URL must start with http:// or https://'); return; }
+        if (url && !/^https?:\/\//i.test(url)) { showToast('Webhook URL must start with http:// or https://', 'warning'); return; }
         try {
             const res = await fetch(API_URL + '/api/groups.php?id=' + encodeURIComponent(editingGroupId), {
                 method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ webhook_url: url })
@@ -256,7 +256,7 @@ async function saveRules() {
             const ind = document.getElementById("rulesSaveIndicator");
             ind.classList.add("visible");
             setTimeout(() => ind.classList.remove("visible"), 2500);
-        } catch (err) { alert(err.message); }
+        } catch (err) { showToast(err.message); }
         return;
     }
 
@@ -280,7 +280,7 @@ async function saveRules() {
             document.getElementById("groupContentList").innerHTML = '<div class="history-empty"><svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>No content generated in this group yet.</div>';
             document.getElementById("groupNameRow").style.display = "none";
             await loadGroups(); renderGroups(cachedGroups);
-        } catch (err) { alert(err.message); return; }
+        } catch (err) { showToast(err.message); return; }
     } else {
         const payload = isInst ? { instructions_rules: text } : { content_rules: text };
         try {
@@ -290,7 +290,7 @@ async function saveRules() {
             if (!res.ok) throw new Error('Failed to save.');
             if (isInst) currentGroupData.instructions_rules = text;
             else        currentGroupData.content_rules = text;
-        } catch (err) { alert(err.message); return; }
+        } catch (err) { showToast(err.message); return; }
     }
 
     const ind = document.getElementById("rulesSaveIndicator");
@@ -469,7 +469,7 @@ async function changeMemberRole(memberId, newRole) {
         });
         if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Failed.'); }
     } catch (err) {
-        alert(err.message);
+        showToast(err.message);
         loadMembers();
     }
 }
@@ -484,7 +484,7 @@ async function removeMember(id, type) {
         if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Failed.'); }
         loadMembers();
     } catch (err) {
-        alert(err.message);
+        showToast(err.message);
     }
 }
 
