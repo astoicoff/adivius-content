@@ -218,6 +218,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     document.getElementById("phase1Form").addEventListener("submit", handlePhase1);
     document.getElementById("proceedToPhase2Btn").addEventListener("click", handlePhase2);
+    document.getElementById("briefEditor").addEventListener("input", updateBriefWordCount);
 });
 
 function populateGroupSelector() {
@@ -238,6 +239,15 @@ function populateGroupSelector() {
         cachedGroups.map(g =>
             `<option value="${g.id}"${g.id === current ? " selected" : ""}>${escapeHtml(g.name)}</option>`
         ).join("");
+}
+
+function updateBriefWordCount() {
+    const el  = document.getElementById("briefWordCount");
+    if (!el) return;
+    const wc  = wordCount(document.getElementById("briefEditor").value);
+    const color = wc >= 200 ? 'var(--green)' : 'var(--text-muted)';
+    el.textContent = `${wc.toLocaleString()} words${wc >= 200 ? ' — ready' : ' — aim for 200+'}`;
+    el.style.color = color;
 }
 
 function showAlert(msg, type = "error") {
@@ -292,6 +302,7 @@ async function handlePhase1(e) {
 
         document.getElementById("phase1Loading").classList.remove("visible");
         document.getElementById("phase2Section").classList.remove("hidden");
+        updateBriefWordCount();
         setStep(2);
         const gb = document.getElementById("generateBriefBtn");
         gb.disabled = true;
@@ -405,6 +416,7 @@ async function resumeGeneration(id) {
         document.getElementById("keywordInput").value = data.keyword || '';
         if (data.group_id) document.getElementById("groupSelect").value = data.group_id;
         document.getElementById("briefEditor").value  = data.instructions || '';
+        updateBriefWordCount();
 
         if (!data.instructions) showAlert('Brief data not found — the server may need to be updated. You can re-generate the brief manually.', 'error');
 
@@ -442,6 +454,7 @@ async function regenInstructions() {
                 msg  => reject(new Error(msg))
             );
         });
+        updateBriefWordCount();
     } catch (err) {
         showAlert('Regenerate failed: ' + err.message);
     } finally {

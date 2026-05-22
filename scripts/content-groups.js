@@ -148,7 +148,7 @@ function renderContentItems(generations) {    renderAnalyticsChart(generations)
         const date   = new Date(g.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
         const url    = `/view-content?id=${encodeURIComponent(g.id)}&group=${encodeURIComponent(editingGroupId)}`;
         const wc     = g.content ? wordCount(g.content) : 0;
-        const wcMeta = wc > 0 ? `<div class="word-count-meta">${wc.toLocaleString()} words · ${readingTime(wc)}</div>` : '';
+        const wcMeta = wc > 0 ? `<div class="word-count-meta">${wc.toLocaleString()} words · ${readingTime(wc)}${g.model ? ' · ' + escapeHtml(modelLabel(g.model)) : ''}</div>` : '';
 
         return `<a class="content-item" href="${url}" style="text-decoration:none;display:block;">
             <div class="content-item-header" style="cursor:pointer;">
@@ -444,12 +444,14 @@ function renderMembersPanel(members, invites) {
     if (invites.length) {
         html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin:14px 0 6px;">Pending Invites</div>`;
         invites.forEach(inv => {
+            const inviteUrl = inv.token ? window.location.origin + '/accept-invite?token=' + encodeURIComponent(inv.token) : '';
             html += `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--light-gray);">
                 <div style="flex:1;min-width:0;">
                     <div style="font-size:12px;font-family:'Inter',sans-serif;color:var(--dark);">${escapeHtml(inv.email)}</div>
                     <div style="font-size:11px;color:var(--text-muted);">${escapeHtml(inv.role)}</div>
                 </div>
                 <span class="badge badge-yellow">pending</span>
+                ${inviteUrl ? `<button class="btn btn-secondary" style="padding:3px 10px;font-size:11px;flex-shrink:0;" onclick="copyInviteUrl('${escapeHtml(inviteUrl)}', this)">Copy link</button>` : ''}
                 <button style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:18px;line-height:1;" onclick="removeMember('${inv.id}', 'invite')" title="Cancel">×</button>
             </div>`;
         });
@@ -542,6 +544,14 @@ async function sendInvite() {
         btn.disabled  = false;
         btn.innerHTML = origTxt;
     }
+}
+
+function copyInviteUrl(url, btn) {
+    navigator.clipboard.writeText(url).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = orig; }, 1800);
+    });
 }
 
 function copyInviteLink() {

@@ -73,6 +73,7 @@ function renderHistory(generations) {
         });
         const group      = cachedGroups.find(gr => gr.id === g.group_id);
         const groupBadge = group ? `<span style="font-size:11px;color:var(--text-muted);font-weight:500;">${escapeHtml(group.name)}</span>` : '';
+        const mlabel     = g.model ? `<span style="font-size:11px;color:var(--text-muted);font-family:'Inter',sans-serif;">${escapeHtml(modelLabel(g.model))}</span>` : '';
         const isComplete   = g.status === "completed";
         const isResumable  = g.status === "instructions_ready";
         const viewLink     = isComplete
@@ -95,6 +96,7 @@ function renderHistory(generations) {
                 <div class="history-date">${date}</div>
             </div>
             <div style="display:flex;align-items:center;gap:10px;">
+                ${mlabel}
                 ${groupBadge}
                 ${statusBadge(g.status)}
                 ${viewLink}

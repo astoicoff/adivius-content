@@ -144,6 +144,7 @@
                     <div class="form-group">
                         <label class="form-label" for="briefEditor">Content Brief</label>
                         <textarea class="form-textarea" id="briefEditor" rows="18"></textarea>
+                        <div id="briefWordCount" style="text-align:right;font-size:12px;color:var(--text-muted);margin-top:4px;">0 words</div>
                     </div>
                     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                         <button id="regenInstructionsBtn" class="btn btn-red" onclick="regenInstructions()" style="display:none;">

@@ -107,7 +107,7 @@ if ($action === 'list' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     $invRes = supabase_call('GET',
         '/rest/v1/content_group_invites?group_id=eq.' . urlencode($group_id)
         . '&accepted_at=is.null'
-        . '&select=id,email,role,created_at,expires_at'
+        . '&select=id,email,role,token,created_at,expires_at'
     );
     $invites = json_decode($invRes['body'], true) ?: [];
     // Filter out expired

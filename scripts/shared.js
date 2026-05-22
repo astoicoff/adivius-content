@@ -78,6 +78,16 @@ function escapeHtml(str) {
     return (str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+function modelLabel(model) {
+    const map = {
+        'gpt-5':             'GPT-5',
+        'claude-opus-4-7':   'Opus 4.7',
+        'claude-sonnet-4-6': 'Sonnet 4.6',
+        'gemini-2.5-pro':    'Gemini 2.5',
+    };
+    return map[model] || (model || '');
+}
+
 function showToast(msg, type = 'error') {
     let container = document.getElementById('toast-container');
     if (!container) {

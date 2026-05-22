@@ -36,7 +36,7 @@ if ($method === 'GET') {
 
         $genRes = supabase_call('GET',
             '/rest/v1/content_generations?group_id=eq.' . urlencode($id)
-            . '&select=id,keyword,status,content,created_at,updated_at'
+            . '&select=id,keyword,status,model,content,created_at,updated_at'
             . '&order=created_at.desc'
         );
         $group['generations'] = json_decode($genRes['body'], true) ?: [];
