@@ -125,9 +125,9 @@
                     Regenerate
                 </button>
 
-                <button id="btnPublish" class="btn btn-secondary" onclick="openPublishModal()" style="display:none;">
-                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
-                    Publish
+                <button id="btnNucleus" class="btn btn-blue" onclick="sendToNucleus()" style="display:none;">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+                    Send to Nucleus
                 </button>
                 <button id="btnDelete" class="btn btn-red" onclick="deleteContent()">
                     <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
@@ -205,29 +205,6 @@
         </div>
     </div>
 </main>
-
-<!-- Publish Modal -->
-<div id="publishOverlay" class="rules-overlay" onclick="closePublishModal()"></div>
-<div id="publishModal" class="density-modal" style="max-width:380px;">
-    <div class="density-modal-header">
-        <div class="rules-panel-title">Publish to WordPress</div>
-        <button class="rules-panel-close" onclick="closePublishModal()">
-            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-    </div>
-    <div style="padding:0 20px 20px;">
-        <p id="publishSiteLabel" style="font-size:13px;color:var(--text-muted);margin-bottom:20px;font-family:'Inter',sans-serif;"></p>
-        <div id="publishPostUrl" style="display:none;margin-bottom:16px;">
-            <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Already published at:</div>
-            <a id="publishPostLink" href="#" target="_blank" rel="noopener" style="font-size:13px;word-break:break-all;color:var(--blue);"></a>
-        </div>
-        <div style="display:flex;gap:10px;">
-            <button class="btn btn-secondary" style="flex:1;" onclick="publishContent('draft')" id="btnPublishDraft">Save as Draft</button>
-            <button class="btn btn-green"     style="flex:1;" onclick="publishContent('publish')" id="btnPublishLive">Publish Live</button>
-        </div>
-        <div id="publishResult" style="margin-top:14px;display:none;"></div>
-    </div>
-</div>
 
 <!-- SEO Score Modal -->
 <div id="seoOverlay" class="rules-overlay" onclick="closeSeoModal()"></div>

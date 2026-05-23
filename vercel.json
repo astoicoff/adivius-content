@@ -2,7 +2,8 @@
   "version": 2,
   "builds": [
     { "src": "*.php",         "use": "vercel-php@0.6.2" },
-    { "src": "api/*.php",     "use": "vercel-php@0.6.2" },
+    { "src": "api/*.php",         "use": "vercel-php@0.6.2" },
+    { "src": "api/nucleus/*.php", "use": "vercel-php@0.6.2" },
     { "src": "scripts/**",    "use": "@vercel/static" },
     { "src": "favicon.svg",   "use": "@vercel/static" }
   ],

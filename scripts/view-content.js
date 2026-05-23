@@ -102,8 +102,13 @@ async function loadGeneration(id) {
         document.getElementById("loadingState").style.display = "none";
         document.getElementById("contentArea").style.display  = "";
 
-        loadGroupWpConfig(data.group_id);
+        loadGroupConfig(data.group_id);
         loadVersions(data.id);
+
+        // Show Send to Nucleus button when piece is complete and not yet handed off
+        if (data.status === 'completed' && !data.handed_off_at) {
+            document.getElementById("btnNucleus").style.display = "";
+        }
         renderWebhookStatus();
     } catch (err) {
         showError(err.message);
@@ -755,16 +760,15 @@ async function restoreVersion(index) {
 
 // ── WordPress Publish ─────────────────────────────────────────────────────────
 
-let groupWpConfig = null;  // { wp_configured, wp_site_url }
+let groupConfig = null;
 
-async function loadGroupWpConfig(groupId) {
+async function loadGroupConfig(groupId) {
     if (!groupId) return;
     try {
         const res  = await fetch(API_URL + '/api/groups.php?id=' + encodeURIComponent(groupId), { headers: authHeaders() });
         const data = await res.json();
         if (!res.ok) return;
 
-        // Show group name in top-bar
         if (data.name) {
             const groupLink = document.getElementById("topBarGroup");
             document.getElementById("topBarGroupName").textContent = data.name;
@@ -772,11 +776,7 @@ async function loadGroupWpConfig(groupId) {
             groupLink.style.display = "flex";
         }
 
-        groupWpConfig = data;
-        if (data.wp_configured) {
-            const btn = document.getElementById("btnPublish");
-            if (btn) btn.style.display = "";
-        }
+        groupConfig = data;
         renderWebhookStatus();
     } catch (_) {}
 }
@@ -788,7 +788,7 @@ function renderWebhookStatus() {
     const alert = document.getElementById("webhookAlert");
     if (!badge || !alert) return;
 
-    const hasGroupWebhook = !!(groupWpConfig && groupWpConfig.webhook_url);
+    const hasGroupWebhook = !!(groupConfig && groupConfig.webhook_url);
     const delivered       = genData?.webhook_delivered_at;
     const error           = genData?.webhook_error;
 
@@ -840,69 +840,25 @@ async function retryWebhook() {
     }
 }
 
-function openPublishModal() {
-    const siteLabel = document.getElementById("publishSiteLabel");
-    siteLabel.textContent = groupWpConfig?.wp_site_url
-        ? 'Publishing to: ' + groupWpConfig.wp_site_url
-        : '';
-
-    const postUrlEl   = document.getElementById("publishPostUrl");
-    const postLinkEl  = document.getElementById("publishPostLink");
-    if (genData?.wp_post_url) {
-        postLinkEl.href        = genData.wp_post_url;
-        postLinkEl.textContent = genData.wp_post_url;
-        postUrlEl.style.display = "";
-    } else {
-        postUrlEl.style.display = "none";
-    }
-
-    document.getElementById("publishResult").style.display = "none";
-    document.getElementById("publishModal").classList.add("open");
-    document.getElementById("publishOverlay").classList.add("visible");
-}
-
-function closePublishModal() {
-    document.getElementById("publishModal").classList.remove("open");
-    document.getElementById("publishOverlay").classList.remove("visible");
-}
-
-async function publishContent(postStatus) {
-    const id       = new URLSearchParams(window.location.search).get("id");
-    const draftBtn = document.getElementById("btnPublishDraft");
-    const liveBtn  = document.getElementById("btnPublishLive");
-    const resultEl = document.getElementById("publishResult");
-
-    draftBtn.disabled = true;
-    liveBtn.disabled  = true;
-    resultEl.style.display = "none";
-
+async function sendToNucleus() {
+    const id  = new URLSearchParams(window.location.search).get("id");
+    const btn = document.getElementById("btnNucleus");
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
     try {
-        const res  = await fetch(API_URL + '/api/publish.php', {
-            method: 'POST',
-            headers: authHeaders(),
-            body: JSON.stringify({ generation_id: id, post_status: postStatus })
+        const res  = await fetch(`${API_URL}/api/nucleus/handoff.php`, {
+            method: 'POST', headers: authHeaders(),
+            body: JSON.stringify({ generation_id: id })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Publish failed.');
-
-        genData.wp_post_url = data.post_url;
-
-        const label = postStatus === 'publish' ? 'Published live' : 'Saved as draft';
-        resultEl.innerHTML = '<div style="font-size:13px;color:var(--dark);font-family:\'Inter\',sans-serif;">'
-            + label + ': <a href="' + escapeHtml(data.post_url) + '" target="_blank" rel="noopener" style="color:var(--blue);word-break:break-all;">'
-            + escapeHtml(data.post_url) + '</a></div>';
-        resultEl.style.display = "";
-
-        const postUrlEl  = document.getElementById("publishPostUrl");
-        const postLinkEl = document.getElementById("publishPostLink");
-        postLinkEl.href        = data.post_url;
-        postLinkEl.textContent = data.post_url;
-        postUrlEl.style.display = "";
+        if (!res.ok) throw new Error(data.detail || 'Handoff failed.');
+        genData.handed_off_at = new Date().toISOString();
+        btn.style.display = "none";
+        showToast('Sent to Nucleus — queued for publishing.', 'success');
     } catch (err) {
-        resultEl.innerHTML = '<div style="font-size:13px;color:var(--red);font-family:\'Inter\',sans-serif;">' + escapeHtml(err.message) + '</div>';
-        resultEl.style.display = "";
-    } finally {
-        draftBtn.disabled = false;
-        liveBtn.disabled  = false;
+        showToast(err.message);
+        btn.disabled = false;
+        btn.innerHTML = orig;
     }
 }

@@ -11,6 +11,9 @@ if (!defined('SUPABASE_URL')) {
     define('DIRECTIVES_DIR',       getenv('DIRECTIVES_DIR')       ?: __DIR__ . '/../directives');
     define('NEURONWRITER_API_KEY', getenv('NEURONWRITER_API_KEY') ?: '');
     define('NEURONWRITER_API_URL', getenv('NEURONWRITER_API_URL') ?: 'https://app.neuronwriter.com/neuron-api/0.5/writer');
+    define('NUCLEUS_SERVICE_TOKEN', getenv('NUCLEUS_SERVICE_TOKEN') ?: '');
+    define('NUCLEUS_BASE_URL',      getenv('NUCLEUS_BASE_URL')      ?: '');
+    define('NUCLEUS_TOOL_SLUG',     getenv('NUCLEUS_TOOL_SLUG')     ?: '');
 }
 
 function set_headers() {
