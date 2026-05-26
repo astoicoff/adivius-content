@@ -45,10 +45,11 @@
     </nav>
 
     <div class="sidebar-footer">
-        <div class="user-info">
+<?php $nucleusBase = rtrim(getenv('NUCLEUS_BASE_URL') ?: '', '/'); ?>
+        <a class="user-info"<?= $nucleusBase ? ' href="' . htmlspecialchars($nucleusBase . '/settings/profile') . '" target="_blank" rel="noopener" title="Edit profile in Nucleus"' : '' ?>>
             <div class="user-avatar" id="userAvatar">?</div>
             <div class="user-email" id="userEmail">Loading...</div>
-        </div>
+        </a>
         <button class="btn-logout" onclick="handleLogout()">
             <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
             Sign Out

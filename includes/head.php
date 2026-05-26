@@ -395,5 +395,10 @@
         .toast svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
         @keyframes toastIn  { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(8px); } }
+
+        a.user-info { text-decoration: none; }
+        a.user-info:hover { background: #eef6ff; }
     </style>
+<?php $nucleusBase = rtrim(getenv('NUCLEUS_BASE_URL') ?: '', '/'); ?>
+<script>const NUCLEUS_BASE_URL = "<?= htmlspecialchars($nucleusBase) ?>";</script>
 </head>

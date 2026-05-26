@@ -10,6 +10,9 @@ let currentUser    = null;
 let currentSession = null;
 let cachedGroups   = [];
 
+let _nucleusProfile   = null;
+let _nucleusProfileAt = 0;
+
 async function initAuth(onReady) {
     const { data } = await sb.auth.getSession();
     if (!data.session) { window.location.href = "/login"; return; }
@@ -20,10 +23,45 @@ async function initAuth(onReady) {
     if (onReady) await onReady();
 }
 
-function renderUserInfo() {
+async function renderUserInfo() {
     const email = currentUser.email || "";
     document.getElementById("userEmail").textContent  = email;
     document.getElementById("userAvatar").textContent = email.charAt(0).toUpperCase();
+
+    if (!window.NUCLEUS_BASE_URL) return;
+
+    const now = Date.now();
+    if (_nucleusProfile && (now - _nucleusProfileAt) < 30000) {
+        applyProfile(_nucleusProfile);
+        return;
+    }
+
+    try {
+        const res = await fetch(`${NUCLEUS_BASE_URL}/api/nucleus/profile/me`, {
+            headers: { "Authorization": `Bearer ${currentSession.access_token}` }
+        });
+        if (!res.ok) return;
+        const profile = await res.json();
+        _nucleusProfile   = profile;
+        _nucleusProfileAt = now;
+        applyProfile(profile);
+    } catch (_) {}
+}
+
+function applyProfile(profile) {
+    const name = profile.display_name || currentUser.email || "";
+    document.getElementById("userEmail").textContent = name;
+    const avatarEl = document.getElementById("userAvatar");
+    if (profile.avatar_url) {
+        const img = document.createElement("img");
+        img.src = profile.avatar_url;
+        img.alt = "";
+        img.style.cssText = "width:100%;height:100%;border-radius:50%;object-fit:cover;";
+        avatarEl.textContent = "";
+        avatarEl.appendChild(img);
+    } else {
+        avatarEl.textContent = name.charAt(0).toUpperCase();
+    }
 }
 
 async function handleLogout() {
