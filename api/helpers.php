@@ -14,6 +14,9 @@ if (!defined('SUPABASE_URL')) {
     define('NUCLEUS_SERVICE_TOKEN', getenv('NUCLEUS_SERVICE_TOKEN') ?: '');
     define('NUCLEUS_BASE_URL',      getenv('NUCLEUS_BASE_URL')      ?: '');
     define('NUCLEUS_TOOL_SLUG',     getenv('NUCLEUS_TOOL_SLUG')     ?: '');
+    // Auth uses Nucleus's shared Supabase project; data stays on Content Creator's own project.
+    define('AUTH_SUPABASE_URL',      getenv('AUTH_SUPABASE_URL')      ?: '');
+    define('AUTH_SUPABASE_ANON_KEY', getenv('AUTH_SUPABASE_ANON_KEY') ?: '');
 }
 
 function set_headers() {
@@ -43,12 +46,15 @@ function get_authed_user() {
     }
     // Use a direct curl call — supabase_call() injects the service key which
     // would conflict with the user token in the Authorization header.
-    $ch = curl_init(SUPABASE_URL . '/auth/v1/user');
+    // Auth validates against Nucleus's shared Supabase project.
+    $authUrl = (AUTH_SUPABASE_URL ?: SUPABASE_URL) . '/auth/v1/user';
+    $authKey  = AUTH_SUPABASE_ANON_KEY ?: SUPABASE_ANON_KEY;
+    $ch = curl_init($authUrl);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HTTPHEADER     => [
             'Authorization: Bearer ' . $m[1],
-            'apikey: ' . SUPABASE_ANON_KEY,
+            'apikey: ' . $authKey,
         ],
     ]);
     $body   = curl_exec($ch);
