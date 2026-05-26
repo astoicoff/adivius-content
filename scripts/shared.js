@@ -28,8 +28,6 @@ async function renderUserInfo() {
     document.getElementById("userEmail").textContent  = email;
     document.getElementById("userAvatar").textContent = email.charAt(0).toUpperCase();
 
-    if (typeof NUCLEUS_BASE_URL === 'undefined' || !NUCLEUS_BASE_URL) return;
-
     const now = Date.now();
     if (_nucleusProfile && (now - _nucleusProfileAt) < 30000) {
         applyProfile(_nucleusProfile);
@@ -37,7 +35,7 @@ async function renderUserInfo() {
     }
 
     try {
-        const res = await fetch(`${NUCLEUS_BASE_URL}/api/nucleus/profile/me`, {
+        const res = await fetch(`${API_URL}/api/nucleus/profile`, {
             headers: { "Authorization": `Bearer ${currentSession.access_token}` }
         });
         if (!res.ok) return;
