@@ -28,7 +28,7 @@ async function renderUserInfo() {
     document.getElementById("userEmail").textContent  = email;
     document.getElementById("userAvatar").textContent = email.charAt(0).toUpperCase();
 
-    if (!window.NUCLEUS_BASE_URL) return;
+    if (typeof NUCLEUS_BASE_URL === 'undefined' || !NUCLEUS_BASE_URL) return;
 
     const now = Date.now();
     if (_nucleusProfile && (now - _nucleusProfileAt) < 30000) {
