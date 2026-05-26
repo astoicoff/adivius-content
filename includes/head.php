@@ -151,7 +151,9 @@
             flex-shrink: 0;
         }
 
-        .user-email { font-size: 11px; color: var(--dark); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .user-details { min-width: 0; flex: 1; }
+        .user-display-name { font-size: 11px; font-weight: 600; color: var(--dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .user-email { font-size: 11px; color: var(--text-muted); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
         .btn-logout {
             width: 100%;

@@ -49,8 +49,16 @@ async function renderUserInfo() {
 }
 
 function applyProfile(profile) {
-    const name = profile.display_name || currentUser.email || "";
-    document.getElementById("userEmail").textContent = name;
+    const nameEl = document.getElementById("userDisplayName");
+    if (nameEl) {
+        if (profile.display_name) {
+            nameEl.textContent    = profile.display_name;
+            nameEl.style.display  = "";
+        } else {
+            nameEl.style.display  = "none";
+        }
+    }
+    const initial  = (profile.display_name || currentUser.email || "?").charAt(0).toUpperCase();
     const avatarEl = document.getElementById("userAvatar");
     if (profile.avatar_url) {
         const img = document.createElement("img");
@@ -60,7 +68,7 @@ function applyProfile(profile) {
         avatarEl.textContent = "";
         avatarEl.appendChild(img);
     } else {
-        avatarEl.textContent = name.charAt(0).toUpperCase();
+        avatarEl.textContent = initial;
     }
 }
 
