@@ -135,7 +135,16 @@
                 <option value="">— Not linked —</option>
             </select>
             <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.5;">
-                Content generated in this group will be linked to this client and can be sent to Nucleus for publishing.
+                Links generated content to this client in Nucleus.
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Nucleus Site</label>
+            <select class="form-input" id="nucleusSiteSelect">
+                <option value="">— Not linked —</option>
+            </select>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.5;">
+                Links generated content to this site in Nucleus. Used for site-level publishing pipeline and reporting.
             </div>
         </div>
     </div>

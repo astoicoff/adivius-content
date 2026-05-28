@@ -123,9 +123,10 @@ function create_generation_row($user_id, $keyword, $group_id = null) {
     $row = ['user_id' => $user_id, 'keyword' => $keyword, 'status' => 'generating_instructions'];
     if ($group_id) {
         $row['group_id'] = $group_id;
-        $gRes  = supabase_call('GET', '/rest/v1/content_groups?id=eq.' . urlencode($group_id) . '&select=client_id');
+        $gRes  = supabase_call('GET', '/rest/v1/content_groups?id=eq.' . urlencode($group_id) . '&select=client_id,site_id');
         $gData = json_decode($gRes['body'], true);
         if (!empty($gData[0]['client_id'])) $row['client_id'] = $gData[0]['client_id'];
+        if (!empty($gData[0]['site_id']))   $row['site_id']   = $gData[0]['site_id'];
     }
     $res  = supabase_call('POST', '/rest/v1/content_generations', $row, ['Prefer: return=representation']);
     $data = json_decode($res['body'], true);

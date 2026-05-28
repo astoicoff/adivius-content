@@ -14,7 +14,7 @@ if (!$id) { http_response_code(400); echo json_encode(['detail' => 'Generation I
 function fetch_gen_with_access(string $id, string $user_id, string $min_role = 'viewer'): array|null {
     $res  = supabase_call('GET',
         '/rest/v1/content_generations?id=eq.' . urlencode($id)
-        . '&select=id,keyword,status,content,instructions,serpapi_raw,created_at,group_id,user_id,wp_post_url,webhook_delivered_at,webhook_error,model,client_id,handed_off_at,nucleus_queue_id'
+        . '&select=id,keyword,status,content,instructions,serpapi_raw,created_at,group_id,user_id,wp_post_url,webhook_delivered_at,webhook_error,model,client_id,site_id,handed_off_at,nucleus_queue_id'
     );
     $data = json_decode($res['body'], true);
     if (empty($data)) return null;
@@ -35,11 +35,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$gen) { http_response_code(404); echo json_encode(['detail' => 'Generation not found.']); exit; }
 
     $res = supabase_call('POST', '/rest/v1/content_generations', [
-        'user_id'  => $user_id,
-        'keyword'  => $gen['keyword'],
-        'group_id' => $gen['group_id'] ?? null,
-        'content'  => $gen['content']  ?? null,
-        'status'   => 'completed',
+        'user_id'   => $user_id,
+        'keyword'   => $gen['keyword'],
+        'group_id'  => $gen['group_id']  ?? null,
+        'content'   => $gen['content']   ?? null,
+        'status'    => 'completed',
+        'client_id' => $gen['client_id'] ?? null,
+        'site_id'   => $gen['site_id']   ?? null,
     ], ['Prefer: return=representation']);
     if ($res['status'] >= 400) { http_response_code(500); echo $res['body']; exit; }
     $newRow = json_decode($res['body'], true);

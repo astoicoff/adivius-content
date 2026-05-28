@@ -400,6 +400,22 @@
 
         a.user-info { text-decoration: none; }
         a.user-info:hover { background: #eef6ff; }
+
+        @keyframes nucleusGradient {
+            0%   { background-position: 0% 50%; }
+            50%  { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        #btnNucleus {
+            background: linear-gradient(135deg, #EE2D24, #F7DF58, #6BBD45, #008FD6, #EE2D24);
+            background-size: 300% 300%;
+            animation: nucleusGradient 4s ease infinite;
+            color: #fff;
+            border: none;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.25);
+        }
+        #btnNucleus:hover { animation-duration: 2s; }
+        #btnNucleus:disabled { animation: none; background: #aaa; }
     </style>
 <?php $nucleusBase = rtrim(getenv('NUCLEUS_BASE_URL') ?: '', '/'); ?>
 <script>const NUCLEUS_BASE_URL = "<?= htmlspecialchars($nucleusBase) ?>";</script>

@@ -207,7 +207,10 @@ async function openRulesPanel(type) {
     } else if (isWH) {
         document.getElementById("webhookUrl").value = currentGroupData?.webhook_url || '';
     } else if (isNucleus) {
-        await loadNucleusClientsDropdown(currentGroupData?.client_id || '');
+        await Promise.all([
+            loadNucleusClientsDropdown(currentGroupData?.client_id || ''),
+            loadNucleusSitesDropdown(currentGroupData?.site_id || ''),
+        ]);
     }
 
     const isNew = !editingGroupId;
@@ -231,6 +234,21 @@ async function loadNucleusClientsDropdown(selectedId) {
             ).join('');
     } catch (_) {
         sel.innerHTML = '<option value="">— Could not load clients —</option>';
+    }
+}
+
+async function loadNucleusSitesDropdown(selectedId) {
+    const sel = document.getElementById("nucleusSiteSelect");
+    sel.innerHTML = '<option value="">Loading…</option>';
+    try {
+        const res  = await fetch(`${API_URL}/api/nucleus/sites`, { headers: authHeaders() });
+        const data = await res.json();
+        sel.innerHTML = '<option value="">— Not linked —</option>'
+            + (Array.isArray(data) ? data : []).map(s =>
+                `<option value="${escapeHtml(s.id)}"${s.id === selectedId ? ' selected' : ''}>${escapeHtml(s.name)}${s.domain ? ' — ' + escapeHtml(s.domain) : ''}</option>`
+            ).join('');
+    } catch (_) {
+        sel.innerHTML = '<option value="">— Could not load sites —</option>';
     }
 }
 function closeRulesPanel() {
@@ -287,12 +305,13 @@ async function saveRules() {
     if (activePanelType === 'nucleus') {
         if (!editingGroupId) { showToast('Save the group first before configuring Nucleus.', 'warning'); return; }
         const clientId = document.getElementById("nucleusClientSelect").value || null;
+        const siteId   = document.getElementById("nucleusSiteSelect").value   || null;
         try {
             const res = await fetch(API_URL + '/api/groups.php?id=' + encodeURIComponent(editingGroupId), {
-                method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ client_id: clientId })
+                method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ client_id: clientId, site_id: siteId })
             });
-            if (!res.ok) throw new Error('Failed to save Nucleus client.');
-            if (currentGroupData) currentGroupData.client_id = clientId;
+            if (!res.ok) throw new Error('Failed to save Nucleus settings.');
+            if (currentGroupData) { currentGroupData.client_id = clientId; currentGroupData.site_id = siteId; }
             const ind = document.getElementById("rulesSaveIndicator");
             ind.classList.add("visible");
             setTimeout(() => ind.classList.remove("visible"), 2500);
