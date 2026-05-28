@@ -168,26 +168,33 @@ function renderContentItems(generations) {    renderAnalyticsChart(generations)
 
 // ── Rules panel ───────────────────────────────────────────────────────────────
 
-function openRulesPanel(type) {
+async function openRulesPanel(type) {
     activePanelType = type;
-    const isWP   = type === 'wordpress';
-    const isWH   = type === 'webhook';
-    const isInst = type === 'instructions';
-    const isRulesText = !isWP && !isWH;
+    const isWP      = type === 'wordpress';
+    const isWH      = type === 'webhook';
+    const isNucleus = type === 'nucleus';
+    const isInst    = type === 'instructions';
+    const isRulesText = !isWP && !isWH && !isNucleus;
 
-    const titles = { instructions: 'Instructions Rules', content: 'Content Rules', wordpress: 'WordPress Integration', webhook: 'Webhook on Completion' };
-    const descs  = {
+    const titles = {
+        instructions: 'Instructions Rules', content: 'Content Rules',
+        wordpress: 'WordPress Integration', webhook: 'Webhook on Completion',
+        nucleus: 'Nucleus Integration',
+    };
+    const descs = {
         instructions: 'Used in Phase 1 to guide the content brief generation.',
         content:      'Used in Phase 2 to guide the final article writing.',
         wordpress:    'Connect this group to a WordPress site for one-click publishing.',
         webhook:      'POST every completed generation to a custom URL (Zapier, Make, your own endpoint).',
+        nucleus:      'Link this group to a Nucleus client for direct handoff and publishing.',
     };
     document.getElementById("rulesPanelTitle").textContent = titles[type] || type;
     document.getElementById("rulesPanelDesc").textContent  = descs[type]  || '';
 
     document.getElementById("rulesTextarea").style.display        = isRulesText ? "" : "none";
-    document.getElementById("wpFieldsSection").style.display      = isWP ? "flex" : "none";
-    document.getElementById("webhookFieldsSection").style.display = isWH ? "flex" : "none";
+    document.getElementById("wpFieldsSection").style.display      = isWP      ? "flex" : "none";
+    document.getElementById("webhookFieldsSection").style.display = isWH      ? "flex" : "none";
+    document.getElementById("nucleusFieldsSection").style.display = isNucleus ? "flex" : "none";
 
     if (isRulesText) {
         document.getElementById("rulesTextarea").value = isInst
@@ -199,6 +206,8 @@ function openRulesPanel(type) {
         document.getElementById("wpAppPassword").value = '';
     } else if (isWH) {
         document.getElementById("webhookUrl").value = currentGroupData?.webhook_url || '';
+    } else if (isNucleus) {
+        await loadNucleusClientsDropdown(currentGroupData?.client_id || '');
     }
 
     const isNew = !editingGroupId;
@@ -208,6 +217,21 @@ function openRulesPanel(type) {
     document.getElementById("rulesSaveIndicator").classList.remove("visible");
     document.getElementById("rulesPanel").classList.add("open");
     document.getElementById("rulesOverlay").classList.add("visible");
+}
+
+async function loadNucleusClientsDropdown(selectedId) {
+    const sel = document.getElementById("nucleusClientSelect");
+    sel.innerHTML = '<option value="">Loading…</option>';
+    try {
+        const res  = await fetch(`${API_URL}/api/nucleus/clients`, { headers: authHeaders() });
+        const data = await res.json();
+        sel.innerHTML = '<option value="">— Not linked —</option>'
+            + (Array.isArray(data) ? data : []).map(c =>
+                `<option value="${escapeHtml(c.id)}"${c.id === selectedId ? ' selected' : ''}>${escapeHtml(c.name)}</option>`
+            ).join('');
+    } catch (_) {
+        sel.innerHTML = '<option value="">— Could not load clients —</option>';
+    }
 }
 function closeRulesPanel() {
     document.getElementById("rulesPanel").classList.remove("open");
@@ -253,6 +277,22 @@ async function saveRules() {
             });
             if (!res.ok) throw new Error('Failed to save webhook URL.');
             currentGroupData.webhook_url = url;
+            const ind = document.getElementById("rulesSaveIndicator");
+            ind.classList.add("visible");
+            setTimeout(() => ind.classList.remove("visible"), 2500);
+        } catch (err) { showToast(err.message); }
+        return;
+    }
+
+    if (activePanelType === 'nucleus') {
+        if (!editingGroupId) { showToast('Save the group first before configuring Nucleus.', 'warning'); return; }
+        const clientId = document.getElementById("nucleusClientSelect").value || null;
+        try {
+            const res = await fetch(API_URL + '/api/groups.php?id=' + encodeURIComponent(editingGroupId), {
+                method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ client_id: clientId })
+            });
+            if (!res.ok) throw new Error('Failed to save Nucleus client.');
+            if (currentGroupData) currentGroupData.client_id = clientId;
             const ind = document.getElementById("rulesSaveIndicator");
             ind.classList.add("visible");
             setTimeout(() => ind.classList.remove("visible"), 2500);

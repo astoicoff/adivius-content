@@ -58,6 +58,10 @@
                             <svg viewBox="0 0 24 24"><path d="M10 14a3.5 3.5 0 11-3.5-3.5"/><path d="M19.5 8.5a3.5 3.5 0 11-3.5 3.5"/><path d="M14 10a3.5 3.5 0 11-3.5 3.5"/><line x1="9" y1="14" x2="13" y2="14"/></svg>
                             Webhook
                         </button>
+                        <button class="btn btn-secondary" onclick="openRulesPanel('nucleus')">
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+                            Nucleus
+                        </button>
                         <button id="btnMembers" class="btn btn-secondary" onclick="openMembersPanel()" style="display:none;">
                             <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
                             Members
@@ -120,6 +124,19 @@
             <label class="form-label">Application Password</label>
             <input type="password" class="form-input" id="wpAppPassword" placeholder="xxxx xxxx xxxx xxxx xxxx xxxx">
             <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Generate in WordPress → Users → Profile → Application Passwords</div>
+        </div>
+    </div>
+
+    <!-- Nucleus fields (shown instead of textarea in nucleus mode) -->
+    <div id="nucleusFieldsSection" style="display:none;flex-direction:column;gap:14px;margin-bottom:16px;">
+        <div class="form-group">
+            <label class="form-label">Nucleus Client</label>
+            <select class="form-input" id="nucleusClientSelect">
+                <option value="">— Not linked —</option>
+            </select>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.5;">
+                Content generated in this group will be linked to this client and can be sent to Nucleus for publishing.
+            </div>
         </div>
     </div>
 

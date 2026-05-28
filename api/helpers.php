@@ -121,7 +121,12 @@ function upsert_user_settings($user_id, $openai_key, $perplexity_key, $serpapi_k
 
 function create_generation_row($user_id, $keyword, $group_id = null) {
     $row = ['user_id' => $user_id, 'keyword' => $keyword, 'status' => 'generating_instructions'];
-    if ($group_id) $row['group_id'] = $group_id;
+    if ($group_id) {
+        $row['group_id'] = $group_id;
+        $gRes  = supabase_call('GET', '/rest/v1/content_groups?id=eq.' . urlencode($group_id) . '&select=client_id');
+        $gData = json_decode($gRes['body'], true);
+        if (!empty($gData[0]['client_id'])) $row['client_id'] = $gData[0]['client_id'];
+    }
     $res  = supabase_call('POST', '/rest/v1/content_generations', $row, ['Prefer: return=representation']);
     $data = json_decode($res['body'], true);
     return $data[0]['id'] ?? '';
