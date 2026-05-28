@@ -1,6 +1,8 @@
 <?php
+ob_start();
 require_once __DIR__ . '/helpers.php';
 set_headers();
+ob_clean();
 
 $user    = get_authed_user();
 $user_id = $user['id'];
@@ -88,4 +90,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
 $gen = fetch_gen_with_access($id, $user_id, 'viewer');
 if (!$gen) { http_response_code(404); echo json_encode(['detail' => 'Generation not found.']); exit; }
 unset($gen['user_id']);  // don't expose internal user_id to client
-echo json_encode($gen);
+echo json_encode($gen, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);

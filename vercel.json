@@ -14,6 +14,7 @@
     { "src": "^/api/nucleus/summary$",  "dest": "/api/nucleus/summary.php" },
     { "src": "^/api/nucleus/handoff$",  "dest": "/api/nucleus/handoff.php" },
     { "src": "^/api/nucleus/profile$",  "dest": "/api/nucleus/profile.php" },
+    { "src": "^/api/history$",          "dest": "/api/history.php" },
     { "src": "^/$", "dest": "/dashboard.php" },
     { "src": "^/(.*)", "dest": "/$1" }
   ]

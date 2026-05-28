@@ -71,9 +71,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function loadGeneration(id) {
     try {
-        const res  = await fetch(`${API_URL}/api/generation.php?id=${encodeURIComponent(id)}`, { headers: authHeaders() });
+        const res = await fetch(`${API_URL}/api/generation.php?id=${encodeURIComponent(id)}`, { headers: authHeaders() });
+        if (!res.ok) {
+            let detail = "Failed to load content.";
+            try { const err = await res.json(); detail = err.detail || detail; } catch (_) {}
+            showError(detail); return;
+        }
         const data = await res.json();
-        if (!res.ok) { showError(data.detail || "Failed to load content."); return; }
         genData = data;
 
         const title = toTitleCase(data.keyword);
