@@ -97,7 +97,7 @@ async function openGroupEdit(id) {
             const isMod   = role === 'moderator' || isOwner;
 
             // Settings buttons only for owner
-            document.querySelectorAll('.group-detail-title-row .btn').forEach(btn => {
+            document.querySelectorAll('#groupSettingsBtns .btn').forEach(btn => {
                 if (btn.id === 'btnMembers') return;
                 btn.style.display = isOwner ? '' : 'none';
             });
@@ -228,12 +228,15 @@ async function loadNucleusClientsDropdown(selectedId) {
     try {
         const res  = await fetch(`${API_URL}/api/nucleus/clients`, { headers: authHeaders() });
         const data = await res.json();
+        if (!Array.isArray(data)) {
+            const msg = data._error === 'not_configured' ? '— Nucleus not configured —' : `— Error ${data.status || ''} —`;
+            sel.innerHTML = `<option value="">${msg}</option>`;
+            return;
+        }
         sel.innerHTML = '<option value="">— Not linked —</option>'
-            + (Array.isArray(data) ? data : []).map(c =>
-                `<option value="${escapeHtml(c.id)}"${c.id === selectedId ? ' selected' : ''}>${escapeHtml(c.name)}</option>`
-            ).join('');
+            + data.map(c => `<option value="${escapeHtml(c.id)}"${c.id === selectedId ? ' selected' : ''}>${escapeHtml(c.name)}</option>`).join('');
     } catch (_) {
-        sel.innerHTML = '<option value="">— Could not load clients —</option>';
+        sel.innerHTML = '<option value="">— Could not reach Nucleus —</option>';
     }
 }
 
@@ -243,12 +246,15 @@ async function loadNucleusSitesDropdown(selectedId) {
     try {
         const res  = await fetch(`${API_URL}/api/nucleus/sites`, { headers: authHeaders() });
         const data = await res.json();
+        if (!Array.isArray(data)) {
+            const msg = data._error === 'not_configured' ? '— Nucleus not configured —' : `— Error ${data.status || ''} —`;
+            sel.innerHTML = `<option value="">${msg}</option>`;
+            return;
+        }
         sel.innerHTML = '<option value="">— Not linked —</option>'
-            + (Array.isArray(data) ? data : []).map(s =>
-                `<option value="${escapeHtml(s.id)}"${s.id === selectedId ? ' selected' : ''}>${escapeHtml(s.name)}${s.domain ? ' — ' + escapeHtml(s.domain) : ''}</option>`
-            ).join('');
+            + data.map(s => `<option value="${escapeHtml(s.id)}"${s.id === selectedId ? ' selected' : ''}>${escapeHtml(s.name)}${s.domain ? ' — ' + escapeHtml(s.domain) : ''}</option>`).join('');
     } catch (_) {
-        sel.innerHTML = '<option value="">— Could not load sites —</option>';
+        sel.innerHTML = '<option value="">— Could not reach Nucleus —</option>';
     }
 }
 function closeRulesPanel() {

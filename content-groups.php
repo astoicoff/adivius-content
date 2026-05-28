@@ -42,7 +42,7 @@
                     <input type="text" class="group-detail-name-input" id="groupDetailName"
                            placeholder="Group name..." onblur="saveGroupName()">
                 </div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <div id="groupSettingsBtns" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                     <button class="btn btn-secondary" onclick="openRulesPanel('instructions')">
                         <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                         Instructions Rules
@@ -59,13 +59,13 @@
                         <svg viewBox="0 0 24 24"><path d="M10 14a3.5 3.5 0 11-3.5-3.5"/><path d="M19.5 8.5a3.5 3.5 0 11-3.5 3.5"/><path d="M14 10a3.5 3.5 0 11-3.5 3.5"/><line x1="9" y1="14" x2="13" y2="14"/></svg>
                         Webhook
                     </button>
-                    <button class="btn btn-nucleus" onclick="openRulesPanel('nucleus')">
-                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
-                        Nucleus
-                    </button>
                     <button id="btnMembers" class="btn btn-secondary" onclick="openMembersPanel()" style="display:none;">
                         <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
                         Members
+                    </button>
+                    <button class="btn btn-nucleus" onclick="openRulesPanel('nucleus')">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+                        Nucleus
                     </button>
                 </div>
             </div>

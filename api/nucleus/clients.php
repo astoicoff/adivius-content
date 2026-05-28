@@ -7,7 +7,7 @@ ob_clean();
 get_authed_user();
 
 if (!NUCLEUS_BASE_URL || !NUCLEUS_SERVICE_TOKEN) {
-    echo json_encode([]);
+    echo json_encode(['_error' => 'not_configured']);
     exit;
 }
 
@@ -25,5 +25,8 @@ $body = curl_exec($ch);
 $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
-http_response_code($code === 200 ? 200 : 200);
-echo $code === 200 ? $body : json_encode([]);
+if ($code === 200) {
+    echo $body;
+} else {
+    echo json_encode(['_error' => 'nucleus_error', 'status' => $code]);
+}
