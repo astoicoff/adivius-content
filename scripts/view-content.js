@@ -109,10 +109,7 @@ async function loadGeneration(id) {
         loadGroupConfig(data.group_id);
         loadVersions(data.id);
 
-        // Show Send to Nucleus button when piece is complete and not yet handed off
-        if (data.status === 'completed' && !data.handed_off_at) {
-            document.getElementById("btnNucleus").style.display = "";
-        }
+        renderPublishButtons();
         renderWebhookStatus();
     } catch (err) {
         showError(err.message);
@@ -844,6 +841,22 @@ async function retryWebhook() {
     }
 }
 
+function renderPublishButtons() {
+    if (!genData) return;
+    const isPublished   = genData.status === 'published';
+    const isHandedOff   = !!genData.handed_off_at;
+    const isComplete    = genData.status === 'completed' || isPublished;
+    const canPublish    = isNucleusPublisher();
+
+    // "Send to Nucleus": hide once handed off OR already published
+    const btnNucleus = document.getElementById("btnNucleus");
+    if (btnNucleus) btnNucleus.style.display = (isComplete && !isHandedOff && !isPublished) ? "" : "none";
+
+    // "Publish": Owner/Admin only; hide once published
+    const btnPublish = document.getElementById("btnPublish");
+    if (btnPublish) btnPublish.style.display = (isComplete && canPublish && !isPublished) ? "" : "none";
+}
+
 async function sendToNucleus() {
     const id  = new URLSearchParams(window.location.search).get("id");
     const btn = document.getElementById("btnNucleus");
@@ -858,8 +871,49 @@ async function sendToNucleus() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Handoff failed.');
         genData.handed_off_at = new Date().toISOString();
-        btn.style.display = "none";
+        renderPublishButtons();
         showToast('Sent to Nucleus — queued for publishing.', 'success');
+    } catch (err) {
+        showToast(err.message);
+        btn.disabled = false;
+        btn.innerHTML = orig;
+    }
+}
+
+async function publishContent() {
+    const id  = new URLSearchParams(window.location.search).get("id");
+    const btn = document.getElementById("btnPublish");
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = 'Publishing…';
+    try {
+        // Send to Nucleus first (if group is connected)
+        if (groupConfig?.client_id) {
+            const handoff = await fetch(`${API_URL}/api/nucleus/handoff.php`, {
+                method: 'POST', headers: authHeaders(),
+                body: JSON.stringify({ generation_id: id })
+            });
+            // 409 = already handed off — that's fine, continue to mark published
+            if (!handoff.ok && handoff.status !== 409) {
+                const err = await handoff.json();
+                throw new Error(err.detail || 'Handoff to Nucleus failed.');
+            }
+            if (handoff.ok) genData.handed_off_at = new Date().toISOString();
+        }
+
+        // Mark as published in Content Creator
+        const patch = await fetch(`${API_URL}/api/generation.php?id=${encodeURIComponent(id)}`, {
+            method: 'PATCH', headers: authHeaders(),
+            body: JSON.stringify({ status: 'published' })
+        });
+        if (!patch.ok) {
+            const err = await patch.json();
+            throw new Error(err.detail || 'Failed to mark as published.');
+        }
+        genData.status = 'published';
+        document.getElementById("viewBadge").innerHTML = statusBadge('published');
+        renderPublishButtons();
+        showToast('Published.', 'success');
     } catch (err) {
         showToast(err.message);
         btn.disabled = false;

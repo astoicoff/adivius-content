@@ -70,11 +70,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     $body         = json_decode(file_get_contents('php://input'), true) ?: [];
     $content      = $body['content']      ?? null;
     $instructions = $body['instructions'] ?? null;
-    if ($content === null && $instructions === null) { http_response_code(400); echo json_encode(['detail' => 'content or instructions is required.']); exit; }
+    $status       = $body['status']       ?? null;
+    if ($content === null && $instructions === null && $status === null) {
+        http_response_code(400); echo json_encode(['detail' => 'content, instructions, or status is required.']); exit;
+    }
+    if ($status !== null && $status !== 'published') {
+        http_response_code(400); echo json_encode(['detail' => 'Only status=published is allowed via PATCH.']); exit;
+    }
 
     $patch = [];
     if ($content      !== null) $patch['content']      = $content;
     if ($instructions !== null) $patch['instructions'] = $instructions;
+    if ($status       !== null) $patch['status']       = $status;
 
     $res = supabase_call('PATCH',
         '/rest/v1/content_generations?id=eq.' . urlencode($id),
