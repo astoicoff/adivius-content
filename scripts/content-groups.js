@@ -470,25 +470,43 @@ async function loadMembers() {
     }
 }
 
+function _memberAvatar(name, bg) {
+    const initial = (name || '?').charAt(0).toUpperCase();
+    return `<div style="width:32px;height:32px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;flex-shrink:0;">${initial}</div>`;
+}
+
+function _memberAvatarBg(name) {
+    const palette = ['#EE2D24','#008FD6','#6BBD45','#8B5CF6','#EC4899','#F59E0B'];
+    let h = 0;
+    for (const c of (name || '')) h = ((h * 31) + c.charCodeAt(0)) & 0xffff;
+    return palette[h % palette.length];
+}
+
 function renderMembersPanel(members, invites) {
     const body = document.getElementById("membersPanelBody");
     let html = '';
 
-    // Owner row
+    // Owner row — use the logged-in user's Nucleus profile
+    const ownerName    = _nucleusProfile?.display_name || currentUser?.email || 'You';
+    const ownerInitial = ownerName.charAt(0).toUpperCase();
+    const ownerAvatarHtml = _nucleusProfile?.avatar_url
+        ? `<img src="${escapeHtml(_nucleusProfile.avatar_url)}" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;">`
+        : `<div style="width:32px;height:32px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;flex-shrink:0;">${ownerInitial}</div>`;
+
     html += `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--light-gray);">
-        <div style="width:32px;height:32px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;flex-shrink:0;">O</div>
+        ${ownerAvatarHtml}
         <div style="flex:1;min-width:0;">
-            <div style="font-size:13px;font-weight:600;color:var(--dark);font-family:'Inter',sans-serif;">You (owner)</div>
+            <div style="font-size:13px;font-weight:600;color:var(--dark);font-family:'Inter',sans-serif;">${escapeHtml(ownerName)} <span style="color:var(--text-muted);font-weight:400;">(you)</span></div>
         </div>
         <span class="badge badge-blue">owner</span>
     </div>`;
 
     members.forEach(m => {
-        const initials = (m.display_name || '?')[0].toUpperCase();
-        const label    = escapeHtml(m.display_name || 'Member');
+        const name  = m.display_name || 'Member';
+        const label = escapeHtml(name);
         const roleColors = { moderator: 'badge-yellow', viewer: 'badge-green' };
         html += `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--light-gray);">
-            <div style="width:32px;height:32px;border-radius:50%;background:var(--off-white);border:1px solid var(--light-gray);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--dark);flex-shrink:0;">${initials}</div>
+            ${_memberAvatar(name, _memberAvatarBg(name))}
             <div style="flex:1;min-width:0;">
                 <div style="font-size:13px;font-weight:600;color:var(--dark);font-family:'Inter',sans-serif;">${label}</div>
             </div>
