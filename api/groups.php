@@ -136,6 +136,8 @@ if ($method === 'GET') {
     $role = check_group_access($user_id, $id, 'owner');
     if (!$role) { http_response_code(403); echo json_encode(['detail' => 'Only the group owner can delete it.']); exit; }
 
-    supabase_call('DELETE', '/rest/v1/content_groups?id=eq.' . urlencode($id));
+    supabase_call('DELETE', '/rest/v1/content_generations?group_id=eq.'      . urlencode($id));
+    supabase_call('DELETE', '/rest/v1/content_group_members?group_id=eq.'    . urlencode($id));
+    supabase_call('DELETE', '/rest/v1/content_groups?id=eq.'                 . urlencode($id));
     echo json_encode(['status' => 'deleted']);
 }

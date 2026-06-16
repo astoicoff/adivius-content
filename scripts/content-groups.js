@@ -130,6 +130,30 @@ async function saveGroupName() {
     } catch (_) {}
 }
 
+async function deleteGroup() {
+    if (!editingGroupId) return;
+    const name  = currentGroupData?.name || 'this group';
+    const count = (currentGroupData?.generations || []).length;
+    const noun  = count === 1 ? '1 piece of content' : `${count} pieces of content`;
+    const msg   = count > 0
+        ? `Delete "${name}"?\n\nThis will permanently delete ${noun} inside it. This cannot be undone.`
+        : `Delete "${name}"? This cannot be undone.`;
+    if (!confirm(msg)) return;
+
+    try {
+        const res = await fetch(`${API_URL}/api/groups.php?id=${encodeURIComponent(editingGroupId)}`, {
+            method: 'DELETE', headers: authHeaders()
+        });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Failed to delete group.'); }
+        await loadGroups();
+        showGroupsList();
+        renderGroups(cachedGroups);
+    } catch (e) {
+        document.getElementById("groupEditAlert").className   = "alert alert-error visible";
+        document.getElementById("groupEditAlert").textContent = e.message || 'Failed to delete group.';
+    }
+}
+
 // ── Content items — simple links to view-content ──────────────────────────────
 
 function renderContentItems(generations) {    renderAnalyticsChart(generations);
