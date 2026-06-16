@@ -56,7 +56,7 @@
                         WordPress
                     </button>
                     <button class="btn btn-secondary" onclick="openRulesPanel('webhook')">
-                        <svg viewBox="0 0 24 24"><path d="M10 14a3.5 3.5 0 11-3.5-3.5"/><path d="M19.5 8.5a3.5 3.5 0 11-3.5 3.5"/><path d="M14 10a3.5 3.5 0 11-3.5 3.5"/><line x1="9" y1="14" x2="13" y2="14"/></svg>
+                        <svg viewBox="0 0 24 24"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                         Webhook
                     </button>
                     <button id="btnMembers" class="btn btn-secondary" onclick="openMembersPanel()" style="display:none;">
