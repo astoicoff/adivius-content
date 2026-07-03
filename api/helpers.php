@@ -208,7 +208,27 @@ function parse_content_meta($raw) {
             $bodyStart = $i + 1;
         } else break;
     }
-    return ['meta' => $meta, 'body' => trim(implode("\n", array_slice($lines, $bodyStart)))];
+    $body = trim(implode("\n", array_slice($lines, $bodyStart)));
+
+    // Enrich meta for downstream consumers (webhooks, Nucleus). `url` is the
+    // URL slug in this system; downstream schemas often name that field `slug`.
+    // `description` is derived from the first ~155 chars of the stripped body.
+    $meta['slug']        = $meta['url'] ?? '';
+    $meta['description'] = extract_meta_description($body, $meta);
+
+    return ['meta' => $meta, 'body' => $body];
+}
+
+function extract_meta_description($body, $meta = []) {
+    $text = trim(preg_replace('/\s+/', ' ', strip_tags((string)$body)));
+    if ($text === '') $text = $meta['title'] ?? $meta['h1'] ?? '';
+    if ($text === '') return '';
+    $max = 155;
+    if (mb_strlen($text) <= $max) return $text;
+    $cut = mb_substr($text, 0, $max);
+    $sp  = mb_strrpos($cut, ' ');
+    if ($sp !== false && $sp > 100) $cut = mb_substr($cut, 0, $sp);
+    return $cut . '…';
 }
 
 function fire_webhook($url, $payload) {
