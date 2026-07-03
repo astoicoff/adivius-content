@@ -855,6 +855,20 @@ function renderPublishButtons() {
     // "Publish": Owner/Admin only; hide once published
     const btnPublish = document.getElementById("btnPublish");
     if (btnPublish) btnPublish.style.display = (isComplete && canPublish && !isPublished) ? "" : "none";
+
+    renderNucleusBadge();
+}
+
+function renderNucleusBadge() {
+    const badge = document.getElementById("nucleusBadge");
+    if (!badge) return;
+    if (!genData?.handed_off_at) { badge.style.display = "none"; return; }
+
+    const domain = genData.nucleus_resolved_site_domain;
+    const label  = domain ? `Nucleus · ${domain}` : 'Sent to Nucleus';
+    badge.className   = "badge badge-blue";
+    badge.innerHTML   = `<span class="badge-dot"></span>${escapeHtml(label)}`;
+    badge.style.display = "";
 }
 
 async function sendToNucleus() {
@@ -870,9 +884,16 @@ async function sendToNucleus() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Handoff failed.');
-        genData.handed_off_at = new Date().toISOString();
+        genData.handed_off_at                = new Date().toISOString();
+        genData.nucleus_resolved_site_id     = data.resolved_site_id     || null;
+        genData.nucleus_resolved_site_domain = data.resolved_site_domain || null;
         renderPublishButtons();
-        showToast('Sent to Nucleus — queued for publishing.', 'success');
+        showToast(
+            data.resolved_site_domain
+                ? `Sent to Nucleus → ${data.resolved_site_domain}`
+                : 'Sent to Nucleus — queued for publishing.',
+            'success'
+        );
     } catch (err) {
         showToast(err.message);
         btn.disabled = false;
@@ -898,7 +919,12 @@ async function publishContent() {
                 const err = await handoff.json();
                 throw new Error(err.detail || 'Handoff to Nucleus failed.');
             }
-            if (handoff.ok) genData.handed_off_at = new Date().toISOString();
+            if (handoff.ok) {
+                const hoData = await handoff.json();
+                genData.handed_off_at                = new Date().toISOString();
+                genData.nucleus_resolved_site_id     = hoData.resolved_site_id     || null;
+                genData.nucleus_resolved_site_domain = hoData.resolved_site_domain || null;
+            }
         }
 
         // Mark as published in Content Creator

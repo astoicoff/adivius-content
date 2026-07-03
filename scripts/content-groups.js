@@ -232,10 +232,7 @@ async function openRulesPanel(type) {
         document.getElementById("webhookUrl").value = currentGroupData?.webhook_url || '';
         renderWebhookHeaders(currentGroupData?.webhook_headers);
     } else if (isNucleus) {
-        await Promise.all([
-            loadNucleusClientsDropdown(currentGroupData?.client_id || ''),
-            loadNucleusSitesDropdown(currentGroupData?.site_id || ''),
-        ]);
+        await loadNucleusPanel(currentGroupData?.client_id || '', currentGroupData?.site_id || '');
     }
 
     const isNew = !editingGroupId;
@@ -302,40 +299,71 @@ function collectWebhookHeaders() {
     return out;
 }
 
-async function loadNucleusClientsDropdown(selectedId) {
-    const sel = document.getElementById("nucleusClientSelect");
-    sel.innerHTML = '<option value="">Loading…</option>';
+// Fetch clients + sites in parallel, then render both dropdowns. Sites are
+// labeled as "Client Name · Site Name — domain" using the client_id Nucleus
+// puts on each site (contract v1). Falls back to "Unassigned" for sites
+// with no client, "Unknown client" if the id isn't in the clients list.
+async function loadNucleusPanel(selectedClientId, selectedSiteId) {
+    const clientSel = document.getElementById("nucleusClientSelect");
+    const siteSel   = document.getElementById("nucleusSiteSelect");
+    clientSel.innerHTML = '<option value="">Loading…</option>';
+    siteSel.innerHTML   = '<option value="">Loading…</option>';
+
     try {
-        const res  = await fetch(`${API_URL}/api/nucleus/clients`, { headers: authHeaders() });
-        const data = await res.json();
-        if (!Array.isArray(data)) {
-            const msg = data._error === 'not_configured' ? '— Nucleus not configured —' : `— Error ${data.status || ''} —`;
-            sel.innerHTML = `<option value="">${msg}</option>`;
-            return;
-        }
-        sel.innerHTML = '<option value="">— Not linked —</option>'
-            + data.map(c => `<option value="${escapeHtml(c.id)}"${c.id === selectedId ? ' selected' : ''}>${escapeHtml(c.name)}</option>`).join('');
+        const [clientsRes, sitesRes] = await Promise.all([
+            fetch(`${API_URL}/api/nucleus/clients`, { headers: authHeaders() }),
+            fetch(`${API_URL}/api/nucleus/sites`,   { headers: authHeaders() }),
+        ]);
+        const clients = await clientsRes.json();
+        const sites   = await sitesRes.json();
+
+        clientSel.innerHTML = renderClientOptions(clients, selectedClientId);
+        siteSel.innerHTML   = renderSiteOptions(sites, clients, selectedSiteId);
     } catch (_) {
-        sel.innerHTML = '<option value="">— Could not reach Nucleus —</option>';
+        clientSel.innerHTML = '<option value="">— Could not reach Nucleus —</option>';
+        siteSel.innerHTML   = '<option value="">— Could not reach Nucleus —</option>';
     }
 }
 
-async function loadNucleusSitesDropdown(selectedId) {
-    const sel = document.getElementById("nucleusSiteSelect");
-    sel.innerHTML = '<option value="">Loading…</option>';
-    try {
-        const res  = await fetch(`${API_URL}/api/nucleus/sites`, { headers: authHeaders() });
-        const data = await res.json();
-        if (!Array.isArray(data)) {
-            const msg = data._error === 'not_configured' ? '— Nucleus not configured —' : `— Error ${data.status || ''} —`;
-            sel.innerHTML = `<option value="">${msg}</option>`;
-            return;
-        }
-        sel.innerHTML = '<option value="">— Not linked —</option>'
-            + data.map(s => `<option value="${escapeHtml(s.id)}"${s.id === selectedId ? ' selected' : ''}>${escapeHtml(s.name)}${s.domain ? ' — ' + escapeHtml(s.domain) : ''}</option>`).join('');
-    } catch (_) {
-        sel.innerHTML = '<option value="">— Could not reach Nucleus —</option>';
+function renderClientOptions(clients, selectedId) {
+    if (!Array.isArray(clients)) {
+        const msg = clients?._error === 'not_configured' ? '— Nucleus not configured —' : `— Error ${clients?.status || ''} —`;
+        return `<option value="">${msg}</option>`;
     }
+    return '<option value="">— Not linked —</option>'
+        + clients.map(c => `<option value="${escapeHtml(c.id)}"${c.id === selectedId ? ' selected' : ''}>${escapeHtml(c.name)}</option>`).join('');
+}
+
+function renderSiteOptions(sites, clients, selectedId) {
+    if (!Array.isArray(sites)) {
+        const msg = sites?._error === 'not_configured' ? '— Nucleus not configured —' : `— Error ${sites?.status || ''} —`;
+        return `<option value="">${msg}</option>`;
+    }
+    const clientsById = Array.isArray(clients)
+        ? Object.fromEntries(clients.map(c => [c.id, c.name]))
+        : {};
+
+    // Group sites by client name for readability. "Unassigned" comes last.
+    const buckets = {};
+    for (const s of sites) {
+        const key = s.client_id ? (clientsById[s.client_id] || 'Unknown client') : 'Unassigned';
+        (buckets[key] = buckets[key] || []).push(s);
+    }
+    const orderedKeys = Object.keys(buckets).sort((a, b) => {
+        if (a === 'Unassigned') return 1;
+        if (b === 'Unassigned') return -1;
+        return a.localeCompare(b);
+    });
+
+    const groups = orderedKeys.map(key => {
+        const opts = buckets[key].map(s => {
+            const domain = s.domain ? ' — ' + escapeHtml(s.domain) : '';
+            return `<option value="${escapeHtml(s.id)}"${s.id === selectedId ? ' selected' : ''}>${escapeHtml(s.name)}${domain}</option>`;
+        }).join('');
+        return `<optgroup label="${escapeHtml(key)}">${opts}</optgroup>`;
+    }).join('');
+
+    return '<option value="">— Not linked —</option>' + groups;
 }
 function closeRulesPanel() {
     document.getElementById("rulesPanel").classList.remove("open");

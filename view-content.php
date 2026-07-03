@@ -61,6 +61,7 @@
                 <div style="display:flex;gap:10px;align-items:center;">
                     <span id="viewBadge"></span>
                     <span id="webhookBadge" style="display:none;"></span>
+                    <span id="nucleusBadge" style="display:none;"></span>
                     <div id="viewDate" style="font-size:12px;color:var(--text-muted);font-family:'Inter',sans-serif;"></div>
                 </div>
             </div>

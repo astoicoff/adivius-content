@@ -132,24 +132,28 @@
     </div>
 
     <!-- Nucleus fields (shown instead of textarea in nucleus mode) -->
-    <div id="nucleusFieldsSection" style="display:none;flex-direction:column;gap:14px;margin-bottom:16px;">
+    <div id="nucleusFieldsSection" style="display:none;flex-direction:column;gap:18px;margin-bottom:16px;">
+
+        <!-- Publish target -->
         <div class="form-group">
-            <label class="form-label">Nucleus Client</label>
+            <label class="form-label" style="margin-bottom:2px;">Publish target</label>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;line-height:1.5;">
+                Where <strong>Send to Nucleus</strong> publishes to. Nucleus routes content to whichever site is mapped to this client.
+            </div>
             <select class="form-input" id="nucleusClientSelect">
                 <option value="">— Not linked —</option>
             </select>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.5;">
-                Links generated content to this client in Nucleus.
-            </div>
         </div>
+
+        <!-- Brief inbox -->
         <div class="form-group">
-            <label class="form-label">Nucleus Site</label>
+            <label class="form-label" style="margin-bottom:2px;">Brief inbox</label>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;line-height:1.5;">
+                Which Nucleus site can push briefs into this group. Independent from the publish target — a site can belong to any client.
+            </div>
             <select class="form-input" id="nucleusSiteSelect">
                 <option value="">— Not linked —</option>
             </select>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.5;">
-                Links generated content to this site in Nucleus. Used for site-level publishing pipeline and reporting.
-            </div>
         </div>
     </div>
 

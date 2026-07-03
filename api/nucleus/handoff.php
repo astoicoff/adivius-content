@@ -120,13 +120,25 @@ if ($httpCode !== 202) {
     echo json_encode(['detail' => 'Nucleus returned HTTP ' . $httpCode . ': ' . ($resp['error'] ?? $respBody)]); exit;
 }
 
-$queue_id = $resp['queue_id'] ?? null;
+$queue_id     = $resp['queue_id']             ?? null;
+$resolved_id  = $resp['resolved_site_id']     ?? null;
+$resolved_dom = $resp['resolved_site_domain'] ?? null;
 
-// Record handoff
+// Record handoff (site fields populated when Nucleus's contract >= v1)
 supabase_call('PATCH',
     '/rest/v1/content_generations?id=eq.' . urlencode($gen_id),
-    ['handed_off_at' => date('c'), 'nucleus_queue_id' => $queue_id]
+    [
+        'handed_off_at'                 => date('c'),
+        'nucleus_queue_id'              => $queue_id,
+        'nucleus_resolved_site_id'      => $resolved_id,
+        'nucleus_resolved_site_domain'  => $resolved_dom,
+    ]
 );
 
 ob_end_clean();
-echo json_encode(['ok' => true, 'queue_id' => $queue_id]);
+echo json_encode([
+    'ok'                    => true,
+    'queue_id'              => $queue_id,
+    'resolved_site_id'      => $resolved_id,
+    'resolved_site_domain'  => $resolved_dom,
+]);
