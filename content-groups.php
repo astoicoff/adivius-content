@@ -162,6 +162,19 @@
                 Fires <code>POST</code> with <code>event</code>, <code>generation_id</code>, <code>keyword</code>, <code>meta</code>, <code>content</code>, <code>html</code> when a generation completes. Retries up to 3× on failure.
             </div>
         </div>
+        <div class="form-group">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <label class="form-label" style="margin:0;">Custom Headers <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
+                <button type="button" class="btn btn-secondary" style="padding:4px 10px;font-size:12px;" onclick="addWebhookHeaderRow()">
+                    <svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Add header
+                </button>
+            </div>
+            <div id="webhookHeadersList" style="display:flex;flex-direction:column;gap:6px;"></div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.5;">
+                Sent with every POST. Use for <code>Authorization</code>, <code>X-API-Key</code>, etc. Names accept <code>A-Z</code>, <code>0-9</code>, <code>-</code>, <code>_</code>. <code>Content-Type</code> and <code>User-Agent</code> are managed automatically.
+            </div>
+        </div>
     </div>
     <div style="display:flex;align-items:center;gap:12px;">
         <button class="btn btn-green" onclick="saveRules()">

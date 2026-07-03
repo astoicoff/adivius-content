@@ -231,10 +231,26 @@ function extract_meta_description($body, $meta = []) {
     return $cut . '…';
 }
 
-function fire_webhook($url, $payload) {
+function fire_webhook($url, $payload, $extra_headers = []) {
     $delays   = [0, 2, 5];
     $attempts = 0;
     $lastErr  = null;
+
+    // Merge user-supplied headers with defaults. Content-Type and User-Agent
+    // are reserved so they can't be overridden by group config.
+    $reserved = ['content-type', 'user-agent'];
+    $headers  = ['Content-Type: application/json', 'User-Agent: AdiviusContentCreator/1.0'];
+    if (is_array($extra_headers)) {
+        foreach ($extra_headers as $name => $value) {
+            $name  = trim((string)$name);
+            $value = trim((string)$value);
+            if ($name === '' || $value === '')                     continue;
+            if (!preg_match('/^[A-Za-z0-9\-_]+$/', $name))         continue;
+            if (in_array(strtolower($name), $reserved, true))      continue;
+            $headers[] = $name . ': ' . $value;
+        }
+    }
+
     foreach ($delays as $delay) {
         if ($delay) sleep($delay);
         $attempts++;
@@ -243,10 +259,7 @@ function fire_webhook($url, $payload) {
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => json_encode($payload),
-            CURLOPT_HTTPHEADER     => [
-                'Content-Type: application/json',
-                'User-Agent: AdiviusContentCreator/1.0',
-            ],
+            CURLOPT_HTTPHEADER     => $headers,
             CURLOPT_TIMEOUT        => 10,
             CURLOPT_CONNECTTIMEOUT => 5,
             CURLOPT_SSL_VERIFYPEER => true,

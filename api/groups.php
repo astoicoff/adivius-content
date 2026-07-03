@@ -122,6 +122,20 @@ if ($method === 'GET') {
     if (array_key_exists('wp_username',     $body)) $update['wp_username']     = $body['wp_username'];
     if (array_key_exists('wp_app_password', $body)) $update['wp_app_password'] = $body['wp_app_password'];
     if (array_key_exists('webhook_url',     $body)) $update['webhook_url']     = $body['webhook_url'];
+    if (array_key_exists('webhook_headers', $body)) {
+        // Sanitize: keep only string→string pairs with valid header names.
+        $clean = [];
+        if (is_array($body['webhook_headers'])) {
+            foreach ($body['webhook_headers'] as $k => $v) {
+                $k = trim((string)$k); $v = trim((string)$v);
+                if ($k === '' || $v === '')                    continue;
+                if (!preg_match('/^[A-Za-z0-9\-_]+$/', $k))    continue;
+                if (in_array(strtolower($k), ['content-type','user-agent'], true)) continue;
+                $clean[$k] = $v;
+            }
+        }
+        $update['webhook_headers'] = $clean ?: null;
+    }
     if (array_key_exists('client_id',       $body)) $update['client_id']       = $body['client_id'] ?: null;
     if (array_key_exists('site_id',         $body)) $update['site_id']         = $body['site_id']   ?: null;
 

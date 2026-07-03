@@ -28,7 +28,7 @@ try {
     $grpRes = supabase_call('GET',
         '/rest/v1/content_groups?id=eq.' . urlencode($gen['group_id'])
         . '&user_id=eq.' . urlencode($user_id)
-        . '&select=name,webhook_url'
+        . '&select=name,webhook_url,webhook_headers'
     );
     $grp = json_decode($grpRes['body'], true)[0] ?? null;
     if (!$grp || empty($grp['webhook_url'])) {
@@ -48,7 +48,9 @@ try {
         'content'       => $gen['content'],
         'html'          => $parsed['body'],
     ];
-    $result = fire_webhook($grp['webhook_url'], $payload);
+    $webhook_headers = $grp['webhook_headers'] ?? null;
+    if (is_string($webhook_headers)) $webhook_headers = json_decode($webhook_headers, true);
+    $result = fire_webhook($grp['webhook_url'], $payload, is_array($webhook_headers) ? $webhook_headers : []);
 
     if ($result['ok']) {
         $now = date('c');

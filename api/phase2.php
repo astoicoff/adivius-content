@@ -20,7 +20,7 @@ $perp_key = $settings['perplexity_key'] ?: '';
 if (!check_group_access($user_id, $group_id, 'moderator')) {
     http_response_code(403); echo json_encode(['detail' => 'Content group not found or insufficient permissions.']); exit;
 }
-$group_res  = supabase_call('GET', '/rest/v1/content_groups?id=eq.' . urlencode($group_id) . '&select=content_rules,webhook_url,name');
+$group_res  = supabase_call('GET', '/rest/v1/content_groups?id=eq.' . urlencode($group_id) . '&select=content_rules,webhook_url,webhook_headers,name');
 $group_data = json_decode($group_res['body'], true);
 if (empty($group_data)) { http_response_code(400); echo json_encode(['detail' => 'Content group not found.']); exit; }
 
@@ -86,7 +86,9 @@ try {
             'content'       => $final_content,
             'html'          => $parsed['body'],
         ];
-        $result = fire_webhook($webhook_url, $payload);
+        $webhook_headers = $group_data[0]['webhook_headers'] ?? null;
+        if (is_string($webhook_headers)) $webhook_headers = json_decode($webhook_headers, true);
+        $result = fire_webhook($webhook_url, $payload, is_array($webhook_headers) ? $webhook_headers : []);
         if ($result['ok']) {
             update_generation_row($generation_id, ['webhook_delivered_at' => date('c'), 'webhook_error' => null]);
         } else {

@@ -230,6 +230,7 @@ async function openRulesPanel(type) {
         document.getElementById("wpAppPassword").value = '';
     } else if (isWH) {
         document.getElementById("webhookUrl").value = currentGroupData?.webhook_url || '';
+        renderWebhookHeaders(currentGroupData?.webhook_headers);
     } else if (isNucleus) {
         await Promise.all([
             loadNucleusClientsDropdown(currentGroupData?.client_id || ''),
@@ -244,6 +245,61 @@ async function openRulesPanel(type) {
     document.getElementById("rulesSaveIndicator").classList.remove("visible");
     document.getElementById("rulesPanel").classList.add("open");
     document.getElementById("rulesOverlay").classList.add("visible");
+}
+
+// ── Webhook headers ──────────────────────────────────────────────────────────
+
+const HEADER_NAME_RE = /^[A-Za-z0-9\-_]+$/;
+const RESERVED_HEADER_NAMES = new Set(['content-type', 'user-agent']);
+
+function renderWebhookHeaders(headers) {
+    const list = document.getElementById("webhookHeadersList");
+    list.innerHTML = '';
+    const entries = (headers && typeof headers === 'object') ? Object.entries(headers) : [];
+    if (entries.length === 0) {
+        addWebhookHeaderRow();   // one empty row to hint at the UI
+        return;
+    }
+    entries.forEach(([k, v]) => addWebhookHeaderRow(k, v));
+}
+
+function addWebhookHeaderRow(name = '', value = '') {
+    const list = document.getElementById("webhookHeadersList");
+    const row  = document.createElement("div");
+    row.className = "webhook-header-row";
+    row.style.cssText = "display:flex;gap:6px;align-items:stretch;";
+    row.innerHTML = `
+        <input type="text" class="form-input" placeholder="Header name"
+            style="flex:0 0 40%;font-family:'Inter',monospace;font-size:12.5px;">
+        <input type="text" class="form-input" placeholder="Value"
+            style="flex:1;font-family:'Inter',monospace;font-size:12.5px;">
+        <button type="button" class="btn btn-secondary" title="Remove"
+            style="padding:0 10px;flex-shrink:0;"
+            onclick="this.parentElement.remove()">
+            <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>`;
+    const [nameEl, valueEl] = row.querySelectorAll('input');
+    nameEl.value  = name;
+    valueEl.value = value;
+    list.appendChild(row);
+}
+
+// Returns {name: value} object, or null if a validation error was shown.
+function collectWebhookHeaders() {
+    const rows = document.querySelectorAll("#webhookHeadersList .webhook-header-row");
+    const out  = {};
+    for (const row of rows) {
+        const [nameEl, valueEl] = row.querySelectorAll('input');
+        const name  = (nameEl?.value  || '').trim();
+        const value = (valueEl?.value || '').trim();
+        if (!name && !value) continue;   // silently drop fully-empty rows
+        if (!name) { showToast('Header value has no name.', 'warning'); return null; }
+        if (!HEADER_NAME_RE.test(name)) { showToast(`Invalid header name: "${name}". Use letters, digits, -, _.`, 'warning'); return null; }
+        if (RESERVED_HEADER_NAMES.has(name.toLowerCase())) { showToast(`"${name}" is managed automatically and cannot be set.`, 'warning'); return null; }
+        if (!value) { showToast(`Header "${name}" needs a value.`, 'warning'); return null; }
+        out[name] = value;
+    }
+    return out;
 }
 
 async function loadNucleusClientsDropdown(selectedId) {
@@ -319,12 +375,16 @@ async function saveRules() {
         if (!editingGroupId) { showToast('Save the group first before configuring a webhook.', 'warning'); return; }
         const url = document.getElementById("webhookUrl").value.trim();
         if (url && !/^https?:\/\//i.test(url)) { showToast('Webhook URL must start with http:// or https://', 'warning'); return; }
+        const headers = collectWebhookHeaders();
+        if (headers === null) return;   // showToast already fired inside for invalid name
         try {
             const res = await fetch(API_URL + '/api/groups.php?id=' + encodeURIComponent(editingGroupId), {
-                method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ webhook_url: url })
+                method: 'PATCH', headers: authHeaders(),
+                body: JSON.stringify({ webhook_url: url, webhook_headers: headers })
             });
-            if (!res.ok) throw new Error('Failed to save webhook URL.');
-            currentGroupData.webhook_url = url;
+            if (!res.ok) throw new Error('Failed to save webhook.');
+            currentGroupData.webhook_url     = url;
+            currentGroupData.webhook_headers = headers;
             const ind = document.getElementById("rulesSaveIndicator");
             ind.classList.add("visible");
             setTimeout(() => ind.classList.remove("visible"), 2500);
