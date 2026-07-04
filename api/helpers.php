@@ -138,16 +138,6 @@ function update_generation_row($id, $fields) {
     supabase_call('PATCH', '/rest/v1/content_generations?id=eq.' . urlencode($id), $fields);
 }
 
-function load_directive($filename) {
-    $path = DIRECTIVES_DIR . '/' . $filename;
-    if (!file_exists($path)) {
-        http_response_code(500);
-        echo json_encode(['detail' => "Directive `$filename` not found."]);
-        exit;
-    }
-    return file_get_contents($path);
-}
-
 function call_serpapi($keyword, $api_key) {
     if (!$api_key) {
         return ['text' => '[Mock SerpApi Data: Missing API Key]', 'urls' => [

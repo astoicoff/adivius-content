@@ -51,7 +51,7 @@ if (!NUCLEUS_BASE_URL || !NUCLEUS_SERVICE_TOKEN) {
     echo json_encode(['detail' => 'Nucleus integration is not configured on this server.']); exit;
 }
 
-// Parse meta prefix from content (same logic as publish.php / seo-apply.php)
+// Parse meta prefix from content (same logic as seo-apply.php)
 $raw      = $gen['content'] ?? '';
 $lines    = explode("\n", $raw);
 $meta     = [];

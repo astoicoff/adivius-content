@@ -14,7 +14,6 @@ let _nucleusProfile   = null;
 let _nucleusProfileAt = 0;
 let _nucleusRole      = null;  // 'owner'|'admin'|'member'|'viewer'|null
 
-function getNucleusRole() { return _nucleusRole; }
 function isNucleusPublisher() { return _nucleusRole === 'owner' || _nucleusRole === 'admin'; }
 
 async function initAuth(onReady) {

@@ -318,8 +318,6 @@
         .no-groups-prompt { text-align: center; padding: 48px 20px; color: var(--text-muted); font-size: 13px; }
         .no-groups-prompt svg { width: 40px; height: 40px; stroke: var(--light-gray); fill: none; stroke-width: 1.5; display: block; margin: 0 auto 12px; }
         .groups-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-        .section-divider { border: none; border-top: 1px solid var(--light-gray); margin: 24px 0; }
-        .group-edit-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
         .btn-back { background: none; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 500; color: var(--text-muted); padding: 6px 0; transition: color 0.15s; text-decoration: none; }
         .btn-back:hover { color: var(--dark); }
         .btn-back svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -350,12 +348,9 @@
         /* ── Content Items ── */
         .content-item { border: 1px solid var(--light-gray); border-radius: 10px; margin-bottom: 10px; background: var(--card); overflow: hidden; transition: border-color 0.15s; }
         .content-item:hover { border-color: #aad4f0; }
-        .content-item.expanded { border-color: var(--blue); }
         .content-item-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; cursor: pointer; user-select: none; gap: 12px; }
         .content-item-title { font-size: 13px; font-weight: 600; color: var(--dark); margin-bottom: 3px; }
         .content-item-date { font-size: 11px; color: var(--text-muted); font-family: 'Inter', sans-serif; }
-        .content-item-body { padding: 16px; border-top: 1px solid var(--light-gray); display: none; }
-        .content-item.expanded .content-item-body { display: block; }
         .content-view-bar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
         .content-rendered { line-height: 1.8; font-size: 14px; color: var(--dark); overflow-y: auto; padding: 20px; background: var(--off-white); border-radius: 8px; border: 1px solid var(--light-gray); }
         .content-rendered h1 { font-size: 22px; font-weight: 700; margin: 16px 0 8px; }
