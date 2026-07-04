@@ -138,9 +138,9 @@
         <div class="form-group">
             <label class="form-label" style="margin-bottom:2px;">Publish target</label>
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;line-height:1.5;">
-                Where <strong>Send to Nucleus</strong> publishes to. Nucleus routes content to whichever site is mapped to this client.
+                The Nucleus site this group's content publishes to on <strong>Send to Nucleus</strong>. Content lives on sites in Nucleus, so this is where the article ends up. The site's parent client is set automatically.
             </div>
-            <select class="form-input" id="nucleusClientSelect">
+            <select class="form-input" id="nucleusPublishSiteSelect">
                 <option value="">— Not linked —</option>
             </select>
         </div>

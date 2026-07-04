@@ -232,7 +232,7 @@ async function openRulesPanel(type) {
         document.getElementById("webhookUrl").value = currentGroupData?.webhook_url || '';
         renderWebhookHeaders(currentGroupData?.webhook_headers);
     } else if (isNucleus) {
-        await loadNucleusPanel(currentGroupData?.client_id || '', currentGroupData?.site_id || '');
+        await loadNucleusPanel(currentGroupData?.publish_site_id || '', currentGroupData?.site_id || '');
     }
 
     const isNew = !editingGroupId;
@@ -299,15 +299,18 @@ function collectWebhookHeaders() {
     return out;
 }
 
-// Fetch clients + sites in parallel, then render both dropdowns. Sites are
-// labeled as "Client Name · Site Name — domain" using the client_id Nucleus
-// puts on each site (contract v1). Falls back to "Unassigned" for sites
-// with no client, "Unknown client" if the id isn't in the clients list.
-async function loadNucleusPanel(selectedClientId, selectedSiteId) {
-    const clientSel = document.getElementById("nucleusClientSelect");
-    const siteSel   = document.getElementById("nucleusSiteSelect");
-    clientSel.innerHTML = '<option value="">Loading…</option>';
-    siteSel.innerHTML   = '<option value="">Loading…</option>';
+// Fetch clients + sites in parallel, then render BOTH site dropdowns
+// (Publish target + Brief inbox). Sites are labeled by their client via
+// <optgroup>, using client_id Nucleus puts on each site (contract v1).
+// _nucleusSitesById caches the sites so save can look up the parent
+// client_id from the chosen publish site without another round-trip.
+let _nucleusSitesById = {};
+
+async function loadNucleusPanel(selectedPublishSiteId, selectedBriefSiteId) {
+    const publishSel = document.getElementById("nucleusPublishSiteSelect");
+    const briefSel   = document.getElementById("nucleusSiteSelect");
+    publishSel.innerHTML = '<option value="">Loading…</option>';
+    briefSel.innerHTML   = '<option value="">Loading…</option>';
 
     try {
         const [clientsRes, sitesRes] = await Promise.all([
@@ -317,21 +320,16 @@ async function loadNucleusPanel(selectedClientId, selectedSiteId) {
         const clients = await clientsRes.json();
         const sites   = await sitesRes.json();
 
-        clientSel.innerHTML = renderClientOptions(clients, selectedClientId);
-        siteSel.innerHTML   = renderSiteOptions(sites, clients, selectedSiteId);
-    } catch (_) {
-        clientSel.innerHTML = '<option value="">— Could not reach Nucleus —</option>';
-        siteSel.innerHTML   = '<option value="">— Could not reach Nucleus —</option>';
-    }
-}
+        _nucleusSitesById = Array.isArray(sites)
+            ? Object.fromEntries(sites.map(s => [s.id, s]))
+            : {};
 
-function renderClientOptions(clients, selectedId) {
-    if (!Array.isArray(clients)) {
-        const msg = clients?._error === 'not_configured' ? '— Nucleus not configured —' : `— Error ${clients?.status || ''} —`;
-        return `<option value="">${msg}</option>`;
+        publishSel.innerHTML = renderSiteOptions(sites, clients, selectedPublishSiteId);
+        briefSel.innerHTML   = renderSiteOptions(sites, clients, selectedBriefSiteId);
+    } catch (_) {
+        publishSel.innerHTML = '<option value="">— Could not reach Nucleus —</option>';
+        briefSel.innerHTML   = '<option value="">— Could not reach Nucleus —</option>';
     }
-    return '<option value="">— Not linked —</option>'
-        + clients.map(c => `<option value="${escapeHtml(c.id)}"${c.id === selectedId ? ' selected' : ''}>${escapeHtml(c.name)}</option>`).join('');
 }
 
 function renderSiteOptions(sites, clients, selectedId) {
@@ -422,14 +420,22 @@ async function saveRules() {
 
     if (activePanelType === 'nucleus') {
         if (!editingGroupId) { showToast('Save the group first before configuring Nucleus.', 'warning'); return; }
-        const clientId = document.getElementById("nucleusClientSelect").value || null;
-        const siteId   = document.getElementById("nucleusSiteSelect").value   || null;
+        const publishSiteId = document.getElementById("nucleusPublishSiteSelect").value || null;
+        const briefSiteId   = document.getElementById("nucleusSiteSelect").value        || null;
+        // Derive client_id from the publish site's parent (Nucleus's inbound
+        // endpoint requires client_id even when site_id is provided).
+        const clientId = publishSiteId ? (_nucleusSitesById[publishSiteId]?.client_id || null) : null;
         try {
             const res = await fetch(API_URL + '/api/groups.php?id=' + encodeURIComponent(editingGroupId), {
-                method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ client_id: clientId, site_id: siteId })
+                method: 'PATCH', headers: authHeaders(),
+                body: JSON.stringify({ publish_site_id: publishSiteId, client_id: clientId, site_id: briefSiteId })
             });
             if (!res.ok) throw new Error('Failed to save Nucleus settings.');
-            if (currentGroupData) { currentGroupData.client_id = clientId; currentGroupData.site_id = siteId; }
+            if (currentGroupData) {
+                currentGroupData.publish_site_id = publishSiteId;
+                currentGroupData.client_id       = clientId;
+                currentGroupData.site_id         = briefSiteId;
+            }
             const ind = document.getElementById("rulesSaveIndicator");
             ind.classList.add("visible");
             setTimeout(() => ind.classList.remove("visible"), 2500);

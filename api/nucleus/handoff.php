@@ -21,7 +21,7 @@ if (!$gen_id) {
 // Load generation
 $genRes  = supabase_call('GET',
     '/rest/v1/content_generations?id=eq.' . urlencode($gen_id)
-    . '&select=id,keyword,content,client_id,group_id,user_id,status,handed_off_at'
+    . '&select=id,keyword,content,client_id,publish_site_id,group_id,user_id,status,handed_off_at'
 );
 $genData = json_decode($genRes['body'], true);
 if (empty($genData)) {
@@ -38,7 +38,7 @@ if ($gen['user_id'] !== $user_id && !check_group_access($user_id, $gen['group_id
 
 if (empty($gen['client_id'])) {
     http_response_code(400); ob_end_clean();
-    echo json_encode(['detail' => 'This piece has no client assigned. Set client_id before sending to Nucleus.']); exit;
+    echo json_encode(['detail' => 'This piece has no publish target set. Pick a publish site on the content group first.']); exit;
 }
 
 if (!empty($gen['handed_off_at'])) {
@@ -69,14 +69,17 @@ $body_html = trim(implode("\n", array_slice($lines, $bodyStart)));
 $title     = $meta['title'] ?? $meta['h1'] ?? $gen['keyword'];
 $slug      = $meta['url'] ?? '';
 
-// POST to Nucleus inbound endpoint
+// POST to Nucleus inbound endpoint. Send publish_site_id when set — Nucleus
+// contract v1 uses it verbatim (skips the client's "first publishable site"
+// fallback). client_id is still required by the contract.
 $payload = [
     'client_id'  => $gen['client_id'],
     'title'      => $title,
     'body_html'  => $body_html,
     'source_ref' => $gen['id'],
 ];
-if ($slug) $payload['slug'] = $slug;
+if (!empty($gen['publish_site_id'])) $payload['site_id'] = $gen['publish_site_id'];
+if ($slug)                           $payload['slug']    = $slug;
 
 $ch = curl_init(rtrim(NUCLEUS_BASE_URL, '/') . '/api/inbound/content-ready');
 curl_setopt_array($ch, [

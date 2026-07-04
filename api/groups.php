@@ -138,6 +138,7 @@ if ($method === 'GET') {
     }
     if (array_key_exists('client_id',       $body)) $update['client_id']       = $body['client_id'] ?: null;
     if (array_key_exists('site_id',         $body)) $update['site_id']         = $body['site_id']   ?: null;
+    if (array_key_exists('publish_site_id', $body)) $update['publish_site_id'] = $body['publish_site_id'] ?: null;
 
     $res = supabase_call('PATCH', '/rest/v1/content_groups?id=eq.' . urlencode($id), $update);
     if ($res['status'] >= 400) { http_response_code(500); echo json_encode(['detail' => 'Failed to update group: ' . $res['body']]); exit; }
