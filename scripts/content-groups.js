@@ -232,7 +232,7 @@ async function openRulesPanel(type) {
         document.getElementById("webhookUrl").value = currentGroupData?.webhook_url || '';
         renderWebhookHeaders(currentGroupData?.webhook_headers);
     } else if (isNucleus) {
-        await loadNucleusPanel(currentGroupData?.publish_site_id || '', currentGroupData?.site_id || '');
+        await loadNucleusPanel(currentGroupData?.site_id || '');
     }
 
     const isNew = !editingGroupId;
@@ -299,18 +299,15 @@ function collectWebhookHeaders() {
     return out;
 }
 
-// Fetch clients + sites in parallel, then render BOTH site dropdowns
-// (Publish target + Brief inbox). Sites are labeled by their client via
-// <optgroup>, using client_id Nucleus puts on each site (contract v1).
-// _nucleusSitesById caches the sites so save can look up the parent
-// client_id from the chosen publish site without another round-trip.
+// Fetch clients + sites in parallel, then render the site dropdown. Sites
+// are grouped by their client via <optgroup>, using client_id Nucleus puts
+// on each site (contract v1). _nucleusSitesById caches the sites so save
+// can look up the parent client_id from the chosen site.
 let _nucleusSitesById = {};
 
-async function loadNucleusPanel(selectedPublishSiteId, selectedBriefSiteId) {
-    const publishSel = document.getElementById("nucleusPublishSiteSelect");
-    const briefSel   = document.getElementById("nucleusSiteSelect");
-    publishSel.innerHTML = '<option value="">Loading…</option>';
-    briefSel.innerHTML   = '<option value="">Loading…</option>';
+async function loadNucleusPanel(selectedSiteId) {
+    const siteSel = document.getElementById("nucleusSiteSelect");
+    siteSel.innerHTML = '<option value="">Loading…</option>';
 
     try {
         const [clientsRes, sitesRes] = await Promise.all([
@@ -324,11 +321,9 @@ async function loadNucleusPanel(selectedPublishSiteId, selectedBriefSiteId) {
             ? Object.fromEntries(sites.map(s => [s.id, s]))
             : {};
 
-        publishSel.innerHTML = renderSiteOptions(sites, clients, selectedPublishSiteId);
-        briefSel.innerHTML   = renderSiteOptions(sites, clients, selectedBriefSiteId);
+        siteSel.innerHTML = renderSiteOptions(sites, clients, selectedSiteId);
     } catch (_) {
-        publishSel.innerHTML = '<option value="">— Could not reach Nucleus —</option>';
-        briefSel.innerHTML   = '<option value="">— Could not reach Nucleus —</option>';
+        siteSel.innerHTML = '<option value="">— Could not reach Nucleus —</option>';
     }
 }
 
@@ -420,21 +415,19 @@ async function saveRules() {
 
     if (activePanelType === 'nucleus') {
         if (!editingGroupId) { showToast('Save the group first before configuring Nucleus.', 'warning'); return; }
-        const publishSiteId = document.getElementById("nucleusPublishSiteSelect").value || null;
-        const briefSiteId   = document.getElementById("nucleusSiteSelect").value        || null;
-        // Derive client_id from the publish site's parent (Nucleus's inbound
-        // endpoint requires client_id even when site_id is provided).
-        const clientId = publishSiteId ? (_nucleusSitesById[publishSiteId]?.client_id || null) : null;
+        const siteId = document.getElementById("nucleusSiteSelect").value || null;
+        // Derive client_id from the site's parent — Nucleus's inbound endpoint
+        // requires client_id even when site_id is provided.
+        const clientId = siteId ? (_nucleusSitesById[siteId]?.client_id || null) : null;
         try {
             const res = await fetch(API_URL + '/api/groups.php?id=' + encodeURIComponent(editingGroupId), {
                 method: 'PATCH', headers: authHeaders(),
-                body: JSON.stringify({ publish_site_id: publishSiteId, client_id: clientId, site_id: briefSiteId })
+                body: JSON.stringify({ site_id: siteId, client_id: clientId })
             });
             if (!res.ok) throw new Error('Failed to save Nucleus settings.');
             if (currentGroupData) {
-                currentGroupData.publish_site_id = publishSiteId;
-                currentGroupData.client_id       = clientId;
-                currentGroupData.site_id         = briefSiteId;
+                currentGroupData.site_id   = siteId;
+                currentGroupData.client_id = clientId;
             }
             const ind = document.getElementById("rulesSaveIndicator");
             ind.classList.add("visible");

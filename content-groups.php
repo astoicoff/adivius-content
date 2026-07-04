@@ -132,24 +132,11 @@
     </div>
 
     <!-- Nucleus fields (shown instead of textarea in nucleus mode) -->
-    <div id="nucleusFieldsSection" style="display:none;flex-direction:column;gap:18px;margin-bottom:16px;">
-
-        <!-- Publish target -->
+    <div id="nucleusFieldsSection" style="display:none;flex-direction:column;gap:14px;margin-bottom:16px;">
         <div class="form-group">
-            <label class="form-label" style="margin-bottom:2px;">Publish target</label>
+            <label class="form-label" style="margin-bottom:2px;">Nucleus site</label>
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;line-height:1.5;">
-                The Nucleus site this group's content publishes to on <strong>Send to Nucleus</strong>. Content lives on sites in Nucleus, so this is where the article ends up. The site's parent client is set automatically.
-            </div>
-            <select class="form-input" id="nucleusPublishSiteSelect">
-                <option value="">— Not linked —</option>
-            </select>
-        </div>
-
-        <!-- Brief inbox -->
-        <div class="form-group">
-            <label class="form-label" style="margin-bottom:2px;">Brief inbox</label>
-            <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;line-height:1.5;">
-                Which Nucleus site can push briefs into this group. Independent from the publish target — a site can belong to any client.
+                The Nucleus site this group is bound to. Content is published here on <strong>Send to Nucleus</strong>, and Nucleus can push briefs into this group from here. The site's parent client is set automatically.
             </div>
             <select class="form-input" id="nucleusSiteSelect">
                 <option value="">— Not linked —</option>
