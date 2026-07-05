@@ -36,11 +36,6 @@ if ($gen['user_id'] !== $user_id && !check_group_access($user_id, $gen['group_id
     echo json_encode(['detail' => 'Access denied.']); exit;
 }
 
-if (empty($gen['client_id'])) {
-    http_response_code(400); ob_end_clean();
-    echo json_encode(['detail' => 'This piece has no Nucleus site set. Pick a site on the content group first.']); exit;
-}
-
 if (!empty($gen['handed_off_at'])) {
     http_response_code(409); ob_end_clean();
     echo json_encode(['detail' => 'Already sent to Nucleus on ' . $gen['handed_off_at'] . '.']); exit;
@@ -49,6 +44,64 @@ if (!empty($gen['handed_off_at'])) {
 if (!NUCLEUS_BASE_URL || !NUCLEUS_SERVICE_TOKEN) {
     http_response_code(503); ob_end_clean();
     echo json_encode(['detail' => 'Nucleus integration is not configured on this server.']); exit;
+}
+
+// A publishable piece needs a site (routes the article) AND a client
+// (Nucleus's contract requires it). Both are inherited from the group
+// at generation-creation time. If either is missing, fall back to the
+// group's current value in case the user fixed things after this
+// generation was created; then live-lookup the site on Nucleus in case
+// the client assignment changed there. Backfill anything we resolve.
+if (empty($gen['site_id']) || empty($gen['client_id'])) {
+    $grpRes  = supabase_call('GET', '/rest/v1/content_groups?id=eq.' . urlencode($gen['group_id'] ?? '') . '&select=site_id,client_id');
+    $grpData = json_decode($grpRes['body'], true);
+    $grp     = $grpData[0] ?? [];
+    if (empty($gen['site_id']))   $gen['site_id']   = $grp['site_id']   ?? null;
+    if (empty($gen['client_id'])) $gen['client_id'] = $grp['client_id'] ?? null;
+}
+
+if (empty($gen['site_id'])) {
+    http_response_code(400); ob_end_clean();
+    echo json_encode(['detail' => 'This group has no Nucleus site set. Open the content group and pick a site in the Nucleus panel.']); exit;
+}
+
+if (empty($gen['client_id'])) {
+    // Live-lookup the site on Nucleus — its client_id may have been
+    // assigned after this group was last saved.
+    $ch = curl_init(rtrim(NUCLEUS_BASE_URL, '/') . '/api/nucleus/sites');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER     => [
+            'Authorization: Bearer ' . NUCLEUS_SERVICE_TOKEN,
+            'X-Nucleus-Tool: ' . NUCLEUS_TOOL_SLUG,
+        ],
+        CURLOPT_TIMEOUT        => 10,
+    ]);
+    $sitesBody = curl_exec($ch);
+    $sitesCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($sitesCode === 200) {
+        foreach ((json_decode($sitesBody, true) ?: []) as $s) {
+            if (($s['id'] ?? null) === $gen['site_id']) {
+                if (!empty($s['client_id'])) $gen['client_id'] = $s['client_id'];
+                break;
+            }
+        }
+    }
+
+    if (empty($gen['client_id'])) {
+        http_response_code(400); ob_end_clean();
+        echo json_encode(['detail' => 'The Nucleus site linked to this group has no client assigned. Open Nucleus, assign a client to this site, then try again.']); exit;
+    }
+
+    // Backfill the resolved client_id onto the group so future handoffs
+    // skip the live lookup.
+    if (!empty($gen['group_id'])) {
+        supabase_call('PATCH',
+            '/rest/v1/content_groups?id=eq.' . urlencode($gen['group_id']),
+            ['client_id' => $gen['client_id']]
+        );
+    }
 }
 
 // Parse meta prefix from content (same logic as seo-apply.php)

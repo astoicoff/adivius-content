@@ -29,6 +29,10 @@
             <div class="top-bar-title">New Content</div>
             <div class="top-bar-subtitle">Generate SEO-optimized content in two phases</div>
         </div>
+        <a id="topBarViewBtn" href="#" class="btn btn-blue" style="display:none;padding:6px 12px;font-size:12px;">
+            <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            View this content
+        </a>
     </div>
     <div class="content-area">
 

@@ -366,6 +366,7 @@ async function handlePhase2() {
         document.getElementById("phase2Loading").classList.remove("visible");
         document.getElementById("phase3Section").classList.remove("hidden");
         setStep(3);
+        showViewButton(currentGenerationId, currentGroupId);
     } catch (err) {
         showAlert(`Phase 2 Failed: ${err.message}`);
         document.getElementById("phase2Loading").classList.remove("visible");
@@ -373,6 +374,20 @@ async function handlePhase2() {
     } finally {
         document.getElementById("proceedToPhase2Btn").disabled = false;
     }
+}
+
+function showViewButton(genId, groupId) {
+    const btn = document.getElementById("topBarViewBtn");
+    if (!btn || !genId) return;
+    let url = '/view-content?id=' + encodeURIComponent(genId);
+    if (groupId) url += '&group=' + encodeURIComponent(groupId);
+    btn.href = url;
+    btn.style.display = "";
+}
+
+function hideViewButton() {
+    const btn = document.getElementById("topBarViewBtn");
+    if (btn) btn.style.display = "none";
 }
 
 function copyContent() {
@@ -390,6 +405,7 @@ function resetToNew() {
     document.getElementById("htmlEditor").value   = "";
     document.getElementById("phase2Section").classList.add("hidden");
     document.getElementById("phase3Section").classList.add("hidden");
+    hideViewButton();
     document.getElementById("regenInstructionsBtn").style.display = "none";
     const gb = document.getElementById("generateBriefBtn");
     gb.disabled = false;
@@ -428,6 +444,7 @@ async function resumeGeneration(id) {
         document.getElementById("phase2Section").classList.remove("hidden");
         setStep(2);
         document.getElementById("phase2Section").scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (data.status === 'completed') showViewButton(data.id, data.group_id);
     } catch (err) {
         showAlert('Failed to resume: ' + err.message);
     }

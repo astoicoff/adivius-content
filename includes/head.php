@@ -247,8 +247,8 @@
         .form-textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(0,143,214,0.1); }
 
         /* ── Buttons ── */
-        .btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border: none; border-radius: 8px; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; text-decoration: none; }
-        .btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: none; border-radius: 6px; font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; text-decoration: none; }
+        .btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
         .btn-primary   { background: var(--red);   color: white; }
         .btn-primary:hover { background: #d42620; }
         .btn-secondary { background: var(--off-white); color: var(--dark); border: 1.5px solid var(--light-gray); }
