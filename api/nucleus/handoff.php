@@ -46,62 +46,19 @@ if (!NUCLEUS_BASE_URL || !NUCLEUS_SERVICE_TOKEN) {
     echo json_encode(['detail' => 'Nucleus integration is not configured on this server.']); exit;
 }
 
-// A publishable piece needs a site (routes the article) AND a client
-// (Nucleus's contract requires it). Both are inherited from the group
-// at generation-creation time. If either is missing, fall back to the
-// group's current value in case the user fixed things after this
-// generation was created; then live-lookup the site on Nucleus in case
-// the client assignment changed there. Backfill anything we resolve.
-if (empty($gen['site_id']) || empty($gen['client_id'])) {
-    $grpRes  = supabase_call('GET', '/rest/v1/content_groups?id=eq.' . urlencode($gen['group_id'] ?? '') . '&select=site_id,client_id');
+// A publishable piece needs a site (routes the article). Nucleus's
+// contract v1 (post the §4.1 update) accepts site-only handoffs — no
+// client required. Fall back to the group's current site_id if the
+// generation was created before a site was set.
+if (empty($gen['site_id'])) {
+    $grpRes  = supabase_call('GET', '/rest/v1/content_groups?id=eq.' . urlencode($gen['group_id'] ?? '') . '&select=site_id');
     $grpData = json_decode($grpRes['body'], true);
-    $grp     = $grpData[0] ?? [];
-    if (empty($gen['site_id']))   $gen['site_id']   = $grp['site_id']   ?? null;
-    if (empty($gen['client_id'])) $gen['client_id'] = $grp['client_id'] ?? null;
+    $gen['site_id'] = $grpData[0]['site_id'] ?? null;
 }
 
 if (empty($gen['site_id'])) {
     http_response_code(400); ob_end_clean();
     echo json_encode(['detail' => 'This group has no Nucleus site set. Open the content group and pick a site in the Nucleus panel.']); exit;
-}
-
-if (empty($gen['client_id'])) {
-    // Live-lookup the site on Nucleus — its client_id may have been
-    // assigned after this group was last saved.
-    $ch = curl_init(rtrim(NUCLEUS_BASE_URL, '/') . '/api/nucleus/sites');
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER     => [
-            'Authorization: Bearer ' . NUCLEUS_SERVICE_TOKEN,
-            'X-Nucleus-Tool: ' . NUCLEUS_TOOL_SLUG,
-        ],
-        CURLOPT_TIMEOUT        => 10,
-    ]);
-    $sitesBody = curl_exec($ch);
-    $sitesCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    if ($sitesCode === 200) {
-        foreach ((json_decode($sitesBody, true) ?: []) as $s) {
-            if (($s['id'] ?? null) === $gen['site_id']) {
-                if (!empty($s['client_id'])) $gen['client_id'] = $s['client_id'];
-                break;
-            }
-        }
-    }
-
-    if (empty($gen['client_id'])) {
-        http_response_code(400); ob_end_clean();
-        echo json_encode(['detail' => 'The Nucleus site linked to this group is a personal site (no client). Nucleus\'s current inbound contract requires client_id, so publishing to personal sites is not yet supported. See docs/hub-contract-content-side.md §4.1.']); exit;
-    }
-
-    // Backfill the resolved client_id onto the group so future handoffs
-    // skip the live lookup.
-    if (!empty($gen['group_id'])) {
-        supabase_call('PATCH',
-            '/rest/v1/content_groups?id=eq.' . urlencode($gen['group_id']),
-            ['client_id' => $gen['client_id']]
-        );
-    }
 }
 
 // Parse meta prefix from content (same logic as seo-apply.php)
@@ -122,18 +79,15 @@ $body_html = trim(implode("\n", array_slice($lines, $bodyStart)));
 $title     = $meta['title'] ?? $meta['h1'] ?? $gen['keyword'];
 $slug      = $meta['url'] ?? '';
 
-// POST to Nucleus inbound endpoint. site_id is the group's bound Nucleus
-// site — Nucleus contract v1 uses it verbatim (skips the client's "first
-// publishable site" fallback). client_id is still required by the contract
-// but derived from the site's parent on the group save.
+// POST to Nucleus inbound endpoint. site_id routes the article; Nucleus
+// verifies it belongs to our workspace and hands it to the site's adapter.
 $payload = [
-    'client_id'  => $gen['client_id'],
+    'site_id'    => $gen['site_id'],
     'title'      => $title,
     'body_html'  => $body_html,
     'source_ref' => $gen['id'],
 ];
-if (!empty($gen['site_id'])) $payload['site_id'] = $gen['site_id'];
-if ($slug)                   $payload['slug']    = $slug;
+if ($slug) $payload['slug'] = $slug;
 
 $ch = curl_init(rtrim(NUCLEUS_BASE_URL, '/') . '/api/inbound/content-ready');
 curl_setopt_array($ch, [

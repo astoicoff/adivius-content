@@ -138,12 +138,9 @@
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;line-height:1.5;">
                 The Nucleus site this group is bound to. Content is published here on <strong>Send to Nucleus</strong>, and Nucleus can push briefs into this group from here. The site's parent client is set automatically.
             </div>
-            <select class="form-input" id="nucleusSiteSelect" onchange="onNucleusSiteChange()">
+            <select class="form-input" id="nucleusSiteSelect">
                 <option value="">— Not linked —</option>
             </select>
-            <div id="nucleusSiteWarning" style="display:none;margin-top:8px;padding:8px 10px;background:#FEFCE8;border:1px solid rgba(247,223,88,0.5);border-radius:6px;font-size:11.5px;color:#7a6a00;line-height:1.5;">
-                <strong>Heads up:</strong> this is a personal site (no client on Nucleus). Nucleus's current contract requires client_id to publish, so <em>Send to Nucleus</em> won't work for this site yet. Briefs pushed in still land in this group; publishing back is pending a Nucleus contract change.
-            </div>
         </div>
     </div>
 

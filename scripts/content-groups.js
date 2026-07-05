@@ -325,18 +325,6 @@ async function loadNucleusPanel(selectedSiteId) {
     } catch (_) {
         siteSel.innerHTML = '<option value="">— Could not reach Nucleus —</option>';
     }
-    onNucleusSiteChange();
-}
-
-// Warn when the picked site has no client on Nucleus — Nucleus's inbound
-// endpoint requires client_id, so Send-to-Nucleus will fail for these.
-function onNucleusSiteChange() {
-    const siteSel = document.getElementById("nucleusSiteSelect");
-    const warning = document.getElementById("nucleusSiteWarning");
-    if (!siteSel || !warning) return;
-    const siteId = siteSel.value;
-    const site   = siteId ? _nucleusSitesById[siteId] : null;
-    warning.style.display = (site && !site.client_id) ? "" : "none";
 }
 
 function renderSiteOptions(sites, clients, selectedId) {
