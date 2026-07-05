@@ -429,10 +429,27 @@ function buildDensityHTML(html) {
         </table>`;
     }
 
-    return `<p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">Total words: <strong>${total}</strong></p>
-        <div class="density-section-title">Single-Word Keywords</div>${table(uni)}
-        <div class="density-section-title">Two-Word Keywords</div>${table(bi)}
-        <div class="density-section-title">Three-Word Keywords</div>${table(tri)}`;
+    const tabBtn = (n, label, active) =>
+        `<button class="btn btn-secondary ${active ? 'btn-view-active' : ''}" data-density-tab="${n}" onclick="setDensityTab(${n})" style="padding:5px 12px;font-size:12px;">${label}</button>`;
+
+    return `<p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Total words: <strong>${total}</strong></p>
+        <div style="display:flex;gap:6px;margin-bottom:14px;">
+            ${tabBtn(1, '1 word',  true)}
+            ${tabBtn(2, '2 words', false)}
+            ${tabBtn(3, '3 words', false)}
+        </div>
+        <div data-density-pane="1">${table(uni)}</div>
+        <div data-density-pane="2" style="display:none;">${table(bi)}</div>
+        <div data-density-pane="3" style="display:none;">${table(tri)}</div>`;
+}
+
+function setDensityTab(n) {
+    document.querySelectorAll('[data-density-tab]').forEach(b => {
+        b.classList.toggle('btn-view-active', Number(b.dataset.densityTab) === n);
+    });
+    document.querySelectorAll('[data-density-pane]').forEach(p => {
+        p.style.display = (Number(p.dataset.densityPane) === n) ? '' : 'none';
+    });
 }
 
 // ── SEO Score ─────────────────────────────────────────────────────────────────
