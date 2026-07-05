@@ -15,6 +15,8 @@
     { "src": "^/api/nucleus/summary$",  "dest": "/api/nucleus/summary.php" },
     { "src": "^/api/nucleus/handoff$",  "dest": "/api/nucleus/handoff.php" },
     { "src": "^/api/nucleus/publish-completed$", "dest": "/api/nucleus/publish-completed.php" },
+    { "src": "^/api/nucleus/content-updated$", "dest": "/api/nucleus/content-updated.php" },
+    { "src": "^/api/nucleus/content-returned$", "dest": "/api/nucleus/content-returned.php" },
     { "src": "^/api/nucleus/profile$",   "dest": "/api/nucleus/profile.php" },
     { "src": "^/api/nucleus/clients$",  "dest": "/api/nucleus/clients.php" },
     { "src": "^/api/nucleus/sites$",    "dest": "/api/nucleus/sites.php" },
