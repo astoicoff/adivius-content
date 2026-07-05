@@ -875,6 +875,39 @@ function renderPublishButtons() {
     if (btnPublish) btnPublish.style.display = (isComplete && canPublish && !isHandedOff && !isPublished) ? "" : "none";
 
     renderNucleusBadge();
+    renderNucleusRevisionState();
+}
+
+// Surface Nucleus editorial round-trip state:
+//  - nucleusReturnedAlert (red banner)  when nucleus_returned_at is the newer signal
+//  - nucleusEditBadge     (blue chip)   when nucleus_edited_at is the newer signal
+// (Ordering matters when both are set — the most recent one wins.)
+function renderNucleusRevisionState() {
+    const alertEl = document.getElementById("nucleusReturnedAlert");
+    const chipEl  = document.getElementById("nucleusEditBadge");
+    if (!alertEl || !chipEl) return;
+
+    alertEl.style.display = "none";
+    chipEl.style.display  = "none";
+    if (!genData) return;
+
+    const returnedAt = genData.nucleus_returned_at;
+    const editedAt   = genData.nucleus_edited_at;
+    const returnedT  = returnedAt ? Date.parse(returnedAt) : 0;
+    const editedT    = editedAt   ? Date.parse(editedAt)   : 0;
+
+    if (returnedAt && returnedT >= editedT) {
+        document.getElementById("nucleusReturnedNote").textContent =
+            genData.nucleus_return_note || '(No reason provided.)';
+        document.getElementById("nucleusReturnedWhen").textContent =
+            '· ' + new Date(returnedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+        alertEl.style.display = "flex";
+    } else if (editedAt) {
+        const when = new Date(editedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+        chipEl.className   = "badge badge-blue";
+        chipEl.innerHTML   = `<span class="badge-dot"></span>Edited on Nucleus · ${escapeHtml(when)}`;
+        chipEl.style.display = "";
+    }
 }
 
 function renderNucleusBadge() {
