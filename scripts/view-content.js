@@ -865,13 +865,14 @@ function renderPublishButtons() {
     const isComplete    = genData.status === 'completed' || isPublished;
     const canPublish    = isNucleusPublisher();
 
-    // "Send to Nucleus": hide once handed off OR already published
+    // "Send to Nucleus" and "Publish" both do the handoff. Hide both once
+    // the piece is handed off — Nucleus's queue is now in charge of the
+    // actual publish, and status=published arrives async via Nucleus's
+    // publish-completed callback.
     const btnNucleus = document.getElementById("btnNucleus");
     if (btnNucleus) btnNucleus.style.display = (isComplete && !isHandedOff && !isPublished) ? "" : "none";
-
-    // "Publish": Owner/Admin only; hide once published
     const btnPublish = document.getElementById("btnPublish");
-    if (btnPublish) btnPublish.style.display = (isComplete && canPublish && !isPublished) ? "" : "none";
+    if (btnPublish) btnPublish.style.display = (isComplete && canPublish && !isHandedOff && !isPublished) ? "" : "none";
 
     renderNucleusBadge();
 }
@@ -881,10 +882,16 @@ function renderNucleusBadge() {
     if (!badge) return;
     if (!genData?.handed_off_at) { badge.style.display = "none"; return; }
 
+    const isLive = genData.status === 'published' && genData.wp_post_url;
     const domain = genData.nucleus_resolved_site_domain;
-    const label  = domain ? `Nucleus · ${domain}` : 'Sent to Nucleus';
-    badge.className   = "badge badge-blue";
-    badge.innerHTML   = `<span class="badge-dot"></span>${escapeHtml(label)}`;
+
+    if (isLive) {
+        badge.className = "badge badge-green";
+        badge.innerHTML = `<span class="badge-dot"></span>Live · <a href="${escapeHtml(genData.wp_post_url)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;">${escapeHtml(domain || 'view')}</a>`;
+    } else {
+        badge.className = "badge badge-blue";
+        badge.innerHTML = `<span class="badge-dot"></span>Handed off · ${escapeHtml(domain || 'Nucleus')}`;
+    }
     badge.style.display = "";
 }
 
@@ -923,15 +930,17 @@ async function publishContent() {
     const btn = document.getElementById("btnPublish");
     const orig = btn.innerHTML;
     btn.disabled = true;
-    btn.textContent = 'Publishing…';
+    btn.textContent = 'Sending…';
     try {
-        // Send to Nucleus first (if group is connected)
-        if (groupConfig?.client_id) {
+        // Hand off to Nucleus. Nucleus queues the piece and its adapter
+        // publishes to the live site asynchronously. status stays 'completed'
+        // until Nucleus notifies us via POST /api/nucleus/publish-completed —
+        // then status flips to 'published' with the live URL populated.
+        if (groupConfig?.site_id) {
             const handoff = await fetch(`${API_URL}/api/nucleus/handoff.php`, {
                 method: 'POST', headers: authHeaders(),
                 body: JSON.stringify({ generation_id: id })
             });
-            // 409 = already handed off — that's fine, continue to mark published
             if (!handoff.ok && handoff.status !== 409) {
                 const err = await handoff.json();
                 throw new Error(err.detail || 'Handoff to Nucleus failed.');
@@ -942,21 +951,12 @@ async function publishContent() {
                 genData.nucleus_resolved_site_id     = hoData.resolved_site_id     || null;
                 genData.nucleus_resolved_site_domain = hoData.resolved_site_domain || null;
             }
+        } else {
+            throw new Error('This group has no Nucleus site set. Pick one in the Nucleus panel.');
         }
 
-        // Mark as published in Content Creator
-        const patch = await fetch(`${API_URL}/api/generation.php?id=${encodeURIComponent(id)}`, {
-            method: 'PATCH', headers: authHeaders(),
-            body: JSON.stringify({ status: 'published' })
-        });
-        if (!patch.ok) {
-            const err = await patch.json();
-            throw new Error(err.detail || 'Failed to mark as published.');
-        }
-        genData.status = 'published';
-        document.getElementById("viewBadge").innerHTML = statusBadge('published');
         renderPublishButtons();
-        showToast('Published.', 'success');
+        showToast('Handed off to Nucleus. Live URL will appear once the publish completes.', 'success');
     } catch (err) {
         showToast(err.message);
         btn.disabled = false;
