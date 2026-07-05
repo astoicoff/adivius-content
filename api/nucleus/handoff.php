@@ -91,7 +91,7 @@ if (empty($gen['client_id'])) {
 
     if (empty($gen['client_id'])) {
         http_response_code(400); ob_end_clean();
-        echo json_encode(['detail' => 'The Nucleus site linked to this group has no client assigned. Open Nucleus, assign a client to this site, then try again.']); exit;
+        echo json_encode(['detail' => 'The Nucleus site linked to this group is a personal site (no client). Nucleus\'s current inbound contract requires client_id, so publishing to personal sites is not yet supported. See docs/hub-contract-content-side.md §4.1.']); exit;
     }
 
     // Backfill the resolved client_id onto the group so future handoffs

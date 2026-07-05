@@ -142,7 +142,7 @@
                 <option value="">— Not linked —</option>
             </select>
             <div id="nucleusSiteWarning" style="display:none;margin-top:8px;padding:8px 10px;background:#FEFCE8;border:1px solid rgba(247,223,88,0.5);border-radius:6px;font-size:11.5px;color:#7a6a00;line-height:1.5;">
-                <strong>Heads up:</strong> this site has no client assigned on Nucleus. Send to Nucleus won't work until you assign a client to it in Nucleus's Sites page.
+                <strong>Heads up:</strong> this is a personal site (no client on Nucleus). Nucleus's current contract requires client_id to publish, so <em>Send to Nucleus</em> won't work for this site yet. Briefs pushed in still land in this group; publishing back is pending a Nucleus contract change.
             </div>
         </div>
     </div>
