@@ -135,7 +135,9 @@ $queue_id     = $resp['queue_id']             ?? null;
 $resolved_id  = $resp['resolved_site_id']     ?? null;
 $resolved_dom = $resp['resolved_site_domain'] ?? null;
 
-// Record handoff (site fields populated when Nucleus's contract >= v1)
+// Record handoff (site fields populated when Nucleus's contract >= v1).
+// nucleus_publish_error is cleared — a re-send after a failed publish
+// starts the cycle fresh.
 supabase_call('PATCH',
     '/rest/v1/content_generations?id=eq.' . urlencode($gen_id),
     [
@@ -143,6 +145,7 @@ supabase_call('PATCH',
         'nucleus_queue_id'              => $queue_id,
         'nucleus_resolved_site_id'      => $resolved_id,
         'nucleus_resolved_site_domain'  => $resolved_dom,
+        'nucleus_publish_error'         => null,
     ]
 );
 

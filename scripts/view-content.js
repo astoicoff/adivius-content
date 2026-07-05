@@ -863,16 +863,13 @@ function renderPublishButtons() {
     const isPublished   = genData.status === 'published';
     const isHandedOff   = !!genData.handed_off_at;
     const isComplete    = genData.status === 'completed' || isPublished;
-    const canPublish    = isNucleusPublisher();
 
-    // "Send to Nucleus" and "Publish" both do the handoff. Hide both once
-    // the piece is handed off — Nucleus's queue is now in charge of the
-    // actual publish, and status=published arrives async via Nucleus's
-    // publish-completed callback.
+    // Hide the handoff button once the piece is at Nucleus's queue —
+    // status=published arrives async via Nucleus's publish-completed
+    // callback. A failed publish clears handed_off_at server-side, which
+    // brings the button back for a re-send.
     const btnNucleus = document.getElementById("btnNucleus");
     if (btnNucleus) btnNucleus.style.display = (isComplete && !isHandedOff && !isPublished) ? "" : "none";
-    const btnPublish = document.getElementById("btnPublish");
-    if (btnPublish) btnPublish.style.display = (isComplete && canPublish && !isHandedOff && !isPublished) ? "" : "none";
 
     renderNucleusBadge();
     renderNucleusRevisionState();
@@ -890,6 +887,17 @@ function renderNucleusRevisionState() {
     alertEl.style.display = "none";
     chipEl.style.display  = "none";
     if (!genData) return;
+
+    // Publish failure banner — independent of the edit/return signals.
+    const failEl = document.getElementById("nucleusPublishFailedAlert");
+    if (failEl) {
+        if (genData.nucleus_publish_error) {
+            document.getElementById("nucleusPublishFailedError").textContent = genData.nucleus_publish_error;
+            failEl.style.display = "flex";
+        } else {
+            failEl.style.display = "none";
+        }
+    }
 
     const returnedAt = genData.nucleus_returned_at;
     const editedAt   = genData.nucleus_edited_at;
@@ -944,6 +952,7 @@ async function sendToNucleus() {
         genData.handed_off_at                = new Date().toISOString();
         genData.nucleus_resolved_site_id     = data.resolved_site_id     || null;
         genData.nucleus_resolved_site_domain = data.resolved_site_domain || null;
+        genData.nucleus_publish_error        = null;   // re-send clears a prior failure
         renderPublishButtons();
         showToast(
             data.resolved_site_domain
@@ -951,45 +960,6 @@ async function sendToNucleus() {
                 : 'Sent to Nucleus — queued for publishing.',
             'success'
         );
-    } catch (err) {
-        showToast(err.message);
-        btn.disabled = false;
-        btn.innerHTML = orig;
-    }
-}
-
-async function publishContent() {
-    const id  = new URLSearchParams(window.location.search).get("id");
-    const btn = document.getElementById("btnPublish");
-    const orig = btn.innerHTML;
-    btn.disabled = true;
-    btn.textContent = 'Sending…';
-    try {
-        // Hand off to Nucleus. Nucleus queues the piece and its adapter
-        // publishes to the live site asynchronously. status stays 'completed'
-        // until Nucleus notifies us via POST /api/nucleus/publish-completed —
-        // then status flips to 'published' with the live URL populated.
-        if (groupConfig?.site_id) {
-            const handoff = await fetch(`${API_URL}/api/nucleus/handoff.php`, {
-                method: 'POST', headers: authHeaders(),
-                body: JSON.stringify({ generation_id: id })
-            });
-            if (!handoff.ok && handoff.status !== 409) {
-                const err = await handoff.json();
-                throw new Error(err.detail || 'Handoff to Nucleus failed.');
-            }
-            if (handoff.ok) {
-                const hoData = await handoff.json();
-                genData.handed_off_at                = new Date().toISOString();
-                genData.nucleus_resolved_site_id     = hoData.resolved_site_id     || null;
-                genData.nucleus_resolved_site_domain = hoData.resolved_site_domain || null;
-            }
-        } else {
-            throw new Error('This group has no Nucleus site set. Pick one in the Nucleus panel.');
-        }
-
-        renderPublishButtons();
-        showToast('Handed off to Nucleus. Live URL will appear once the publish completes.', 'success');
     } catch (err) {
         showToast(err.message);
         btn.disabled = false;

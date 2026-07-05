@@ -14,7 +14,7 @@ if (!$id) { http_response_code(400); echo json_encode(['detail' => 'Generation I
 function fetch_gen_with_access(string $id, string $user_id, string $min_role = 'viewer'): array|null {
     $res  = supabase_call('GET',
         '/rest/v1/content_generations?id=eq.' . urlencode($id)
-        . '&select=id,keyword,status,content,instructions,serpapi_raw,created_at,group_id,user_id,wp_post_url,webhook_delivered_at,webhook_error,model,client_id,site_id,handed_off_at,nucleus_queue_id,nucleus_resolved_site_id,nucleus_resolved_site_domain,nucleus_edited_at,nucleus_returned_at,nucleus_return_note'
+        . '&select=id,keyword,status,content,instructions,serpapi_raw,created_at,group_id,user_id,wp_post_url,webhook_delivered_at,webhook_error,model,client_id,site_id,handed_off_at,nucleus_queue_id,nucleus_resolved_site_id,nucleus_resolved_site_domain,nucleus_edited_at,nucleus_returned_at,nucleus_return_note,nucleus_publish_error'
     );
     $data = json_decode($res['body'], true);
     if (empty($data)) return null;
@@ -72,18 +72,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     $body         = json_decode(file_get_contents('php://input'), true) ?: [];
     $content      = $body['content']      ?? null;
     $instructions = $body['instructions'] ?? null;
-    $status       = $body['status']       ?? null;
-    if ($content === null && $instructions === null && $status === null) {
-        http_response_code(400); echo json_encode(['detail' => 'content, instructions, or status is required.']); exit;
-    }
-    if ($status !== null && $status !== 'published') {
-        http_response_code(400); echo json_encode(['detail' => 'Only status=published is allowed via PATCH.']); exit;
+    if ($content === null && $instructions === null) {
+        http_response_code(400); echo json_encode(['detail' => 'content or instructions is required.']); exit;
     }
 
     $patch = [];
     if ($content      !== null) $patch['content']      = $content;
     if ($instructions !== null) $patch['instructions'] = $instructions;
-    if ($status       !== null) $patch['status']       = $status;
 
     $res = supabase_call('PATCH',
         '/rest/v1/content_generations?id=eq.' . urlencode($id),

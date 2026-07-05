@@ -12,9 +12,7 @@ let cachedGroups   = [];
 
 let _nucleusProfile   = null;
 let _nucleusProfileAt = 0;
-let _nucleusRole      = null;  // 'owner'|'admin'|'member'|'viewer'|null
 
-function isNucleusPublisher() { return _nucleusRole === 'owner' || _nucleusRole === 'admin'; }
 
 async function initAuth(onReady) {
     const { data } = await sb.auth.getSession();
@@ -45,9 +43,7 @@ async function renderUserInfo() {
         const profile = await res.json();
         _nucleusProfile   = profile;
         _nucleusProfileAt = now;
-        _nucleusRole      = profile.workspace_role ?? null;
         applyProfile(profile);
-        if (typeof renderPublishButtons === 'function') renderPublishButtons();
     } catch (_) {}
 }
 

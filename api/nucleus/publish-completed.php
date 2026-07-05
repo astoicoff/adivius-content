@@ -17,11 +17,11 @@ header('Content-Type: application/json');
 //   }
 //
 // Effects on the matched generation row:
-//   status=published → set content_generations.status='published' and
-//                      wp_post_url=live_url; updated_at bumped by helper.
-//   status=failed    → do NOT flip status; append error text to
-//                      webhook_error field so the user sees it. The user
-//                      can retry the handoff.
+//   status=published → status='published', wp_post_url=live_url,
+//                      nucleus_publish_error cleared.
+//   status=failed    → status untouched; error stored on
+//                      nucleus_publish_error and handed_off_at cleared so
+//                      the Send-to-Nucleus button reappears for a re-send.
 
 $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
 $tool = $_SERVER['HTTP_X_NUCLEUS_TOOL'] ?? '';
@@ -78,9 +78,14 @@ if (!$gen_id) {
 $patch = ['updated_at' => date('c')];
 if ($status === 'published') {
     $patch['status'] = 'published';
+    $patch['nucleus_publish_error'] = null;
     if ($live_url) $patch['wp_post_url'] = $live_url;
 } else {
-    $patch['webhook_error'] = substr('Nucleus publish failed: ' . ($error ?: 'unknown error'), 0, 500);
+    // Clear handed_off_at so the handoff button reappears — the user's
+    // recovery path is to fix whatever broke and re-send. queue_id is kept
+    // for audit; a re-send overwrites it.
+    $patch['nucleus_publish_error'] = substr($error ?: 'unknown error', 0, 500);
+    $patch['handed_off_at']         = null;
 }
 
 $res = supabase_call('PATCH',
