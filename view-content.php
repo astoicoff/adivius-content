@@ -9,6 +9,19 @@
     #htmlOutput, #editOutput { flex: 1; min-height: 300px; resize: none; }
     #cleanOutput        { flex: 1; min-height: 300px; }
     .content-view-bar .btn { padding: 6px 10px; }
+
+    /* Dropdown */
+    .dd-wrap  { position: relative; display: inline-block; }
+    .dd-caret { width: 10px !important; height: 10px !important; margin-left: 2px; }
+    .dd-menu  { display: none; position: absolute; top: calc(100% + 4px); left: 0; background: var(--card); border: 1px solid var(--light-gray); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 150; min-width: 170px; padding: 4px; }
+    .dd-menu.open { display: block; }
+    .dd-item  { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: none; background: none; border-radius: 6px; font-family: 'Poppins', sans-serif; font-size: 12.5px; color: var(--dark); cursor: pointer; text-align: left; }
+    .dd-item:hover  { background: var(--off-white); }
+    .dd-item.active { color: var(--blue); font-weight: 600; }
+    .dd-item svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+
+    .versions-link { font-size: 12px; color: var(--text-muted); font-family: 'Inter', sans-serif; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+    .versions-link:hover { color: var(--blue); }
     .card-copy-btn      { display:flex; align-items:center; gap:6px; background:var(--off-white); border:1px solid var(--light-gray); border-radius:6px; cursor:pointer; padding:5px 10px; color:var(--dark); font-size:12px; font-family:'Inter',sans-serif; font-weight:500; transition:background 0.15s,border-color 0.15s; }
     .card-copy-btn:hover { background:#e8e8e8; border-color:#bbb; }
     .card-copy-btn svg  { width:13px; height:13px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; }
@@ -67,7 +80,10 @@
                 </div>
             </div>
             <div id="viewKeyword" style="font-size:22px;font-weight:700;color:var(--dark);margin-top:10px;line-height:1.3;letter-spacing:0.3px;text-transform:uppercase;"></div>
-            <div id="viewMeta" class="word-count-meta" style="display:none;margin-top:4px;"></div>
+            <div style="display:flex;align-items:baseline;gap:12px;margin-top:4px;">
+                <div id="viewMeta" class="word-count-meta" style="display:none;margin-top:0;"></div>
+                <a id="versionsLink" class="versions-link" style="display:none;" onclick="openVersionsModal();return false;">Versions</a>
+            </div>
         </div>
 
         <!-- Loading -->
@@ -86,18 +102,24 @@
 
             <!-- Action bar -->
             <div class="content-view-bar" style="margin-bottom:16px;">
-                <button id="btnHtml" class="btn btn-secondary btn-view-active" onclick="setViewMode('html')">
-                    <svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-                    HTML
-                </button>
-                <button id="btnClean" class="btn btn-secondary" onclick="setViewMode('clean')">
-                    <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                    Clean View
-                </button>
-                <button id="btnEdit" class="btn btn-secondary" onclick="setViewMode('edit')">
-                    <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    Edit
-                </button>
+                <div class="dd-wrap">
+                    <button id="btnViewMode" class="btn btn-secondary btn-view-active" onclick="toggleDropdown('viewModeMenu')">
+                        <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        <span id="viewModeLabel">HTML</span>
+                        <svg class="dd-caret" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div id="viewModeMenu" class="dd-menu">
+                        <button class="dd-item active" data-view="html" onclick="setViewMode('html')">
+                            <svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> HTML source
+                        </button>
+                        <button class="dd-item" data-view="clean" onclick="setViewMode('clean')">
+                            <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Clean view
+                        </button>
+                        <button class="dd-item" data-view="edit" onclick="setViewMode('edit')">
+                            <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit
+                        </button>
+                    </div>
+                </div>
                 <button id="btnSeo" class="btn btn-secondary" onclick="openSeoModal()">
                     <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
                     SEO Score
@@ -105,10 +127,6 @@
                 <button id="btnDensity" class="btn btn-secondary" onclick="openDensityModal()">
                     <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                     Keyword Density
-                </button>
-                <button id="btnVersions" class="btn btn-secondary" onclick="openVersionsModal()" style="display:none;">
-                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    Versions <span id="versionsCount"></span>
                 </button>
                 <button id="btnNucleus" class="btn btn-nucleus" onclick="sendToNucleus()" style="display:none;">
                     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
@@ -118,14 +136,21 @@
                     <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                     Duplicate
                 </button>
-                <button id="btnExportDocx" class="btn btn-secondary" onclick="exportDocx()">
-                    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-                    Export DOCX
-                </button>
-                <button id="btnExportPdf" class="btn btn-secondary" onclick="exportPdf()">
-                    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                    Export PDF
-                </button>
+                <div class="dd-wrap">
+                    <button id="btnExport" class="btn btn-secondary" onclick="toggleDropdown('exportMenu')">
+                        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Export
+                        <svg class="dd-caret" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div id="exportMenu" class="dd-menu">
+                        <button class="dd-item" onclick="closeAllDropdowns(); exportDocx()">
+                            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Word (.docx)
+                        </button>
+                        <button class="dd-item" onclick="closeAllDropdowns(); exportPdf()">
+                            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> PDF
+                        </button>
+                    </div>
+                </div>
                 <button class="btn btn-blue" onclick="regenerate()">
                     <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
                     Regenerate

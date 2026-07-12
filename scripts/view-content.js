@@ -144,17 +144,39 @@ function renderWithTOC(html) {
 
 // ── View modes ────────────────────────────────────────────────────────────────
 
+// ── Dropdowns ─────────────────────────────────────────────────────────────────
+
+function toggleDropdown(menuId) {
+    const menu = document.getElementById(menuId);
+    if (!menu) return;
+    const wasOpen = menu.classList.contains('open');
+    closeAllDropdowns();
+    if (!wasOpen) menu.classList.add('open');
+}
+
+function closeAllDropdowns() {
+    document.querySelectorAll('.dd-menu.open').forEach(m => m.classList.remove('open'));
+}
+
+document.addEventListener('click', e => {
+    if (!e.target.closest('.dd-wrap')) closeAllDropdowns();
+});
+
 function setViewMode(mode) {
     if (viewMode === 'edit' && mode !== 'edit') stopAutoSave();
     viewMode = mode;
+    closeAllDropdowns();
     document.getElementById("htmlOutput").style.display  = mode === 'html'  ? "" : "none";
     document.getElementById("cleanOutput").style.display = mode === 'clean' ? "" : "none";
     document.getElementById("editOutput").style.display  = mode === 'edit'  ? "" : "none";
     document.getElementById("saveRow").style.display     = mode === 'edit'  ? "flex" : "none";
 
-    document.getElementById("btnHtml").classList.toggle("btn-view-active",  mode === 'html');
-    document.getElementById("btnClean").classList.toggle("btn-view-active", mode === 'clean');
-    document.getElementById("btnEdit").classList.toggle("btn-view-active",  mode === 'edit');
+    const labels = { html: 'HTML', clean: 'Clean', edit: 'Edit' };
+    const labelEl = document.getElementById("viewModeLabel");
+    if (labelEl) labelEl.textContent = labels[mode] || mode;
+    document.querySelectorAll('#viewModeMenu .dd-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.view === mode);
+    });
 
     document.getElementById("copyHtmlRow").style.display  = mode === 'html'  ? "" : "none";
     document.getElementById("copyCleanRow").style.display = mode === 'clean' ? "" : "none";
@@ -256,7 +278,7 @@ function slugifyKeyword(kw) {
 
 function exportDocx() {
     if (!genCleanContent) { showToast('No content to export.', 'warning'); return; }
-    const btn  = document.getElementById('btnExportDocx');
+    const btn  = document.getElementById('btnExport');
     const orig = btn.innerHTML;
     btn.disabled = true;
     btn.textContent = 'Exporting…';
@@ -279,7 +301,7 @@ function exportDocx() {
 
 function exportPdf() {
     if (!genCleanContent) { showToast('No content to export.', 'warning'); return; }
-    const btn  = document.getElementById('btnExportPdf');
+    const btn  = document.getElementById('btnExport');
     const orig = btn.innerHTML;
     btn.disabled = true;
     btn.textContent = 'Exporting…';
@@ -781,8 +803,9 @@ async function loadVersions(generationId) {
         const data = await res.json();
         versionsData = data.versions || [];
         if (versionsData.length) {
-            document.getElementById("versionsCount").textContent = '(' + versionsData.length + ')';
-            document.getElementById("btnVersions").style.display = "";
+            const link = document.getElementById("versionsLink");
+            link.textContent   = `Versions (${versionsData.length})`;
+            link.style.display = "";
         }
     } catch (_) {}
 }

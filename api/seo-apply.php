@@ -30,6 +30,19 @@ $full_content = $gen['content'] ?? '';
 $settings     = get_user_settings($user_id);
 $model        = $gen['model'] ?? 'gpt-5';
 
+// The group's Content Rules govern the writing style (tone, sentence length,
+// one-sentence-per-paragraph, heading conventions). Without them, rewrites
+// drift from the style the original generation followed.
+$style_rules = '';
+if (!empty($gen['group_id'])) {
+    $grp_res  = supabase_call('GET', '/rest/v1/content_groups?id=eq.' . urlencode($gen['group_id']) . '&select=content_rules');
+    $grp_data = json_decode($grp_res['body'], true);
+    $style_rules = trim($grp_data[0]['content_rules'] ?? '');
+}
+$style_suffix = $style_rules
+    ? "\n\nSTYLE RULES — every sentence you write or modify MUST follow the content style rules below (tone, sentence length, paragraph structure, heading conventions). These rules governed the original article; your edits must be indistinguishable from it:\n---\n" . $style_rules . "\n---"
+    : '';
+
 // Strip meta lines to get just the HTML body; preserve meta prefix for reconstruction
 $parsed    = parse_content_meta($full_content);
 $html_body = $parsed['body'];
@@ -72,10 +85,11 @@ if ($type === 'batch') {
     $system = 'You are an HTML content editor performing a single coherent SEO revision pass on WordPress HTML. '
         . 'Apply ALL requested changes in one edit. Rules: '
         . '(1) BODY TERMS: weave each term into existing sentences the requested number of additional times — rephrase, expand, or replace synonyms. Do not create new headings or sections for terms. '
-        . '(2) HEADING PHRASES: incorporate each phrase by REWORKING EXISTING headings only (rename or extend an existing h2/h3). NEVER add new headings or sections for these. If no existing heading fits a phrase, weave it into an existing heading whose topic is closest. '
-        . '(3) QUESTIONS: for each question, add one new <h3> section (heading + 1-2 concise paragraphs) at the most contextually fitting location, before any FAQ section if one exists. '
+        . '(2) HEADING PHRASES: incorporate each phrase by REWORKING EXISTING headings only (rename or extend an existing h2/h3). NEVER add new headings or sections for these. If no existing heading fits a phrase, weave it into an existing heading whose topic is closest. Reworked headings MUST match the capitalization convention of the document\'s existing headings (e.g., Title Case vs Sentence case) and any heading rules in the style rules below. '
+        . '(3) QUESTIONS: for each question, add one new <h3> section (heading + 1-2 concise paragraphs) at the most contextually fitting location, before any FAQ section if one exists. The new heading follows the same capitalization convention as existing headings. '
         . '(4) Preserve all other content, structure, and tone. '
-        . '(5) Return ONLY the complete modified HTML. No commentary, no markdown fences.';
+        . '(5) Return ONLY the complete modified HTML. No commentary, no markdown fences.'
+        . $style_suffix;
 
     $req = '';
     if ($term_lines) $req .= "BODY TERMS to add:\n" . implode("\n", $term_lines) . "\n\n";
@@ -84,10 +98,10 @@ if ($type === 'batch') {
     $user_prompt = $req . "Return ONLY the complete modified HTML:\n\n{$html_body}";
 
 } elseif ($type === 'term') {
-    $system      = 'You are an HTML content editor. Naturally incorporate a missing SEO term into existing WordPress HTML to reach its target usage count. Rules: (1) Do NOT add new headings or sections. (2) Only modify existing sentences — weave the term in by rephrasing, expanding, or replacing synonyms. (3) Return ONLY the complete modified HTML. No commentary, no markdown fences.';
+    $system      = 'You are an HTML content editor. Naturally incorporate a missing SEO term into existing WordPress HTML to reach its target usage count. Rules: (1) Do NOT add new headings or sections. (2) Only modify existing sentences — weave the term in by rephrasing, expanding, or replacing synonyms. (3) Return ONLY the complete modified HTML. No commentary, no markdown fences.' . $style_suffix;
     $user_prompt = "The content needs the term \"{$payload}\" added {$needed} more time(s) naturally. Incorporate it into existing sentences where it fits contextually.\n\nReturn ONLY the complete modified HTML:\n\n{$html_body}";
 } elseif ($type === 'question') {
-    $system      = 'You are an HTML content editor. Add a focused section to existing WordPress HTML that directly answers a specific question. Rules: (1) Use an <h3> heading followed by 1–2 concise paragraphs. (2) Insert it at the most contextually appropriate location — before any FAQ section or after the most relevant existing section. (3) Return ONLY the complete modified HTML. No commentary, no markdown fences.';
+    $system      = 'You are an HTML content editor. Add a focused section to existing WordPress HTML that directly answers a specific question. Rules: (1) Use an <h3> heading followed by 1–2 concise paragraphs. (2) Insert it at the most contextually appropriate location — before any FAQ section or after the most relevant existing section. (3) The new heading follows the same capitalization convention as the document\'s existing headings. (4) Return ONLY the complete modified HTML. No commentary, no markdown fences.' . $style_suffix;
     $user_prompt = "Add a new section answering this question: \"{$payload}\"\n\nUse an <h3> heading + 1–2 short paragraphs. Return ONLY the complete modified HTML:\n\n{$html_body}";
 } else {
     http_response_code(400); echo json_encode(['detail' => 'Invalid type.']); exit;
