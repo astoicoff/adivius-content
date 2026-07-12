@@ -130,7 +130,7 @@
                 </button>
                 <button id="btnNucleus" class="btn btn-nucleus" onclick="sendToNucleus()" style="display:none;">
                     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
-                    Send to Nucleus
+                    <span id="btnNucleusLabel">Send to Nucleus</span>
                 </button>
                 <button class="btn btn-yellow" onclick="duplicateContent()">
                     <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>

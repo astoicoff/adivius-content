@@ -78,7 +78,11 @@ if (!$gen_id) {
 $patch = ['updated_at' => date('c')];
 if ($status === 'published') {
     $patch['status'] = 'published';
+    $patch['published_at'] = trim($body['published_at'] ?? '') ?: date('c');
     $patch['nucleus_publish_error'] = null;
+    // The handoff cycle is over — clearing this re-arms Send to Nucleus so an
+    // edited piece can be re-sent (Nucleus updates the live post in place).
+    $patch['handed_off_at'] = null;
     if ($live_url) $patch['wp_post_url'] = $live_url;
 } else {
     // Clear handed_off_at so the handoff button reappears — the user's

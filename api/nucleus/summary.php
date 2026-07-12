@@ -84,16 +84,17 @@ foreach ($pipeRows as $row) {
 $publishedRes  = supabase_call('GET',
     '/rest/v1/content_generations?' . $filter
     . '&status=eq.published'
-    . '&select=id,keyword,content,wp_post_url,handed_off_at,created_at'
-    . '&order=handed_off_at.desc.nullslast,created_at.desc'
+    . '&select=id,keyword,content,wp_post_url,published_at,handed_off_at,created_at'
+    . '&order=published_at.desc.nullslast,created_at.desc'
     . '&limit=50'
 );
 $publishedRows = json_decode($publishedRes['body'], true) ?: [];
 
-// Track last_handoff_at from published pieces
+// Track last activity from published pieces. handed_off_at is non-null here
+// only when a republish revision is currently in review.
 foreach ($publishedRows as $row) {
-    $ho = $row['handed_off_at'] ?? null;
-    if ($ho && (!$last_handoff_at || $ho > $last_handoff_at)) $last_handoff_at = $ho;
+    $ts = $row['handed_off_at'] ?? $row['published_at'] ?? null;
+    if ($ts && (!$last_handoff_at || $ts > $last_handoff_at)) $last_handoff_at = $ts;
 }
 
 // velocity_30d: published pieces created in last 30 days
@@ -110,7 +111,7 @@ foreach (array_slice($publishedRows, 0, 10) as $row) {
     $wc   = $text ? count(array_filter(preg_split('/\s+/u', trim($text)))) : 0;
     $recentPublishes[] = [
         'title'        => $row['keyword'] ?? '',
-        'published_at' => $row['handed_off_at'] ?? $row['created_at'],
+        'published_at' => $row['published_at'] ?? $row['created_at'],
         'url'          => $row['wp_post_url'] ?? null,
         'word_count'   => $wc,
         'keywords'     => array_filter([$row['keyword'] ?? '']),

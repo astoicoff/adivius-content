@@ -1006,12 +1006,17 @@ function renderPublishButtons() {
     const isHandedOff   = !!genData.handed_off_at;
     const isComplete    = genData.status === 'completed' || isPublished;
 
-    // Hide the handoff button once the piece is at Nucleus's queue —
-    // status=published arrives async via Nucleus's publish-completed
-    // callback. A failed publish clears handed_off_at server-side, which
-    // brings the button back for a re-send.
+    // handed_off_at = "a handoff is in review at Nucleus". Button shows
+    // whenever there's no active handoff — including for published pieces,
+    // where a re-send updates the live post in place (Nucleus PUTs to the
+    // stored WP post id). Publish success/failure/return all clear the flag
+    // server-side, re-arming the button.
     const btnNucleus = document.getElementById("btnNucleus");
-    if (btnNucleus) btnNucleus.style.display = (isComplete && !isHandedOff && !isPublished) ? "" : "none";
+    if (btnNucleus) {
+        btnNucleus.style.display = (isComplete && !isHandedOff) ? "" : "none";
+        const label = document.getElementById("btnNucleusLabel");
+        if (label) label.textContent = isPublished ? 'Send update to Nucleus' : 'Send to Nucleus';
+    }
 
     renderNucleusBadge();
     renderNucleusRevisionState();
@@ -1063,17 +1068,22 @@ function renderNucleusRevisionState() {
 function renderNucleusBadge() {
     const badge = document.getElementById("nucleusBadge");
     if (!badge) return;
-    if (!genData?.handed_off_at) { badge.style.display = "none"; return; }
 
-    const isLive = genData.status === 'published' && genData.wp_post_url;
-    const domain = genData.nucleus_resolved_site_domain;
+    const inReview    = !!genData?.handed_off_at;
+    const isPublished = genData?.status === 'published';
+    const domain      = genData?.nucleus_resolved_site_domain;
 
-    if (isLive) {
+    if (inReview) {
+        // Covers both the first send and a republish revision of a live piece.
+        const label = isPublished ? 'Update in review' : 'In review';
+        badge.className = "badge badge-blue";
+        badge.innerHTML = `<span class="badge-dot"></span>${label} · ${escapeHtml(domain || 'Nucleus')}`;
+    } else if (isPublished && genData.wp_post_url) {
         badge.className = "badge badge-green";
         badge.innerHTML = `<span class="badge-dot"></span>Live · <a href="${escapeHtml(genData.wp_post_url)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;">${escapeHtml(domain || 'view')}</a>`;
     } else {
-        badge.className = "badge badge-blue";
-        badge.innerHTML = `<span class="badge-dot"></span>Handed off · ${escapeHtml(domain || 'Nucleus')}`;
+        badge.style.display = "none";
+        return;
     }
     badge.style.display = "";
 }
@@ -1098,10 +1108,11 @@ async function sendToNucleus() {
         genData.nucleus_returned_at          = null;   // …and a prior return
         genData.nucleus_return_note          = null;
         renderPublishButtons();
+        const dest = data.resolved_site_domain || 'Nucleus';
         showToast(
-            data.resolved_site_domain
-                ? `Sent to Nucleus → ${data.resolved_site_domain}`
-                : 'Sent to Nucleus — queued for publishing.',
+            genData.status === 'published'
+                ? `Update sent → ${dest}. The live post refreshes after review.`
+                : `Sent to Nucleus → ${dest}`,
             'success'
         );
     } catch (err) {

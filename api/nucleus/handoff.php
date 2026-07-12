@@ -36,9 +36,13 @@ if ($gen['user_id'] !== $user_id && !check_group_access($user_id, $gen['group_id
     echo json_encode(['detail' => 'Access denied.']); exit;
 }
 
+// handed_off_at means "a handoff is awaiting review at Nucleus right now".
+// It clears on publish success, publish failure, and return — so completed
+// pieces re-send after a return, and published pieces re-send to update the
+// live post (Nucleus PUTs to the stored WP post id on republish).
 if (!empty($gen['handed_off_at'])) {
     http_response_code(409); ob_end_clean();
-    echo json_encode(['detail' => 'Already sent to Nucleus on ' . $gen['handed_off_at'] . '.']); exit;
+    echo json_encode(['detail' => 'Already at Nucleus awaiting review (sent ' . $gen['handed_off_at'] . '). Edit it there, or wait for it to publish or be returned.']); exit;
 }
 
 if (!NUCLEUS_BASE_URL || !NUCLEUS_SERVICE_TOKEN) {
