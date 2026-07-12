@@ -225,8 +225,7 @@ async function performAutoSave() {
 async function saveContent() {
     const id      = new URLSearchParams(window.location.search).get("id");
     const content = document.getElementById("editOutput").value;
-    const saveBtn = document.getElementById("saveBtn");
-    saveBtn.disabled = true;
+    const done = btnBusy(document.getElementById("saveBtn"));
     try {
         const res = await fetch(`${API_URL}/api/generation.php?id=${encodeURIComponent(id)}`, {
             method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ content })
@@ -244,7 +243,7 @@ async function saveContent() {
     } catch (err) {
         showToast(err.message);
     } finally {
-        saveBtn.disabled = false;
+        done();
     }
 }
 
@@ -821,6 +820,8 @@ function closeVersionsModal() {
 
 function renderVersionsList() {
     const el = document.getElementById("versionsContent");
+    const delAll = document.getElementById("verDelAllBtn");
+    if (delAll) delAll.style.display = versionsData.length ? "" : "none";
     if (!versionsData.length) {
         el.innerHTML = `<div style="padding:24px 0;text-align:center;color:var(--text-muted);font-size:13px;font-family:'Inter',sans-serif;">No versions yet.</div>`;
         return;
@@ -843,6 +844,26 @@ function renderVersionsList() {
             </div>
         </div>`;
     }).join('');
+}
+
+async function deleteAllVersions() {
+    if (!versionsData.length) return;
+    if (!confirm(`Delete all ${versionsData.length} version${versionsData.length !== 1 ? 's' : ''}? The current content stays; only the history is removed. This cannot be undone.`)) return;
+    const genId = new URLSearchParams(window.location.search).get("id");
+    const done  = btnBusy(document.getElementById("verDelAllBtn"), 'Deleting…');
+    try {
+        const res = await fetch(API_URL + '/api/versions.php?generation_id=' + encodeURIComponent(genId) + '&all=1', {
+            method: 'DELETE', headers: authHeaders()
+        });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Delete failed.'); }
+        await loadVersions(genId);
+        renderVersionsList();
+        showToast('All versions deleted.', 'success');
+    } catch (err) {
+        showToast('Delete failed: ' + err.message);
+    } finally {
+        done();
+    }
 }
 
 async function deleteVersion(index) {

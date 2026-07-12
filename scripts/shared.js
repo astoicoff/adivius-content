@@ -123,6 +123,16 @@ function escapeHtml(str) {
     return (str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+// Put a button into a busy state (disabled + spinner + label) and return a
+// restore function. Usage: const done = btnBusy(btn); try {...} finally { done(); }
+function btnBusy(btn, label = 'Saving…') {
+    if (!btn) return () => {};
+    const orig = btn.innerHTML;
+    btn.disabled  = true;
+    btn.innerHTML = '<span style="width:12px;height:12px;border:2px solid transparent;border-top-color:currentColor;border-right-color:currentColor;border-radius:50%;display:inline-block;animation:spin 0.7s linear infinite;flex-shrink:0;"></span> ' + escapeHtml(label);
+    return () => { btn.disabled = false; btn.innerHTML = orig; };
+}
+
 function modelLabel(model) {
     const map = {
         'gpt-5':             'GPT-5',

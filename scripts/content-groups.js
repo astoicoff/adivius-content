@@ -364,6 +364,11 @@ function closeRulesPanel() {
 }
 
 async function saveRules() {
+    const done = btnBusy(document.getElementById('saveRulesBtn'));
+    try { await doSaveRules(); } finally { done(); }
+}
+
+async function doSaveRules() {
     const isWP   = activePanelType === 'wordpress';
     const isWH   = activePanelType === 'webhook';
     const text   = document.getElementById("rulesTextarea").value;

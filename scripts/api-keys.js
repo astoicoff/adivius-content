@@ -30,7 +30,8 @@ async function saveSettings() {
     const btn       = document.getElementById("saveKeysBtn");
     const indicator = document.getElementById("saveIndicator");
     const alertEl   = document.getElementById("settingsAlert");
-    btn.disabled = true; alertEl.className = "alert";
+    const done      = btnBusy(btn);
+    alertEl.className = "alert";
 
     try {
         const res = await fetch(`${API_URL}/api/settings.php`, {
@@ -54,7 +55,7 @@ async function saveSettings() {
     } catch (err) {
         alertEl.className = "alert alert-error visible";
         alertEl.innerHTML = `<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> ${escapeHtml(err.message)}`;
-    } finally { btn.disabled = false; }
+    } finally { done(); }
 }
 
 // ── Show / hide password ─────────────────────────────────────────────────────

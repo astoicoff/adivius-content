@@ -132,10 +132,6 @@
                     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
                     <span id="btnNucleusLabel">Send to Nucleus</span>
                 </button>
-                <button class="btn btn-yellow" onclick="duplicateContent()">
-                    <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                    Duplicate
-                </button>
                 <div class="dd-wrap">
                     <button id="btnExport" class="btn btn-secondary" onclick="toggleDropdown('exportMenu')">
                         <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -151,6 +147,10 @@
                         </button>
                     </div>
                 </div>
+                <button class="btn btn-yellow" onclick="duplicateContent()">
+                    <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                    Duplicate
+                </button>
                 <button class="btn btn-green" onclick="regenerate()">
                     <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
                     Regenerate
@@ -283,7 +283,13 @@
 <div id="versionsOverlay" class="rules-overlay" onclick="closeVersionsModal()"></div>
 <div id="versionsModal" class="density-modal" style="max-width:760px;width:90vw;">
     <div class="density-modal-header">
-        <div class="rules-panel-title">Version History</div>
+        <div style="display:flex;align-items:center;gap:14px;">
+            <div class="rules-panel-title">Version History</div>
+            <button id="verDelAllBtn" class="btn btn-secondary" style="padding:4px 10px;font-size:12px;color:var(--red);" onclick="deleteAllVersions()">
+                <svg viewBox="0 0 24 24" style="width:12px;height:12px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                Delete all
+            </button>
+        </div>
         <button class="rules-panel-close" onclick="closeVersionsModal()">
             <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
