@@ -61,9 +61,15 @@ if (empty($gen_row)) {
     exit;
 }
 
+// Clearing handed_off_at reopens the handoff: Nucleus cancelled its queue
+// item and expects a fresh handoff once the writer revises ("returned pieces
+// belong to Content until a revision comes back"). Without this, our
+// handoff endpoint would 409 the re-send and the revision loop dead-ends.
 $patch = [
     'nucleus_returned_at' => date('c'),
     'nucleus_return_note' => $note !== '' ? substr($note, 0, 1000) : null,
+    'handed_off_at'       => null,
+    'nucleus_queue_id'    => null,
     'updated_at'          => date('c'),
 ];
 

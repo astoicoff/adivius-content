@@ -802,11 +802,9 @@ async function loadVersions(generationId) {
         const res  = await fetch(API_URL + '/api/versions.php?generation_id=' + encodeURIComponent(generationId), { headers: authHeaders() });
         const data = await res.json();
         versionsData = data.versions || [];
-        if (versionsData.length) {
-            const link = document.getElementById("versionsLink");
-            link.textContent   = `Versions (${versionsData.length})`;
-            link.style.display = "";
-        }
+        const link = document.getElementById("versionsLink");
+        link.textContent   = `Versions (${versionsData.length})`;
+        link.style.display = versionsData.length ? "" : "none";
     } catch (_) {}
 }
 
@@ -823,6 +821,10 @@ function closeVersionsModal() {
 
 function renderVersionsList() {
     const el = document.getElementById("versionsContent");
+    if (!versionsData.length) {
+        el.innerHTML = `<div style="padding:24px 0;text-align:center;color:var(--text-muted);font-size:13px;font-family:'Inter',sans-serif;">No versions yet.</div>`;
+        return;
+    }
     el.innerHTML = versionsData.map((v, i) => {
         const num  = versionsData.length - i;
         const date = new Date(v.created_at).toLocaleDateString("en-US", {
@@ -833,9 +835,36 @@ function renderVersionsList() {
                 <div style="font-size:13px;font-weight:600;color:var(--dark);font-family:'Inter',sans-serif;">Version ${num}</div>
                 <div style="font-size:12px;color:var(--text-muted);font-family:'Inter',sans-serif;margin-top:2px;">${date}</div>
             </div>
-            <button class="btn btn-secondary" style="padding:5px 12px;font-size:12px;flex-shrink:0;" onclick="viewVersion(${i})">View</button>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+                <button class="btn btn-secondary" style="padding:5px 12px;font-size:12px;" onclick="viewVersion(${i})">View</button>
+                <button id="verDelBtn_${i}" class="btn btn-secondary" title="Delete this version" style="padding:5px 10px;font-size:12px;color:var(--red);" onclick="deleteVersion(${i})">
+                    <svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                </button>
+            </div>
         </div>`;
     }).join('');
+}
+
+async function deleteVersion(index) {
+    const v = versionsData[index];
+    if (!v) return;
+    const num = versionsData.length - index;
+    if (!confirm(`Delete Version ${num}? This cannot be undone.`)) return;
+    const genId = new URLSearchParams(window.location.search).get("id");
+    const btn   = document.getElementById(`verDelBtn_${index}`);
+    if (btn) btn.disabled = true;
+    try {
+        const res = await fetch(API_URL + '/api/versions.php?generation_id=' + encodeURIComponent(genId)
+            + '&version_id=' + encodeURIComponent(v.id), {
+            method: 'DELETE', headers: authHeaders()
+        });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Delete failed.'); }
+        await loadVersions(genId);
+        renderVersionsList();
+    } catch (err) {
+        if (btn) btn.disabled = false;
+        showToast('Delete failed: ' + err.message);
+    }
 }
 
 function viewVersion(index) {
@@ -1065,7 +1094,9 @@ async function sendToNucleus() {
         genData.handed_off_at                = new Date().toISOString();
         genData.nucleus_resolved_site_id     = data.resolved_site_id     || null;
         genData.nucleus_resolved_site_domain = data.resolved_site_domain || null;
-        genData.nucleus_publish_error        = null;   // re-send clears a prior failure
+        genData.nucleus_publish_error        = null;   // re-send clears a prior failure…
+        genData.nucleus_returned_at          = null;   // …and a prior return
+        genData.nucleus_return_note          = null;
         renderPublishButtons();
         showToast(
             data.resolved_site_domain

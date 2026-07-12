@@ -33,6 +33,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+    $version_id = $_GET['version_id'] ?? '';
+    if (!$version_id) { http_response_code(400); echo json_encode(['detail' => 'version_id required.']); exit; }
+    if (!resolve_gen_access($gen_id, $user_id, 'moderator')) { http_response_code(404); echo json_encode(['detail' => 'Not found.']); exit; }
+    // Scope by generation_id too, so a version_id from another piece can't be
+    // deleted through this generation's access grant.
+    $res = supabase_call('DELETE',
+        '/rest/v1/content_generation_versions?id=eq.' . urlencode($version_id)
+        . '&generation_id=eq.' . urlencode($gen_id)
+    );
+    if ($res['status'] >= 400) { http_response_code($res['status']); echo json_encode(['detail' => 'Failed to delete version.']); exit; }
+    echo json_encode(['success' => true]);
+    exit;
+}
+
 // GET — viewer+ access to see versions
 if (!resolve_gen_access($gen_id, $user_id, 'viewer')) { http_response_code(404); echo json_encode(['detail' => 'Not found.']); exit; }
 
