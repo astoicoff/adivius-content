@@ -533,8 +533,8 @@ function buildSeoReportHTML(data) {
             <div style="display:flex;flex-wrap:wrap;gap:6px;">
                 ${terms.map(t => {
                     const phrase = t.t || '';
-                    const raw    = t.sugg_usage;
-                    const usage  = raw == null ? '' : (typeof raw === 'object' ? (raw.min ?? '') + (raw.max != null ? '–' + raw.max : '') : String(raw));
+                    const range  = nwSuggRange(t.sugg_usage);
+                    const usage  = !range ? '' : (range.max > range.min ? `${range.min}–${range.max}` : String(range.min));
                     return `<span style="font-size:12px;font-family:'Inter',sans-serif;background:var(--off-white);border:1px solid var(--light-gray);border-radius:6px;padding:4px 8px;">
                         ${escapeHtml(phrase)}${usage ? `<span style="color:var(--text-muted);margin-left:4px;">${escapeHtml(usage)}×</span>` : ''}
                     </span>`;
@@ -598,23 +598,60 @@ async function selectSeoProject(projectId) {
     loadSeoScore();
 }
 
+// NeuronWriter's sugg_usage arrives as [min,max] (array), {min,max} (object),
+// or a bare number depending on the term category. Normalize to {min,max}.
+function nwSuggRange(raw) {
+    if (raw == null) return null;
+    if (Array.isArray(raw))        return { min: Number(raw[0]) || 0, max: Number(raw[1] ?? raw[0]) || 0 };
+    if (typeof raw === 'object')   return { min: Number(raw.min) || 0, max: Number(raw.max ?? raw.min) || 0 };
+    const n = Number(raw) || 0;
+    return { min: n, max: n };
+}
+
+let _seoChecklistItems = [];
+
 function buildSeoChecklist(data) {
     const genId   = new URLSearchParams(window.location.search).get('id') || '';
     const content = (genCleanContent || '').toLowerCase();
-    const items   = [];
 
-    // Terms below their suggested minimum — auto-computed from current content
-    (data.top_terms || []).forEach(t => {
-        const phrase = t.t || '';
-        if (!phrase) return;
-        const raw    = t.sugg_usage;
-        const min    = raw == null ? 0 : (typeof raw === 'object' ? (raw.min ?? 0) : (Number(raw) || 0));
-        if (!min) return;
+    // Heading text only — for the "use phrase in a heading" checks
+    const tmpDiv = document.createElement('div');
+    tmpDiv.innerHTML = genCleanContent || '';
+    const headingText = [...tmpDiv.querySelectorAll('h1,h2,h3,h4')]
+        .map(h => h.textContent.toLowerCase()).join('\n');
+
+    const countIn = (haystack, phrase) => {
         const pattern = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const count   = (content.match(new RegExp(pattern, 'gi')) || []).length;
-        const needed  = min - count;
-        if (needed > 0) items.push({ kind: 'term', phrase, needed, count, min,
-            label: `Add "${phrase}" ${needed} more time${needed !== 1 ? 's' : ''} — currently ${count}×, target ${min}×` });
+        return (haystack.match(new RegExp(pattern, 'gi')) || []).length;
+    };
+
+    const items = [];
+    const seenTerms = new Set();
+
+    // Body terms below their suggested minimum — basic first, then extended
+    // (deduped; basic entries carry the bigger targets).
+    const termSources = [...(data.top_terms || []), ...(data.extended_terms || [])];
+    termSources.forEach(t => {
+        const phrase = (t.t || '').trim();
+        if (!phrase || seenTerms.has(phrase.toLowerCase())) return;
+        seenTerms.add(phrase.toLowerCase());
+        const range = nwSuggRange(t.sugg_usage);
+        if (!range || !range.min) return;
+        const count  = countIn(content, phrase);
+        const needed = range.min - count;
+        if (needed > 0) items.push({ kind: 'term', phrase, needed,
+            label: `Add "${phrase}" ${needed} more time${needed !== 1 ? 's' : ''} — currently ${count}×, target ${range.min}×` });
+    });
+
+    // Heading suggestions — competitor h2 phrases absent from our headings
+    (data.heading_terms || []).forEach(t => {
+        const phrase = (t.t || '').trim();
+        if (!phrase) return;
+        if (headingText.includes(phrase.toLowerCase())) return;
+        const pc = Number(t.usage_pc) || 0;
+        if (pc < 20) return;   // skip long-tail heading phrases
+        items.push({ kind: 'heading', phrase,
+            label: `Use "${phrase}" in a heading — ${pc}% of top competitors do` });
     });
 
     // Questions — show until AI has fixed them (persisted to localStorage)
@@ -622,9 +659,11 @@ function buildSeoChecklist(data) {
         const txt = typeof q === 'string' ? q : (q.q || q.question || '');
         if (!txt) return;
         const fixedKey = `seo_fixed_${genId}_${txt.slice(0, 60)}`;
-        if (localStorage.getItem(fixedKey) === '1') return; // AI already handled it
+        if (localStorage.getItem(fixedKey) === '1') return;
         items.push({ kind: 'question', txt, fixedKey, label: `Answer: "${txt}"` });
     });
+
+    _seoChecklistItems = items;
 
     if (!items.length) return `
         <div class="seo-section" style="display:flex;align-items:center;gap:8px;padding-bottom:4px;">
@@ -632,38 +671,85 @@ function buildSeoChecklist(data) {
             <span style="font-size:13px;font-family:'Inter',sans-serif;color:var(--green);font-weight:600;">All checklist items complete!</span>
         </div>`;
 
-    const rows = items.map((item, idx) => {
-        const btnId   = `seoFixBtn_${idx}`;
-        const onClick = item.kind === 'term'
-            ? `applySeoFix('term','${item.phrase.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',${item.needed},'${btnId}')`
-            : `applySeoFix('question','${item.txt.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',1,'${btnId}')`;
-        return `<li style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--light-gray);">
-            <span style="flex:1;font-size:13px;font-family:'Inter',sans-serif;line-height:1.45;color:var(--dark);padding-top:2px;">${escapeHtml(item.label)}</span>
-            <button id="${btnId}" class="btn btn-secondary" style="flex-shrink:0;padding:3px 10px;font-size:12px;" onclick="${onClick}">Fix</button>
-        </li>`;
+    const groups = [
+        { kind: 'term',     title: 'Body Terms' },
+        { kind: 'heading',  title: 'Heading Suggestions' },
+        { kind: 'question', title: 'Questions to Answer' },
+    ];
+    const groupHtml = groups.map(g => {
+        const rows = items.map((item, idx) => ({ item, idx }))
+            .filter(({ item }) => item.kind === g.kind)
+            .map(({ item, idx }) => `
+                <li style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--light-gray);">
+                    <input type="checkbox" class="seo-item-check" data-idx="${idx}" onchange="updateSeoBatchButton()" style="margin-top:4px;flex-shrink:0;cursor:pointer;">
+                    <span style="flex:1;font-size:13px;font-family:'Inter',sans-serif;line-height:1.45;color:var(--dark);padding-top:2px;">${escapeHtml(item.label)}</span>
+                    <button id="seoFixBtn_${idx}" class="btn btn-secondary" style="flex-shrink:0;padding:3px 10px;font-size:12px;" onclick="applySeoFixIdx(${idx})">Fix</button>
+                </li>`).join('');
+        if (!rows) return '';
+        return `<div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.7px;margin:12px 0 2px;">${g.title}</div>
+            <ul style="margin:0;padding:0;list-style:none;">${rows}</ul>`;
     }).join('');
 
     return `
         <div class="seo-section">
-            <div class="seo-section-title">What to Fix</div>
-            <ul style="margin:0;padding:0;list-style:none;">${rows}</ul>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                <div class="seo-section-title" style="margin-bottom:0;">What to Fix</div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-family:'Inter',sans-serif;color:var(--text-muted);cursor:pointer;">
+                        <input type="checkbox" id="seoSelectAll" onchange="toggleSeoSelectAll(this.checked)" style="cursor:pointer;"> Select all
+                    </label>
+                    <button id="seoBatchBtn" class="btn btn-blue" style="padding:4px 12px;font-size:12px;" onclick="applySeoBatch()" disabled>Rewrite selected (0)</button>
+                </div>
+            </div>
+            ${groupHtml}
         </div>`;
 }
 
-async function applySeoFix(type, payload, needed, btnId) {
+function toggleSeoSelectAll(checked) {
+    document.querySelectorAll('.seo-item-check').forEach(cb => { cb.checked = checked; });
+    updateSeoBatchButton();
+}
+
+function updateSeoBatchButton() {
+    const n   = document.querySelectorAll('.seo-item-check:checked').length;
+    const btn = document.getElementById('seoBatchBtn');
+    if (btn) { btn.disabled = n === 0; btn.textContent = `Rewrite selected (${n})`; }
+}
+
+// Per-item Fix and multi-select both route through the batch endpoint —
+// one code path, one AI revision pass regardless of item count.
+function applySeoFixIdx(idx) {
+    const item = _seoChecklistItems[idx];
+    if (item) runSeoRewrite([item], document.getElementById(`seoFixBtn_${idx}`));
+}
+
+function applySeoBatch() {
+    const items = [...document.querySelectorAll('.seo-item-check:checked')]
+        .map(cb => _seoChecklistItems[Number(cb.dataset.idx)])
+        .filter(Boolean);
+    if (items.length) runSeoRewrite(items, document.getElementById('seoBatchBtn'));
+}
+
+async function runSeoRewrite(items, btn) {
     const genId = new URLSearchParams(window.location.search).get('id');
-    const btn   = document.getElementById(btnId);
+    const orig  = btn ? btn.innerHTML : '';
     if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:11px;height:11px;border-width:2px;display:inline-block;"></div>'; }
+    document.querySelectorAll('#seoModalBody button, #seoModalBody input').forEach(el => { el.disabled = true; });
 
     try {
         const res  = await fetch(`${API_URL}/api/seo-apply.php`, {
             method: 'POST', headers: authHeaders(),
-            body: JSON.stringify({ generation_id: genId, type, payload, needed })
+            body: JSON.stringify({
+                generation_id: genId,
+                type: 'batch',
+                items: items.map(i => i.kind === 'question'
+                    ? { type: 'question', txt: i.txt }
+                    : { type: i.kind, phrase: i.phrase, needed: i.needed || 1 })
+            })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Fix failed');
+        if (!res.ok) throw new Error(data.detail || 'Rewrite failed');
 
-        // Update state from returned full content
         genData.content = data.content;
         const reparsed  = parseContentMeta(data.content);
         genCleanContent = reparsed.content;
@@ -672,14 +758,18 @@ async function applySeoFix(type, payload, needed, btnId) {
         if (viewMode === 'clean') document.getElementById('cleanOutput').innerHTML = renderWithTOC(genCleanContent);
         if (viewMode === 'edit')  document.getElementById('editOutput').value      = data.content;
 
-        // Mark question as AI-fixed so it leaves the checklist
-        if (type === 'question') localStorage.setItem(`seo_fixed_${genId}_${payload.slice(0, 60)}`, '1');
+        // Questions leave the checklist permanently once answered
+        items.filter(i => i.kind === 'question')
+             .forEach(i => localStorage.setItem(`seo_fixed_${genId}_${i.txt.slice(0, 60)}`, '1'));
 
-        // Re-render checklist with updated content
+        // Re-render — term/heading rows recompute against the new content
         if (lastSeoData) document.getElementById('seoModalBody').innerHTML = buildSeoReportHTML(lastSeoData);
+        showToast(`Rewrote content with ${items.length} improvement${items.length !== 1 ? 's' : ''}. Refresh the score to see the impact.`, 'success');
     } catch (err) {
-        if (btn) { btn.disabled = false; btn.textContent = 'Fix'; }
-        showToast('SEO fix failed: ' + err.message);
+        document.querySelectorAll('#seoModalBody button, #seoModalBody input').forEach(el => { el.disabled = false; });
+        if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+        updateSeoBatchButton();
+        showToast('SEO rewrite failed: ' + err.message);
     }
 }
 

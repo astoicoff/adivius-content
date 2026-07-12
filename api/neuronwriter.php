@@ -146,7 +146,9 @@ if ($action === 'score' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $ideas       = $adata['ideas']        ?? [];
     $competitors = $adata['competitors']  ?? [];
     $serp        = $adata['serp_summary'] ?? [];
-    $terms_basic = $adata['terms']['content_basic'] ?? [];
+    $terms_basic = $adata['terms']['content_basic']    ?? [];
+    $terms_ext   = $adata['terms']['content_extended'] ?? [];
+    $terms_h2    = $adata['terms']['h2']               ?? [];
 
     echo json_encode([
         'score'       => $eval['body']['content_score'],
@@ -154,7 +156,9 @@ if ($action === 'score' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         'is_new'      => $is_new,
         'word_count_target' => $metrics['word_count']['median'] ?? null,
         'readability_target' => $metrics['readability']['median'] ?? null,
-        'top_terms'   => array_slice($terms_basic, 0, 15),
+        'top_terms'      => array_slice($terms_basic, 0, 15),
+        'extended_terms' => array_slice($terms_ext, 0, 30),
+        'heading_terms'  => array_slice($terms_h2, 0, 20),
         'questions'   => array_merge(
             $ideas['people_also_ask']   ?? [],
             $ideas['suggest_questions'] ?? []
