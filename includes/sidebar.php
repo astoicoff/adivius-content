@@ -28,6 +28,10 @@
             <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
             New Content
         </a>
+        <a class="nav-item" href="/new-image" id="navNewImage">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            New Image
+        </a>
         <a class="nav-item green" href="/content-groups" id="navGroups">
             <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
             Content Groups

@@ -8,9 +8,11 @@
     { "src": "favicon.svg",   "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/(login|dashboard|new-content|content-groups|history|api-keys|view-content|accept-invite)\\.html$", "headers": { "Location": "/$1" }, "status": 301 },
-    { "src": "/(login|dashboard|new-content|content-groups|history|api-keys|view-content|accept-invite)\\.php$",  "headers": { "Location": "/$1" }, "status": 301 },
-    { "src": "^/(login|dashboard|new-content|content-groups|history|api-keys|view-content|accept-invite)$", "dest": "/$1.php" },
+    { "src": "/(login|dashboard|new-content|new-image|content-groups|history|api-keys|view-content|accept-invite)\\.html$", "headers": { "Location": "/$1" }, "status": 301 },
+    { "src": "/(login|dashboard|new-content|new-image|content-groups|history|api-keys|view-content|accept-invite)\\.php$",  "headers": { "Location": "/$1" }, "status": 301 },
+    { "src": "^/(login|dashboard|new-content|new-image|content-groups|history|api-keys|view-content|accept-invite)$", "dest": "/$1.php" },
+    { "src": "^/api/image-phase1$", "dest": "/api/image-phase1.php" },
+    { "src": "^/api/image-phase2$", "dest": "/api/image-phase2.php" },
     { "src": "^/api/nucleus/content-briefs$", "dest": "/api/nucleus/content-briefs.php" },
     { "src": "^/api/nucleus/summary$",  "dest": "/api/nucleus/summary.php" },
     { "src": "^/api/nucleus/handoff$",  "dest": "/api/nucleus/handoff.php" },
