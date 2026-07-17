@@ -19,6 +19,10 @@
 
     .prompt-box          { background: var(--off-white); border: 1px solid var(--light-gray); border-radius: 8px; padding: 12px; font-size: 13px; font-family: 'Inter', sans-serif; line-height: 1.6; color: var(--dark); white-space: pre-wrap; word-break: break-word; }
     .revised-note        { font-size: 11px; color: var(--text-muted); font-family: 'Inter', sans-serif; line-height: 1.5; margin-top: 8px; }
+
+    .refine-panel        { background: var(--card); border: 1px solid var(--light-gray); border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+    .refine-panel-head   { padding: 12px 16px; border-bottom: 1px solid var(--light-gray); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); }
+    .refine-panel-body   { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 </style>
 </head>
 <body>
@@ -72,6 +76,10 @@
                     <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
                     Regenerate
                 </button>
+                <button id="btnRefine" class="btn btn-secondary" onclick="openRefinePanel()">
+                    <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    Refine
+                </button>
                 <a id="btnNewPrompt" href="#" class="btn btn-secondary">
                     <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
                     New Prompt
@@ -90,6 +98,32 @@
             <div class="loading-bar" id="regenLoading" style="margin-bottom:16px;">
                 <div class="spinner"></div>
                 <span id="regenLoadingText">Regenerating image…</span>
+            </div>
+
+            <!-- Refine Panel -->
+            <div id="refinePanel" class="refine-panel" style="display:none;">
+                <div class="refine-panel-head">Refine Image Prompt</div>
+                <div class="refine-panel-body">
+                    <div class="form-group" style="margin:0;">
+                        <label class="form-label" style="margin-bottom:6px;">Current Prompt <span style="font-weight:400;color:var(--text-muted);">(editable)</span></label>
+                        <textarea id="refinePromptTextarea" class="form-textarea" rows="5"></textarea>
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label class="form-label" style="margin-bottom:6px;">Modification Instruction</label>
+                        <input type="text" id="refineInstruction" class="form-input" placeholder="e.g. Change the background to a sunset over the ocean">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <button class="btn btn-green" id="refineGenerateBtn" onclick="refineAndGenerate()">
+                            <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
+                            Refine &amp; Generate
+                        </button>
+                        <button class="btn btn-secondary" onclick="closeRefinePanel()">Cancel</button>
+                    </div>
+                    <div class="loading-bar" id="refineLoading" style="margin-top:2px;">
+                        <div class="spinner"></div>
+                        <span id="refineLoadingText">Refining prompt…</span>
+                    </div>
+                </div>
             </div>
 
             <!-- Two-column layout -->

@@ -206,6 +206,101 @@ async function regenerateImage() {
     );
 }
 
+// ── Refine ────────────────────────────────────────────────────────────────────
+
+function openRefinePanel() {
+    document.getElementById('refinePromptTextarea').value = imgData?.prompt || '';
+    document.getElementById('refineInstruction').value    = '';
+    document.getElementById('refineLoading').classList.remove('visible');
+    document.getElementById('refineGenerateBtn').disabled = false;
+    document.getElementById('refinePanel').style.display  = '';
+    document.getElementById('refinePanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => document.getElementById('refineInstruction').focus(), 300);
+}
+
+function closeRefinePanel() {
+    document.getElementById('refinePanel').style.display = 'none';
+}
+
+async function refineAndGenerate() {
+    const instruction = document.getElementById('refineInstruction').value.trim();
+    const promptVal   = document.getElementById('refinePromptTextarea').value.trim();
+
+    if (!instruction) { showToast('Enter a modification instruction.'); return; }
+    if (!promptVal)   { showToast('No prompt to refine.'); return; }
+
+    const btn         = document.getElementById('refineGenerateBtn');
+    const loadingBar  = document.getElementById('refineLoading');
+    const loadingText = document.getElementById('refineLoadingText');
+
+    btn.disabled            = true;
+    loadingText.textContent = 'Refining prompt…';
+    loadingBar.classList.add('visible');
+
+    let refinedPrompt = '';
+
+    await readStream(
+        `${API_URL}/api/image-refine.php`,
+        { method: 'POST', headers: authHeaders(), body: JSON.stringify({
+            generation_id: imgData.id,
+            instruction,
+        })},
+        (token) => {
+            refinedPrompt += token;
+            document.getElementById('refinePromptTextarea').value = refinedPrompt;
+        },
+        (msg) => { loadingText.textContent = msg; },
+        async (ev) => {
+            refinedPrompt  = ev.prompt || refinedPrompt;
+            imgData.prompt = refinedPrompt;
+            document.getElementById('refinePromptTextarea').value = refinedPrompt;
+            document.getElementById('promptBox').textContent      = refinedPrompt || '';
+
+            loadingText.textContent = 'Generating image with DALL-E 3…';
+            document.getElementById('imgShimmer').style.display  = '';
+            document.getElementById('mainImage').style.display   = 'none';
+
+            await readStream(
+                `${API_URL}/api/image-phase2.php`,
+                { method: 'POST', headers: authHeaders(), body: JSON.stringify({
+                    generation_id: imgData.id,
+                    prompt:        refinedPrompt,
+                    size:          imgData.size    || '1792x1024',
+                    quality:       imgData.quality || 'standard',
+                })},
+                () => {},
+                (msg2) => { loadingText.textContent = msg2; },
+                (ev2) => {
+                    btn.disabled = false;
+                    loadingBar.classList.remove('visible');
+                    imgData.image_url      = ev2.image_url;
+                    imgData.revised_prompt = ev2.revised_prompt;
+                    if (ev2.revised_prompt && ev2.revised_prompt !== refinedPrompt) {
+                        document.getElementById('revisedText').textContent   = ev2.revised_prompt;
+                        document.getElementById('revisedNote').style.display = '';
+                    }
+                    setMainImage(ev2.image_url);
+                    document.getElementById('btnDownload').href    = ev2.image_url;
+                    document.getElementById('viewBadge').innerHTML = statusBadge('completed');
+                    closeRefinePanel();
+                },
+                (msg2) => {
+                    btn.disabled = false;
+                    loadingBar.classList.remove('visible');
+                    document.getElementById('imgShimmer').style.display = 'none';
+                    if (imgData?.image_url) setMainImage(imgData.image_url);
+                    showToast(msg2 || 'Image generation failed.');
+                }
+            );
+        },
+        (msg) => {
+            btn.disabled = false;
+            loadingBar.classList.remove('visible');
+            showToast(msg || 'Prompt refinement failed.');
+        }
+    );
+}
+
 // ── Delete ────────────────────────────────────────────────────────────────────
 
 async function deleteImage() {
