@@ -118,6 +118,7 @@ if ($method === 'GET') {
     if (isset($body['name']))                $update['name']                = $body['name'];
     if (isset($body['instructions_rules']))  $update['instructions_rules']  = $body['instructions_rules'];
     if (isset($body['content_rules']))       $update['content_rules']       = $body['content_rules'];
+    if (isset($body['image_rules']))         $update['image_rules']         = $body['image_rules'];
     if (array_key_exists('wp_site_url',     $body)) $update['wp_site_url']     = $body['wp_site_url'];
     if (array_key_exists('wp_username',     $body)) $update['wp_username']     = $body['wp_username'];
     if (array_key_exists('wp_app_password', $body)) $update['wp_app_password'] = $body['wp_app_password'];

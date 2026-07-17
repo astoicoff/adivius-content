@@ -202,12 +202,14 @@ async function openRulesPanel(type) {
 
     const titles = {
         instructions: 'Instructions Rules', content: 'Content Rules',
+        image:        'Image Rules',
         wordpress: 'WordPress Integration', webhook: 'Webhook on Completion',
         nucleus: 'Nucleus Integration',
     };
     const descs = {
         instructions: 'Used in Phase 1 to guide the content brief generation.',
         content:      'Used in Phase 2 to guide the final article writing.',
+        image:        'System prompt for AI image prompt engineering. Defines style, format, and output rules for this group\'s generated images.',
         wordpress:    'Connect this group to a WordPress site for one-click publishing.',
         webhook:      'POST every completed generation to a custom URL (Zapier, Make, your own endpoint).',
         nucleus:      'Link this group to a Nucleus client for direct handoff and publishing.',
@@ -221,9 +223,12 @@ async function openRulesPanel(type) {
     document.getElementById("nucleusFieldsSection").style.display = isNucleus ? "flex" : "none";
 
     if (isRulesText) {
-        document.getElementById("rulesTextarea").value = isInst
-            ? (currentGroupData?.instructions_rules || '')
-            : (currentGroupData?.content_rules || '');
+        const textMap = {
+            instructions: currentGroupData?.instructions_rules || '',
+            content:      currentGroupData?.content_rules      || '',
+            image:        currentGroupData?.image_rules        || '',
+        };
+        document.getElementById("rulesTextarea").value = textMap[type] ?? '';
     } else if (isWP) {
         document.getElementById("wpSiteUrl").value     = currentGroupData?.wp_site_url || '';
         document.getElementById("wpUsername").value    = currentGroupData?.wp_username  || '';
@@ -463,14 +468,14 @@ async function doSaveRules() {
             await loadGroups(); renderGroups(cachedGroups);
         } catch (err) { showToast(err.message); return; }
     } else {
-        const payload = isInst ? { instructions_rules: text } : { content_rules: text };
+        const keyMap = { instructions: 'instructions_rules', content: 'content_rules', image: 'image_rules' };
+        const key    = keyMap[activePanelType] || 'content_rules';
         try {
             const res = await fetch(API_URL + '/api/groups.php?id=' + encodeURIComponent(editingGroupId), {
-                method: 'PATCH', headers: authHeaders(), body: JSON.stringify(payload)
+                method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ [key]: text })
             });
             if (!res.ok) throw new Error('Failed to save.');
-            if (isInst) currentGroupData.instructions_rules = text;
-            else        currentGroupData.content_rules = text;
+            if (currentGroupData) currentGroupData[key] = text;
         } catch (err) { showToast(err.message); return; }
     }
 
