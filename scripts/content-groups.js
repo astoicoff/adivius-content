@@ -1,6 +1,8 @@
 ﻿let editingGroupId   = null;
 let currentGroupData = null;
 let activePanelType  = null;
+let activeContentTab = 'content';
+let cachedGroupImages = [];
 
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("navGroups").classList.add("active");
@@ -65,6 +67,17 @@ async function openGroupEdit(id) {
     document.getElementById("viewGroupsList").style.display = "none";
     document.getElementById("viewGroupEdit").style.display  = "";
 
+    // Reset tab state
+    activeContentTab  = 'content';
+    cachedGroupImages = [];
+    document.getElementById("contentTabBar").style.display = "none";
+    document.getElementById("groupImagesList").style.display = "none";
+    document.getElementById("groupContentList").style.display = "";
+    const tabContentBtn = document.getElementById("tabContentBtn");
+    const tabImagesBtn  = document.getElementById("tabImagesBtn");
+    if (tabContentBtn) { tabContentBtn.classList.add("active"); }
+    if (tabImagesBtn)  { tabImagesBtn.classList.remove("active"); document.getElementById("tabImagesCount").textContent = ""; }
+
     if (!id) {
         document.getElementById("groupDetailName").value     = "";
         document.getElementById("topBarTitle").textContent   = "New Content Group";
@@ -108,12 +121,75 @@ async function openGroupEdit(id) {
             const btnMem = document.getElementById("btnMembers");
             if (btnMem) btnMem.style.display = isOwner ? '' : 'none';
 
-            renderContentItems(data.generations || [], role);
+            const generations = data.generations || [];
+            document.getElementById("tabContentCount").textContent = generations.length ? `(${generations.length})` : '';
+            renderContentItems(generations, role);
+
+            // Tab bar — show only when group exists; load image count async
+            document.getElementById("contentTabBar").style.display = "";
+            loadGroupImages(id);
         } catch (_) {
             document.getElementById("groupEditAlert").className   = "alert alert-error visible";
             document.getElementById("groupEditAlert").textContent = "Failed to load group.";
         }
     }
+}
+
+// ── Images tab ────────────────────────────────────────────────────────────────
+
+async function loadGroupImages(groupId) {
+    try {
+        const res  = await fetch(`${API_URL}/api/images.php?group_id=${encodeURIComponent(groupId)}`, { headers: authHeaders() });
+        const data = await res.json();
+        cachedGroupImages = data.images || [];
+        const count = cachedGroupImages.length;
+        document.getElementById("tabImagesCount").textContent = count ? `(${count})` : '';
+        if (activeContentTab === 'images') renderImageItems(cachedGroupImages);
+    } catch (_) {}
+}
+
+function setContentTab(tab) {
+    activeContentTab = tab;
+    document.getElementById("tabContentBtn").classList.toggle("active", tab === 'content');
+    document.getElementById("tabImagesBtn") .classList.toggle("active", tab === 'images');
+    document.getElementById("groupContentList").style.display  = tab === 'content' ? "" : "none";
+    document.getElementById("analyticsCard").style.display     = tab === 'content' ? (currentGroupData?.generations?.length ? "" : "none") : "none";
+    document.getElementById("groupImagesList").style.display   = tab === 'images'  ? "" : "none";
+    if (tab === 'images') renderImageItems(cachedGroupImages);
+}
+
+function renderImageItems(images) {
+    const list = document.getElementById("groupImagesList");
+    if (!images.length) {
+        list.innerHTML = `<div class="history-empty">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            No images generated in this group yet. <a href="/new-image" style="color:var(--blue);">Generate one →</a>
+        </div>`;
+        return;
+    }
+
+    const ratioClass = (size) => {
+        if (size === '1024x1024') return 'square';
+        if (size === '1024x1792') return 'portrait';
+        return '';
+    };
+
+    list.innerHTML = `<div class="img-grid">` + images.map(img => {
+        const title = toTitleCase(img.keyword);
+        const date  = new Date(img.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+        const url   = `/view-image?id=${encodeURIComponent(img.id)}&group=${encodeURIComponent(editingGroupId)}`;
+        const cls   = ratioClass(img.size);
+        const thumb = img.image_url
+            ? `<img src="${escapeHtml(img.image_url)}" alt="${escapeHtml(img.keyword)}" loading="lazy">`
+            : `<div class="img-placeholder"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>`;
+        return `<a class="img-thumb-card" href="${url}">
+            <div class="img-thumb-wrap ${cls}">${thumb}</div>
+            <div class="img-thumb-info">
+                <div class="img-thumb-title">${escapeHtml(title)}</div>
+                <div class="img-thumb-date">${date}</div>
+            </div>
+        </a>`;
+    }).join('') + `</div>`;
 }
 
 async function saveGroupName() {

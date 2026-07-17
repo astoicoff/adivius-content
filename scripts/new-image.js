@@ -239,7 +239,10 @@ function resetToNew() {
 // ── Init ─────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('navNewImage').classList.add('active');
     hideAlert();
     updateCostNote();
-    loadGroups();
+    initAuth(async () => {
+        await loadGroups();
+    });
 });

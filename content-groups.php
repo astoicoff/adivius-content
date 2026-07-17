@@ -1,5 +1,24 @@
 <?php $pageTitle = 'Content Groups | Content Creator'; ?>
 <?php require_once __DIR__ . '/includes/head.php'; ?>
+<style>
+    .img-grid          { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+    .img-thumb-card    { display: block; text-decoration: none; color: inherit; border: 1px solid var(--light-gray); border-radius: 8px; overflow: hidden; background: var(--card); transition: border-color 0.15s, box-shadow 0.15s; }
+    .img-thumb-card:hover { border-color: #bbb; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .img-thumb-wrap    { aspect-ratio: 16/9; background: var(--off-white); overflow: hidden; }
+    .img-thumb-wrap.square { aspect-ratio: 1; }
+    .img-thumb-wrap.portrait { aspect-ratio: 9/16; }
+    .img-thumb-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .img-thumb-wrap .img-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+    .img-thumb-wrap .img-placeholder svg { width: 28px; height: 28px; stroke: var(--light-gray); fill: none; stroke-width: 1.5; }
+    .img-thumb-info    { padding: 8px 10px; }
+    .img-thumb-title   { font-size: 12px; font-weight: 600; color: var(--dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .img-thumb-date    { font-size: 11px; color: var(--text-muted); font-family: 'Inter', sans-serif; margin-top: 2px; }
+    .content-tab-bar   { display: flex; gap: 0; border-bottom: 1px solid var(--light-gray); margin-bottom: 16px; }
+    .content-tab-btn   { background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 16px 10px; font-size: 13px; font-family: 'Poppins', sans-serif; font-weight: 500; color: var(--text-muted); cursor: pointer; margin-bottom: -1px; transition: color 0.15s, border-color 0.15s; white-space: nowrap; }
+    .content-tab-btn.active { color: var(--dark); border-bottom-color: var(--blue); }
+    .content-tab-btn:hover:not(.active) { color: var(--dark); }
+</style>
+</head>
 <body>
 <?php require_once __DIR__ . '/includes/sidebar.php'; ?>
 
@@ -96,7 +115,16 @@
                     </div>
                 </div>
             </div>
+            <div id="contentTabBar" class="content-tab-bar" style="display:none;">
+                <button class="content-tab-btn active" id="tabContentBtn" onclick="setContentTab('content')">
+                    Content <span id="tabContentCount"></span>
+                </button>
+                <button class="content-tab-btn" id="tabImagesBtn" onclick="setContentTab('images')">
+                    Images <span id="tabImagesCount"></span>
+                </button>
+            </div>
             <div id="groupContentList"></div>
+            <div id="groupImagesList" style="display:none;"></div>
         </div>
 
     </div>
