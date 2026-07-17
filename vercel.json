@@ -1,5 +1,10 @@
 {
   "version": 2,
+  "functions": {
+    "api/image-phase1.php": { "maxDuration": 300 },
+    "api/image-phase2.php": { "maxDuration": 300 },
+    "api/image-refine.php": { "maxDuration": 300 }
+  },
   "builds": [
     { "src": "*.php",         "use": "vercel-php@0.6.2" },
     { "src": "api/*.php",         "use": "vercel-php@0.6.2" },
@@ -8,9 +13,9 @@
     { "src": "favicon.svg",   "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/(login|dashboard|new-content|new-image|content-groups|history|api-keys|view-content|view-image|accept-invite)\\.html$", "headers": { "Location": "/$1" }, "status": 301 },
-    { "src": "/(login|dashboard|new-content|new-image|content-groups|history|api-keys|view-content|view-image|accept-invite)\\.php$",  "headers": { "Location": "/$1" }, "status": 301 },
-    { "src": "^/(login|dashboard|new-content|new-image|content-groups|history|api-keys|view-content|view-image|accept-invite)$", "dest": "/$1.php" },
+    { "src": "/(login|dashboard|new-content|new-image|images|content-groups|history|api-keys|view-content|view-image|accept-invite)\\.html$", "headers": { "Location": "/$1" }, "status": 301 },
+    { "src": "/(login|dashboard|new-content|new-image|images|content-groups|history|api-keys|view-content|view-image|accept-invite)\\.php$",  "headers": { "Location": "/$1" }, "status": 301 },
+    { "src": "^/(login|dashboard|new-content|new-image|images|content-groups|history|api-keys|view-content|view-image|accept-invite)$", "dest": "/$1.php" },
     { "src": "^/api/image-phase1$",  "dest": "/api/image-phase1.php" },
     { "src": "^/api/image-phase2$",  "dest": "/api/image-phase2.php" },
     { "src": "^/api/image-refine$",  "dest": "/api/image-refine.php" },

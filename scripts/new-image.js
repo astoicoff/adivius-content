@@ -69,7 +69,8 @@ async function readStream(url, options, onToken, onProgress, onDone, onError) {
     }
     const reader = res.body.getReader();
     const dec    = new TextDecoder();
-    let buf      = '';
+    let buf       = '';
+    let completed = false;
     try {
         while (true) {
             const { done, value } = await reader.read();
@@ -85,12 +86,16 @@ async function readStream(url, options, onToken, onProgress, onDone, onError) {
                 try { ev = JSON.parse(raw); } catch { continue; }
                 if (ev.type === 'token')    onToken(ev.text);
                 if (ev.type === 'progress') onProgress(ev.message);
-                if (ev.type === 'done')     { onDone(ev); return; }
-                if (ev.type === 'error')    { onError(ev.message); return; }
+                if (ev.type === 'done')     { completed = true; onDone(ev); return; }
+                if (ev.type === 'error')    { completed = true; onError(ev.message); return; }
             }
         }
     } catch (err) {
         onError(err.message);
+        return;
+    }
+    if (!completed) {
+        onError('The request timed out or the connection was interrupted. Please try again.');
     }
 }
 

@@ -29,13 +29,14 @@ if ($method === 'GET') {
         echo json_encode(['images' => $data ?: []]);
 
     } else {
+        $limit = min(200, max(1, intval($_GET['limit'] ?? 100)));
         $res  = supabase_call('GET',
             '/rest/v1/image_generations?user_id=eq.' . urlencode($user_id)
             . '&select=id,keyword,image_url,size,quality,model,status,group_id,created_at,updated_at'
-            . '&order=created_at.desc&limit=50'
+            . '&order=created_at.desc&limit=' . $limit
         );
         $data = json_decode($res['body'], true);
-        echo json_encode(['images' => $data ?: []]);
+        echo json_encode(['images' => $data ?: [], 'limit' => $limit]);
     }
 
 } elseif ($method === 'DELETE') {
