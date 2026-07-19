@@ -82,7 +82,7 @@
                         <label class="form-label" for="modelSelect">AI Model</label>
                         <select class="form-input" id="modelSelect">
                             <optgroup label="OpenAI">
-                                <option value="gpt-5" selected>GPT-5</option>
+                                <option value="gpt-5.5" selected>GPT-5.5</option>
                             </optgroup>
                             <optgroup label="Anthropic">
                                 <option value="claude-opus-4-7">Claude Opus 4.7</option>

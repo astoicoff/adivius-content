@@ -25,7 +25,7 @@ if (empty($rows)) {
 }
 
 $existing_prompt = $rows[0]['prompt'] ?? '';
-$model           = $rows[0]['model']  ?? 'gpt-5';
+$model           = $rows[0]['model']  ?? 'gpt-5.5';
 
 if (!$existing_prompt) {
     http_response_code(400);

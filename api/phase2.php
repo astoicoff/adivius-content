@@ -38,7 +38,7 @@ try {
     emit_sse(['type' => 'progress', 'step' => 1, 'message' => 'Loading group settings…']);
     $snap     = $generation_id ? supabase_call('GET', '/rest/v1/content_generations?id=eq.' . urlencode($generation_id) . '&select=content,model') : null;
     $snapData = $snap ? (json_decode($snap['body'], true) ?? []) : [];
-    $model    = $snapData[0]['model'] ?? 'gpt-5';
+    $model    = $snapData[0]['model'] ?? 'gpt-5.5';
 
     // 2. Perplexity deep research
     emit_sse(['type' => 'progress', 'step' => 2, 'message' => 'Researching topic…']);

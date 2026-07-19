@@ -76,9 +76,9 @@ function test_provider($provider, $key) {
             if ($r['code'] === 200) {
                 $data   = json_decode($r['body'], true);
                 $models = array_column($data['data'] ?? [], 'id');
-                $hasGpt5 = in_array('gpt-5', $models, true);
+                $hasGpt5 = in_array('gpt-5.5', $models, true);
                 $count   = count($models);
-                return ['ok' => true, 'detail' => "$count models available" . ($hasGpt5 ? ' · gpt-5 ✓' : ' · gpt-5 not available on this key')];
+                return ['ok' => true, 'detail' => "$count models available" . ($hasGpt5 ? ' · gpt-5.5 ✓' : ' · gpt-5.5 not available on this key')];
             }
             return ['ok' => false, 'detail' => err_msg($r, 'Connection failed')];
         }

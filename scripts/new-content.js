@@ -169,7 +169,7 @@ async function runBulkGeneration() {
         renderBulkProgress();
 
         try {
-            const bulkModel = document.getElementById("modelSelect")?.value || 'gpt-5';
+            const bulkModel = document.getElementById("modelSelect")?.value || 'gpt-5.5';
 
             const p1data = await collectStream(`${API_URL}/api/phase1.php`, {
                 method: 'POST', headers: authHeaders(),
@@ -286,7 +286,7 @@ async function handlePhase1(e) {
     document.getElementById("generateBriefBtn").disabled = true;
     setStep(1);
 
-    const model = document.getElementById("modelSelect")?.value || 'gpt-5';
+    const model = document.getElementById("modelSelect")?.value || 'gpt-5.5';
 
     try {
         await new Promise((resolve, reject) => {

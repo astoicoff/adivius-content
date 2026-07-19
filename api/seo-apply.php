@@ -28,7 +28,7 @@ if ($gen['user_id'] !== $user_id && !check_group_access($user_id, $gen['group_id
 
 $full_content = $gen['content'] ?? '';
 $settings     = get_user_settings($user_id);
-$model        = $gen['model'] ?? 'gpt-5';
+$model        = $gen['model'] ?? 'gpt-5.5';
 
 // The group's Content Rules govern the writing style (tone, sentence length,
 // one-sentence-per-paragraph, heading conventions). Without them, rewrites

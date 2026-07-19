@@ -8,7 +8,7 @@ $user_id = $user['id'];
 $body    = json_decode(file_get_contents('php://input'), true);
 $keyword  = trim($body['keyword']  ?? '');
 $group_id = trim($body['group_id'] ?? '');
-$model    = trim($body['model']    ?? 'gpt-5');
+$model    = trim($body['model']    ?? 'gpt-5.5');
 
 if (!$keyword)  { http_response_code(400); echo json_encode(['detail' => 'Keyword is required.']); exit; }
 if (!$group_id) { http_response_code(400); echo json_encode(['detail' => 'Content group is required.']); exit; }

@@ -266,7 +266,7 @@ function fire_webhook($url, $payload, $extra_headers = []) {
     return ['ok' => false, 'attempts' => $attempts, 'error' => $lastErr];
 }
 
-function call_openai($system_prompt, $user_prompt, $api_key, $model = 'gpt-5') {
+function call_openai($system_prompt, $user_prompt, $api_key, $model = 'gpt-5.5') {
     if (!$api_key) { http_response_code(400); echo json_encode(['detail' => 'OpenAI API key is required. Please add it in API Keys settings.']); exit; }
     $ch = curl_init('https://api.openai.com/v1/chat/completions');
     curl_setopt_array($ch, [

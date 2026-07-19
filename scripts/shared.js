@@ -136,6 +136,7 @@ function btnBusy(btn, label = 'Saving…') {
 function modelLabel(model) {
     const map = {
         'gpt-5':             'GPT-5',
+        'gpt-5.5':           'GPT-5.5',
         'claude-opus-4-7':   'Opus 4.7',
         'claude-sonnet-4-6': 'Sonnet 4.6',
         'gemini-2.5-pro':    'Gemini 2.5',

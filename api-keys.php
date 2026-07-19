@@ -94,7 +94,7 @@
                         </div>
                     </div>
                     <div class="key-card-desc">
-                        Powers Phase 1 brief generation and Phase 2 article writing (gpt-5).
+                        Powers Phase 1 brief generation and Phase 2 article writing (GPT-5.5).
                         <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">Get key →</a>
                     </div>
                     <div class="key-input-row">
