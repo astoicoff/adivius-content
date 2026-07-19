@@ -121,6 +121,10 @@ try {
         CURLOPT_CUSTOMREQUEST  => 'POST',
         CURLOPT_POSTFIELDS     => $image_bytes,
         CURLOPT_HTTPHEADER     => [
+            // Storage rejects a bare Bearer with the new sb_secret_ key
+            // format ("Invalid Compact JWS" — it's not a JWT). The apikey
+            // header authenticates it, same as supabase_call() does.
+            'apikey: ' . SUPABASE_SERVICE_KEY,
             'Authorization: Bearer ' . SUPABASE_SERVICE_KEY,
             'Content-Type: image/jpeg',
             'x-upsert: true',

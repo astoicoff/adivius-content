@@ -53,7 +53,11 @@ if ($method === 'GET') {
     $ch = curl_init(SUPABASE_URL . '/storage/v1/object/generated-images/' . $storage_path);
     curl_setopt_array($ch, [
         CURLOPT_CUSTOMREQUEST  => 'DELETE',
-        CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . SUPABASE_SERVICE_KEY],
+        // apikey header required with sb_secret_ keys (see image-phase2.php)
+        CURLOPT_HTTPHEADER     => [
+            'apikey: ' . SUPABASE_SERVICE_KEY,
+            'Authorization: Bearer ' . SUPABASE_SERVICE_KEY,
+        ],
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 30,
     ]);
