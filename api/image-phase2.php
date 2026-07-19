@@ -20,16 +20,9 @@ $valid_quals = ['standard', 'hd', 'low', 'medium', 'high'];
 if (!in_array($size,    $valid_sizes, true)) $size    = '1792x1024';
 if (!in_array($quality, $valid_quals, true)) $quality = 'standard';
 
-// dall-e-3 was retired by OpenAI ("The model 'dall-e-3' does not exist").
-// gpt-image-1 replaces it with different size/quality vocabularies — map the
-// legacy values the UI and old rows still carry to their closest equivalents.
-$api_size = [
-    '1792x1024' => '1536x1024',  // landscape
-    '1024x1792' => '1024x1536',  // portrait
-    '1024x1024' => '1024x1024',
-    '1536x1024' => '1536x1024',
-    '1024x1536' => '1024x1536',
-][$size];
+// dall-e-3 was retired by OpenAI. gpt-image-2 accepts any size divisible by
+// 16 (all our UI sizes qualify verbatim) but uses low/medium/high/auto for
+// quality — map the legacy DALL-E vocabulary that the UI and old rows carry.
 $api_quality = [
     'standard' => 'medium',
     'hd'       => 'high',
@@ -68,17 +61,17 @@ header('X-Accel-Buffering: no');
 try {
     emit_sse(['type' => 'progress', 'message' => 'Generating image…']);
 
-    // gpt-image-1 returns b64_json (no response_format param, no temp URLs
-    // for new accounts) — the handler below accepts url or b64 either way.
-    // output_format jpeg keeps the .jpg storage path convention.
+    // gpt-image-2 returns b64_json (no response_format param) — the handler
+    // below accepts url or b64 either way. output_format jpeg keeps the .jpg
+    // storage path convention.
     $ch = curl_init('https://api.openai.com/v1/images/generations');
     curl_setopt_array($ch, [
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => json_encode([
-            'model'         => 'gpt-image-1',
+            'model'         => 'gpt-image-2',
             'prompt'        => $prompt,
             'n'             => 1,
-            'size'          => $api_size,
+            'size'          => $size,
             'quality'       => $api_quality,
             'output_format' => 'jpeg',
         ]),
