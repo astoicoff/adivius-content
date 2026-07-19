@@ -50,7 +50,9 @@ header('X-Accel-Buffering: no');
 try {
     emit_sse(['type' => 'progress', 'message' => 'Generating image with DALL-E 3…']);
 
-    // Call DALL-E 3
+    // Call DALL-E 3. Note: response_format is no longer accepted by the
+    // Images API ("Unknown parameter") — the response may carry either a
+    // temporary url or inline b64_json, so we handle both below.
     $ch = curl_init('https://api.openai.com/v1/images/generations');
     curl_setopt_array($ch, [
         CURLOPT_POST           => true,
@@ -60,7 +62,6 @@ try {
             'n'               => 1,
             'size'            => $size,
             'quality'         => $quality,
-            'response_format' => 'url',
         ]),
         CURLOPT_HTTPHEADER     => [
             'Content-Type: application/json',
@@ -78,22 +79,28 @@ try {
         throw new Exception('DALL-E 3 error: ' . ($data['error']['message'] ?? ('HTTP ' . $http)));
     }
 
-    $temp_url       = $data['data'][0]['url']              ?? '';
-    $revised_prompt = $data['data'][0]['revised_prompt']   ?? $prompt;
-    if (!$temp_url) throw new Exception('No image URL returned by DALL-E 3.');
+    $temp_url       = $data['data'][0]['url']            ?? '';
+    $b64            = $data['data'][0]['b64_json']       ?? '';
+    $revised_prompt = $data['data'][0]['revised_prompt'] ?? $prompt;
+    if (!$temp_url && !$b64) throw new Exception('No image data returned by DALL-E 3.');
 
     emit_sse(['type' => 'progress', 'message' => 'Saving image to storage…']);
 
-    // Download image bytes from temporary OpenAI URL
-    $ch = curl_init($temp_url);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_TIMEOUT        => 60,
-    ]);
-    $image_bytes = curl_exec($ch);
-    curl_close($ch);
-    if (!$image_bytes) throw new Exception('Failed to download generated image from OpenAI.');
+    if ($b64) {
+        $image_bytes = base64_decode($b64);
+        if ($image_bytes === false || $image_bytes === '') throw new Exception('Failed to decode generated image data.');
+    } else {
+        // Download image bytes from temporary OpenAI URL
+        $ch = curl_init($temp_url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_TIMEOUT        => 60,
+        ]);
+        $image_bytes = curl_exec($ch);
+        curl_close($ch);
+        if (!$image_bytes) throw new Exception('Failed to download generated image from OpenAI.');
+    }
 
     // Upload to Supabase Storage (bucket: generated-images)
     $storage_path = $user_id . '/' . $generation_id . '.jpg';

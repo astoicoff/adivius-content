@@ -116,11 +116,21 @@ function renderImage(data) {
         document.getElementById('metaQualityRow').style.display = '';
     }
 
-    // Image
+    // Image. Never replace imgWrap's innerHTML — that would destroy
+    // imgShimmer/mainImage and crash any later Regenerate.
     if (data.image_url) {
         setMainImage(data.image_url);
     } else {
-        document.getElementById('imgWrap').innerHTML = '<div style="padding:40px;color:var(--text-muted);font-size:13px;font-family:\'Inter\',sans-serif;">Image not yet generated.</div>';
+        const ph = document.getElementById('imgPlaceholder');
+        ph.textContent   = data.status === 'failed' ? 'Generation failed — no image was produced.' : 'Image not yet generated.';
+        ph.style.display = '';
+    }
+
+    // Surface a stored failure — this was the "fails silently" gap: the row
+    // carried the API error but the page never showed it.
+    if (data.status === 'failed' && data.error) {
+        document.getElementById('imgFailedError').textContent = data.error;
+        document.getElementById('imgFailedAlert').style.display = 'flex';
     }
 
     // Download + New Prompt
@@ -138,7 +148,8 @@ function renderImage(data) {
 }
 
 function setMainImage(url) {
-    document.getElementById('imgShimmer').style.display = 'none';
+    document.getElementById('imgShimmer').style.display     = 'none';
+    document.getElementById('imgPlaceholder').style.display = 'none';
     const img = document.getElementById('mainImage');
     img.src           = url;
     img.alt           = imgData?.keyword || 'Generated image';
@@ -173,6 +184,8 @@ async function regenerateImage() {
     btn.disabled = true;
 
     document.getElementById('regenLoading').classList.add('visible');
+    document.getElementById('imgFailedAlert').style.display = 'none';
+    document.getElementById('imgPlaceholder').style.display = 'none';
     document.getElementById('imgShimmer').style.display  = '';
     document.getElementById('mainImage').style.display   = 'none';
 
@@ -205,8 +218,15 @@ async function regenerateImage() {
             btn.disabled = false;
             document.getElementById('regenLoading').classList.remove('visible');
             document.getElementById('imgShimmer').style.display = 'none';
-            if (imgData?.image_url) setMainImage(imgData.image_url);
-            showToast(msg || 'Regeneration failed.');
+            if (imgData?.image_url) {
+                setMainImage(imgData.image_url);
+            } else {
+                const ph = document.getElementById('imgPlaceholder');
+                ph.textContent = 'Generation failed — no image was produced.';
+                ph.style.display = '';
+            }
+            document.getElementById('imgFailedError').textContent   = msg || 'Regeneration failed.';
+            document.getElementById('imgFailedAlert').style.display = 'flex';
         }
     );
 }

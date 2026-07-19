@@ -126,6 +126,16 @@
                 </div>
             </div>
 
+            <!-- Generation failed alert -->
+            <div id="imgFailedAlert" class="alert alert-error" style="display:none;align-items:flex-start;gap:10px;margin-bottom:16px;">
+                <svg viewBox="0 0 24 24" style="margin-top:2px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <div style="flex:1;">
+                    <div style="font-weight:600;margin-bottom:2px;">Image generation failed</div>
+                    <div id="imgFailedError" style="font-family:'Inter',monospace;font-size:12px;color:var(--red);word-break:break-word;"></div>
+                    <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">The prompt is saved — use Regenerate to try again.</div>
+                </div>
+            </div>
+
             <!-- Two-column layout -->
             <div class="img-layout">
                 <!-- Image -->
@@ -133,6 +143,7 @@
                     <div class="img-main" id="imgWrap">
                         <div id="imgShimmer" class="img-shimmer" style="display:none;"></div>
                         <img id="mainImage" src="" alt="" style="display:none;">
+                        <div id="imgPlaceholder" style="display:none;padding:40px;color:var(--text-muted);font-size:13px;font-family:'Inter',sans-serif;text-align:center;">No image yet.</div>
                     </div>
                 </div>
 
