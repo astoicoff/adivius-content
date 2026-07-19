@@ -29,7 +29,7 @@ if (empty($group_data)) { http_response_code(400); echo json_encode(['detail' =>
 
 $image_rules = trim($group_data[0]['image_rules'] ?? '');
 if (!$image_rules) {
-    $image_rules = 'You are an expert AI image prompt engineer. Create a detailed, vivid, and effective DALL-E 3 image generation prompt based on the keyword provided. The prompt should describe the subject, composition, style, lighting, and mood clearly.';
+    $image_rules = 'You are an expert AI image prompt engineer. Create a detailed, vivid, and effective AI image generation prompt based on the keyword provided. The prompt should describe the subject, composition, style, lighting, and mood clearly.';
 }
 
 // Create or reuse a generation row

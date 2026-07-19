@@ -15,10 +15,28 @@ $quality       = trim($body['quality']       ?? 'standard');
 if (!$generation_id) { http_response_code(400); echo json_encode(['detail' => 'Generation ID is required.']); exit; }
 if (!$prompt)        { http_response_code(400); echo json_encode(['detail' => 'Prompt is required.']); exit; }
 
-$valid_sizes = ['1792x1024', '1024x1024', '1024x1792'];
-$valid_quals = ['standard', 'hd'];
+$valid_sizes = ['1792x1024', '1024x1024', '1024x1792', '1536x1024', '1024x1536'];
+$valid_quals = ['standard', 'hd', 'low', 'medium', 'high'];
 if (!in_array($size,    $valid_sizes, true)) $size    = '1792x1024';
 if (!in_array($quality, $valid_quals, true)) $quality = 'standard';
+
+// dall-e-3 was retired by OpenAI ("The model 'dall-e-3' does not exist").
+// gpt-image-1 replaces it with different size/quality vocabularies — map the
+// legacy values the UI and old rows still carry to their closest equivalents.
+$api_size = [
+    '1792x1024' => '1536x1024',  // landscape
+    '1024x1792' => '1024x1536',  // portrait
+    '1024x1024' => '1024x1024',
+    '1536x1024' => '1536x1024',
+    '1024x1536' => '1024x1536',
+][$size];
+$api_quality = [
+    'standard' => 'medium',
+    'hd'       => 'high',
+    'low'      => 'low',
+    'medium'   => 'medium',
+    'high'     => 'high',
+][$quality];
 
 $settings   = get_user_settings($user_id);
 $openai_key = $settings['openai_key'] ?? '';
@@ -48,20 +66,21 @@ header('Cache-Control: no-cache');
 header('X-Accel-Buffering: no');
 
 try {
-    emit_sse(['type' => 'progress', 'message' => 'Generating image with DALL-E 3…']);
+    emit_sse(['type' => 'progress', 'message' => 'Generating image…']);
 
-    // Call DALL-E 3. Note: response_format is no longer accepted by the
-    // Images API ("Unknown parameter") — the response may carry either a
-    // temporary url or inline b64_json, so we handle both below.
+    // gpt-image-1 returns b64_json (no response_format param, no temp URLs
+    // for new accounts) — the handler below accepts url or b64 either way.
+    // output_format jpeg keeps the .jpg storage path convention.
     $ch = curl_init('https://api.openai.com/v1/images/generations');
     curl_setopt_array($ch, [
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => json_encode([
-            'model'           => 'dall-e-3',
-            'prompt'          => $prompt,
-            'n'               => 1,
-            'size'            => $size,
-            'quality'         => $quality,
+            'model'         => 'gpt-image-1',
+            'prompt'        => $prompt,
+            'n'             => 1,
+            'size'          => $api_size,
+            'quality'       => $api_quality,
+            'output_format' => 'jpeg',
         ]),
         CURLOPT_HTTPHEADER     => [
             'Content-Type: application/json',
@@ -76,13 +95,13 @@ try {
 
     $data = json_decode($resp, true);
     if ($http !== 200) {
-        throw new Exception('DALL-E 3 error: ' . ($data['error']['message'] ?? ('HTTP ' . $http)));
+        throw new Exception('Image API error: ' . ($data['error']['message'] ?? ('HTTP ' . $http)));
     }
 
     $temp_url       = $data['data'][0]['url']            ?? '';
     $b64            = $data['data'][0]['b64_json']       ?? '';
     $revised_prompt = $data['data'][0]['revised_prompt'] ?? $prompt;
-    if (!$temp_url && !$b64) throw new Exception('No image data returned by DALL-E 3.');
+    if (!$temp_url && !$b64) throw new Exception('No image data returned by the image API.');
 
     emit_sse(['type' => 'progress', 'message' => 'Saving image to storage…']);
 

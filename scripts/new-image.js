@@ -182,7 +182,7 @@ async function generateImage() {
 
     btn.disabled = true;
     loadingBar.classList.add('visible');
-    loadingText.textContent = 'Generating image with DALL-E 3…';
+    loadingText.textContent = 'Generating image…';
 
     // Show shimmer while waiting
     document.getElementById('imageShimmer').style.display = '';

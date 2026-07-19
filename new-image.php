@@ -22,7 +22,7 @@
     <div class="top-bar">
         <div>
             <div class="top-bar-title">New Image</div>
-            <div class="top-bar-subtitle">Generate AI images in two phases — prompt engineering then DALL-E 3 creation</div>
+            <div class="top-bar-subtitle">Generate AI images in two phases — prompt engineering then AI image creation</div>
         </div>
     </div>
     <div class="content-area">
@@ -142,7 +142,7 @@
                     </div>
                     <div class="loading-bar" id="phase2Loading">
                         <div class="spinner"></div>
-                        <span id="phase2LoadingText">Generating image with DALL-E 3…</span>
+                        <span id="phase2LoadingText">Generating image…</span>
                     </div>
                 </div>
             </div>
@@ -162,7 +162,7 @@
                         <img id="resultImage" src="" alt="Generated image" style="display:none;">
                     </div>
                     <div id="revisedPromptNote" style="display:none;margin-top:12px;padding:12px;background:var(--off-white);border:1px solid var(--light-gray);border-radius:8px;font-size:12px;color:var(--text-muted);line-height:1.6;">
-                        <strong style="color:var(--dark);">DALL-E revised prompt:</strong> <span id="revisedPromptText"></span>
+                        <strong style="color:var(--dark);">Model-revised prompt:</strong> <span id="revisedPromptText"></span>
                     </div>
                     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
                         <a id="downloadBtn" href="#" download="generated-image.jpg" class="btn btn-green" target="_blank">

@@ -281,7 +281,7 @@ async function refineAndGenerate() {
             document.getElementById('refinePromptTextarea').value = refinedPrompt;
             document.getElementById('promptBox').textContent      = refinedPrompt || '';
 
-            loadingText.textContent = 'Generating image with DALL-E 3…';
+            loadingText.textContent = 'Generating image…';
             document.getElementById('imgShimmer').style.display  = '';
             document.getElementById('mainImage').style.display   = 'none';
 

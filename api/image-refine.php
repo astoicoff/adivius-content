@@ -45,7 +45,7 @@ header('X-Accel-Buffering: no');
 try {
     emit_sse(['type' => 'progress', 'message' => 'Refining prompt…']);
 
-    $system = 'You are a prompt editor for DALL-E 3 image generation. Given an existing prompt and a modification instruction, return ONLY the updated prompt with the modification applied. Preserve all technical specifications, style rules, lighting details, and composition from the original unless the instruction explicitly changes them. Return just the prompt text — no explanations, no quotes, no preamble.';
+    $system = 'You are a prompt editor for AI image generation. Given an existing prompt and a modification instruction, return ONLY the updated prompt with the modification applied. Preserve all technical specifications, style rules, lighting details, and composition from the original unless the instruction explicitly changes them. Return just the prompt text — no explanations, no quotes, no preamble.';
 
     $user_msg = "Original prompt:\n{$existing_prompt}\n\nModification instruction:\n{$instruction}";
 

@@ -155,7 +155,7 @@
                         <div class="img-meta-card-body">
                             <div class="prompt-box" id="promptBox"></div>
                             <div id="revisedNote" class="revised-note" style="display:none;">
-                                <strong>DALL-E revised:</strong> <span id="revisedText"></span>
+                                <strong>Model revised:</strong> <span id="revisedText"></span>
                             </div>
                         </div>
                     </div>
