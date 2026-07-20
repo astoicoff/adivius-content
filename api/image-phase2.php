@@ -110,7 +110,7 @@ try {
             // No Content-Type header — curl sets multipart boundary automatically
             CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $openai_key],
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 120,
+            CURLOPT_TIMEOUT        => 180,
         ]);
     } else {
         emit_sse(['type' => 'progress', 'message' => 'Generating image…']);
@@ -131,7 +131,7 @@ try {
                 'Authorization: Bearer ' . $openai_key,
             ],
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 120,
+            CURLOPT_TIMEOUT        => 180,
         ]);
     }
 

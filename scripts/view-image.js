@@ -96,7 +96,7 @@ function renderImage(data) {
     });
 
     // Prompt
-    document.getElementById('promptBox').textContent = data.prompt || '(No prompt stored)';
+    document.getElementById('promptBox').value = data.prompt || '';
     if (data.revised_prompt && data.revised_prompt !== data.prompt) {
         document.getElementById('revisedText').textContent     = data.revised_prompt;
         document.getElementById('revisedNote').style.display  = '';
@@ -321,6 +321,8 @@ async function refineAndGenerate() {
     btn.disabled            = true;
     loadingText.textContent = 'Refining prompt…';
     loadingBar.classList.add('visible');
+    document.getElementById('refinePromptTextarea').disabled = true;
+    document.getElementById('refineInstruction').disabled    = true;
 
     let refinedPrompt = '';
 
@@ -342,6 +344,7 @@ async function refineAndGenerate() {
             document.getElementById('promptBox').textContent      = refinedPrompt || '';
 
             loadingText.textContent = 'Generating image…';
+            document.getElementById('promptBox').value                = refinedPrompt || '';
             document.getElementById('imgFailedAlert').style.display  = 'none';
             document.getElementById('imgPlaceholder').style.display  = 'none';
             document.getElementById('imgShimmer').style.display      = '';
@@ -373,6 +376,8 @@ async function refineAndGenerate() {
                 (ev2) => {
                     btn.disabled = false;
                     loadingBar.classList.remove('visible');
+                    document.getElementById('refinePromptTextarea').disabled = false;
+                    document.getElementById('refineInstruction').disabled    = false;
                     // Mirror backend: archive old image_url into versions
                     if (imgData.image_url) {
                         imgData.image_versions = [...(imgData.image_versions || []), {
@@ -396,6 +401,8 @@ async function refineAndGenerate() {
                 (msg2) => {
                     btn.disabled = false;
                     loadingBar.classList.remove('visible');
+                    document.getElementById('refinePromptTextarea').disabled = false;
+                    document.getElementById('refineInstruction').disabled    = false;
                     document.getElementById('imgShimmer').style.display = 'none';
                     if (imgData?.image_url) {
                         setMainImage(imgData.image_url);
@@ -411,9 +418,43 @@ async function refineAndGenerate() {
         (msg) => {
             btn.disabled = false;
             loadingBar.classList.remove('visible');
+            document.getElementById('refinePromptTextarea').disabled = false;
+            document.getElementById('refineInstruction').disabled    = false;
             showToast(msg || 'Prompt refinement failed.');
         }
     );
+}
+
+// ── Save prompt ───────────────────────────────────────────────────────────────
+
+async function savePrompt() {
+    const prompt = document.getElementById('promptBox').value.trim();
+    if (!prompt) { showToast('Prompt cannot be empty.'); return; }
+
+    const id    = new URLSearchParams(window.location.search).get('id');
+    const btn   = document.getElementById('btnSavePrompt');
+    const label = document.getElementById('savePromptLabel');
+    btn.disabled     = true;
+    label.textContent = 'Saving…';
+
+    try {
+        const res = await fetch(`${API_URL}/api/images.php?id=${encodeURIComponent(id)}`, {
+            method:  'PATCH',
+            headers: authHeaders(),
+            body:    JSON.stringify({ prompt }),
+        });
+        if (!res.ok) {
+            const e = await res.json().catch(() => ({}));
+            throw new Error(e.detail || 'Failed to save prompt.');
+        }
+        imgData.prompt    = prompt;
+        label.textContent = 'Saved ✓';
+        setTimeout(() => { btn.disabled = false; label.textContent = 'Save Prompt'; }, 2000);
+    } catch (err) {
+        showToast(err.message);
+        btn.disabled      = false;
+        label.textContent = 'Save Prompt';
+    }
 }
 
 // ── Delete ────────────────────────────────────────────────────────────────────

@@ -17,7 +17,6 @@
     .img-meta-key        { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.7px; min-width: 52px; flex-shrink: 0; }
     .img-meta-val        { font-size: 13px; color: var(--dark); line-height: 1.4; font-family: 'Inter', sans-serif; word-break: break-word; }
 
-    .prompt-box          { background: var(--off-white); border: 1px solid var(--light-gray); border-radius: 8px; padding: 12px; font-size: 13px; font-family: 'Inter', sans-serif; line-height: 1.6; color: var(--dark); white-space: pre-wrap; word-break: break-word; }
     .revised-note        { font-size: 11px; color: var(--text-muted); font-family: 'Inter', sans-serif; line-height: 1.5; margin-top: 8px; }
 
     .refine-panel        { background: var(--card); border: 1px solid var(--light-gray); border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
@@ -173,7 +172,11 @@
                     <div class="img-meta-card">
                         <div class="img-meta-card-head">Image Prompt</div>
                         <div class="img-meta-card-body">
-                            <div class="prompt-box" id="promptBox"></div>
+                            <textarea id="promptBox" class="form-textarea" rows="6" style="font-size:13px;line-height:1.6;resize:vertical;"></textarea>
+                            <button class="btn btn-secondary" id="btnSavePrompt" onclick="savePrompt()" style="align-self:flex-start;margin-top:2px;">
+                                <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                                <span id="savePromptLabel">Save Prompt</span>
+                            </button>
                             <div id="revisedNote" class="revised-note" style="display:none;">
                                 <strong>Model revised:</strong> <span id="revisedText"></span>
                             </div>

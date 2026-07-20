@@ -84,6 +84,26 @@ if ($method === 'GET') {
     supabase_call('DELETE', '/rest/v1/image_generations?id=eq.' . urlencode($id));
     echo json_encode(['status' => 'deleted']);
 
+} elseif ($method === 'PATCH') {
+    $id = $_GET['id'] ?? '';
+    if (!$id) { http_response_code(400); echo json_encode(['detail' => 'Image ID is required.']); exit; }
+
+    $body   = json_decode(file_get_contents('php://input'), true);
+    $prompt = trim($body['prompt'] ?? '');
+    if (!$prompt) { http_response_code(400); echo json_encode(['detail' => 'Prompt is required.']); exit; }
+
+    $check = supabase_call('GET', '/rest/v1/image_generations?id=eq.' . urlencode($id) . '&user_id=eq.' . urlencode($user_id) . '&select=id');
+    if (empty(json_decode($check['body'], true))) {
+        http_response_code(404); echo json_encode(['detail' => 'Image not found.']); exit;
+    }
+
+    supabase_call('PATCH', '/rest/v1/image_generations?id=eq.' . urlencode($id), [
+        'prompt'     => $prompt,
+        'updated_at' => date('c'),
+    ]);
+
+    echo json_encode(['status' => 'saved', 'prompt' => $prompt]);
+
 } else {
     http_response_code(405); echo json_encode(['detail' => 'Method not allowed.']);
 }
