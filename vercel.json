@@ -1,34 +1,18 @@
 {
   "version": 2,
   "builds": [
-    { "src": "*.php",                "use": "vercel-php@0.6.2" },
-    { "src": "api/image-phase1.php", "use": "vercel-php@0.6.2", "config": { "maxDuration": 300 } },
-    { "src": "api/image-phase2.php", "use": "vercel-php@0.6.2", "config": { "maxDuration": 300 } },
-    { "src": "api/image-refine.php", "use": "vercel-php@0.6.2", "config": { "maxDuration": 300 } },
-    { "src": "api/nucleus/*.php",    "use": "vercel-php@0.6.2" },
-    { "src": "api/*.php",            "use": "vercel-php@0.6.2" },
-    { "src": "scripts/**",           "use": "@vercel/static" },
-    { "src": "favicon.svg",          "use": "@vercel/static" }
+    { "src": "router.php",    "use": "vercel-php@0.6.2" },
+    { "src": "api/index.php", "use": "vercel-php@0.6.2", "config": { "maxDuration": 300 } },
+    { "src": "scripts/**",    "use": "@vercel/static" },
+    { "src": "favicon.svg",   "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/(login|dashboard|new-content|new-image|images|content-groups|history|api-keys|view-content|view-image|accept-invite)\\.html$", "headers": { "Location": "/$1" }, "status": 301 },
     { "src": "/(login|dashboard|new-content|new-image|images|content-groups|history|api-keys|view-content|view-image|accept-invite)\\.php$",  "headers": { "Location": "/$1" }, "status": 301 },
-    { "src": "^/(login|dashboard|new-content|new-image|images|content-groups|history|api-keys|view-content|view-image|accept-invite)$", "dest": "/$1.php" },
-    { "src": "^/api/image-phase1$",  "dest": "/api/image-phase1.php" },
-    { "src": "^/api/image-phase2$",  "dest": "/api/image-phase2.php" },
-    { "src": "^/api/image-refine$",  "dest": "/api/image-refine.php" },
-    { "src": "^/api/images$",        "dest": "/api/images.php" },
-    { "src": "^/api/nucleus/content-briefs$",    "dest": "/api/nucleus/content-briefs.php" },
-    { "src": "^/api/nucleus/summary$",           "dest": "/api/nucleus/summary.php" },
-    { "src": "^/api/nucleus/handoff$",           "dest": "/api/nucleus/handoff.php" },
-    { "src": "^/api/nucleus/publish-completed$", "dest": "/api/nucleus/publish-completed.php" },
-    { "src": "^/api/nucleus/content-updated$",   "dest": "/api/nucleus/content-updated.php" },
-    { "src": "^/api/nucleus/content-returned$",  "dest": "/api/nucleus/content-returned.php" },
-    { "src": "^/api/nucleus/profile$",           "dest": "/api/nucleus/profile.php" },
-    { "src": "^/api/nucleus/clients$",           "dest": "/api/nucleus/clients.php" },
-    { "src": "^/api/nucleus/sites$",             "dest": "/api/nucleus/sites.php" },
-    { "src": "^/api/history$",                   "dest": "/api/history.php" },
-    { "src": "^/$", "dest": "/dashboard.php" },
-    { "src": "^/(.*)", "dest": "/$1" }
+    { "src": "^/api/(.+)$",                                "dest": "/api/index.php" },
+    { "src": "^/scripts/(.+)$",                           "dest": "/scripts/$1" },
+    { "src": "^/favicon\\.svg$",                          "dest": "/favicon.svg" },
+    { "src": "^/(login|dashboard|new-content|new-image|images|content-groups|history|api-keys|view-content|view-image|accept-invite)$", "dest": "/router.php" },
+    { "src": "^/$",                                        "dest": "/router.php" }
   ]
 }
