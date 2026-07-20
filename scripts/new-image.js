@@ -1,6 +1,7 @@
 let currentGenerationId = null;
 let selectedSize        = '1792x1024';
 let selectedQuality     = 'standard';
+let contextImageFile    = null;
 
 const COST_TABLE = {
     standard: { '1024x1024': '$0.04', '1792x1024': '$0.08', '1024x1792': '$0.08' },
@@ -167,6 +168,27 @@ document.getElementById('phase1Form').addEventListener('submit', async function(
     );
 });
 
+// ── Context image (optional reference for editing) ───────────────────────────
+
+function onContextImageChange(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    contextImageFile = file;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        document.getElementById('contextImageThumb').src       = ev.target.result;
+        document.getElementById('contextImageName').textContent = file.name;
+        document.getElementById('contextImagePreview').style.display = 'flex';
+    };
+    reader.readAsDataURL(file);
+}
+
+function clearContextImage() {
+    contextImageFile = null;
+    document.getElementById('contextImageInput').value          = '';
+    document.getElementById('contextImagePreview').style.display = 'none';
+}
+
 // ── Phase 2: Generate Image ──────────────────────────────────────────────────
 
 async function generateImage() {
@@ -191,9 +213,22 @@ async function generateImage() {
     document.getElementById('phase3Section').classList.remove('hidden');
     document.getElementById('phase3Section').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
+    let fetchOptions;
+    if (contextImageFile) {
+        const fd = new FormData();
+        fd.append('generation_id', currentGenerationId);
+        fd.append('prompt', prompt);
+        fd.append('size', selectedSize);
+        fd.append('quality', selectedQuality);
+        fd.append('image', contextImageFile);
+        fetchOptions = { method: 'POST', headers: { Authorization: authHeaders()['Authorization'] }, body: fd };
+    } else {
+        fetchOptions = { method: 'POST', headers: authHeaders(), body: JSON.stringify({ generation_id: currentGenerationId, prompt, size: selectedSize, quality: selectedQuality }) };
+    }
+
     await readStream(
         `${API_URL}/api/image-phase2.php`,
-        { method: 'POST', headers: authHeaders(), body: JSON.stringify({ generation_id: currentGenerationId, prompt, size: selectedSize, quality: selectedQuality }) },
+        fetchOptions,
         () => {},
         (msg)  => { loadingText.textContent = msg; },
         (ev)   => {
@@ -236,6 +271,7 @@ function resetToNew() {
     document.getElementById('revisedPromptNote').style.display = 'none';
     document.getElementById('phase2Section').classList.add('hidden');
     document.getElementById('phase3Section').classList.add('hidden');
+    clearContextImage();
     hideAlert();
     setStep(1);
     window.scrollTo({ top: 0, behavior: 'smooth' });

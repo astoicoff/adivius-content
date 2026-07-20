@@ -1,4 +1,5 @@
-let imgData = null;
+let imgData          = null;
+let refineContextFile = null;
 
 // ── SSE stream helper ─────────────────────────────────────────────────────────
 
@@ -138,6 +139,9 @@ function renderImage(data) {
     const newPromptUrl = `/new-image${data.group_id ? `?group=${encodeURIComponent(data.group_id)}&keyword=${encodeURIComponent(data.keyword)}` : ''}`;
     document.getElementById('btnNewPrompt').href = newPromptUrl;
 
+    // Version history
+    renderVersionStrip(Array.isArray(data.image_versions) ? data.image_versions : []);
+
     // Group name (async)
     if (data.group_id) {
         loadGroupName(data.group_id);
@@ -145,6 +149,51 @@ function renderImage(data) {
 
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('contentArea').style.display  = '';
+}
+
+// ── Version history ───────────────────────────────────────────────────────────
+
+function escHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function renderVersionStrip(versions) {
+    if (!versions || !versions.length) {
+        document.getElementById('versionStrip').style.display = 'none';
+        return;
+    }
+    document.getElementById('versionStrip').style.display = '';
+    document.getElementById('versionList').innerHTML = versions.map((v, i) => {
+        const label = v.generated_at
+            ? new Date(v.generated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+            : 'v' + (i + 1);
+        const title = 'Version ' + (i + 1) + (v.generated_at ? ' — ' + new Date(v.generated_at).toLocaleString() : '');
+        return `<a href="${escHtml(v.url)}" target="_blank" title="${escHtml(title)}" style="display:block;flex-shrink:0;text-decoration:none;">` +
+               `<img src="${escHtml(v.url)}" style="width:72px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--light-gray);display:block;" alt="${escHtml('Version ' + (i + 1))}">` +
+               `<div style="font-size:10px;color:var(--text-muted);margin-top:3px;text-align:center;">${escHtml(label)}</div>` +
+               `</a>`;
+    }).join('');
+}
+
+// ── Refine panel context image ────────────────────────────────────────────────
+
+function onRefineContextChange(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    refineContextFile = file;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        document.getElementById('refineContextThumb').src        = ev.target.result;
+        document.getElementById('refineContextName').textContent  = file.name;
+        document.getElementById('refineContextPreview').style.display = 'flex';
+    };
+    reader.readAsDataURL(file);
+}
+
+function clearRefineContextImage() {
+    refineContextFile = null;
+    document.getElementById('refineContextInput').value             = '';
+    document.getElementById('refineContextPreview').style.display   = 'none';
 }
 
 function setMainImage(url) {
@@ -202,17 +251,26 @@ async function regenerateImage() {
         (ev)  => {
             btn.disabled = false;
             document.getElementById('regenLoading').classList.remove('visible');
+            // Mirror what the backend did: archive old image_url into versions
+            if (imgData.image_url) {
+                imgData.image_versions = [...(imgData.image_versions || []), {
+                    url:            imgData.image_url,
+                    revised_prompt: imgData.revised_prompt || '',
+                    generated_at:   new Date().toISOString(),
+                }];
+            }
             imgData.image_url = ev.image_url;
             if (ev.revised_prompt) {
                 imgData.revised_prompt = ev.revised_prompt;
                 if (ev.revised_prompt !== imgData.prompt) {
-                    document.getElementById('revisedText').textContent    = ev.revised_prompt;
-                    document.getElementById('revisedNote').style.display  = '';
+                    document.getElementById('revisedText').textContent   = ev.revised_prompt;
+                    document.getElementById('revisedNote').style.display = '';
                 }
             }
             setMainImage(ev.image_url);
-            document.getElementById('btnDownload').href = ev.image_url;
+            document.getElementById('btnDownload').href    = ev.image_url;
             document.getElementById('viewBadge').innerHTML = statusBadge('completed');
+            renderVersionStrip(imgData.image_versions || []);
         },
         (msg) => {
             btn.disabled = false;
@@ -238,6 +296,7 @@ function openRefinePanel() {
     document.getElementById('refineInstruction').value    = '';
     document.getElementById('refineLoading').classList.remove('visible');
     document.getElementById('refineGenerateBtn').disabled = false;
+    clearRefineContextImage();
     document.getElementById('refinePanel').style.display  = '';
     document.getElementById('refinePanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
     setTimeout(() => document.getElementById('refineInstruction').focus(), 300);
@@ -245,6 +304,7 @@ function openRefinePanel() {
 
 function closeRefinePanel() {
     document.getElementById('refinePanel').style.display = 'none';
+    clearRefineContextImage();
 }
 
 async function refineAndGenerate() {
@@ -287,19 +347,40 @@ async function refineAndGenerate() {
             document.getElementById('imgShimmer').style.display      = '';
             document.getElementById('mainImage').style.display       = 'none';
 
-            await readStream(
-                `${API_URL}/api/image-phase2.php`,
-                { method: 'POST', headers: authHeaders(), body: JSON.stringify({
+            let p2Options;
+            if (refineContextFile) {
+                const fd = new FormData();
+                fd.append('generation_id', imgData.id);
+                fd.append('prompt', refinedPrompt);
+                fd.append('size', imgData.size || '1792x1024');
+                fd.append('quality', imgData.quality || 'standard');
+                fd.append('image', refineContextFile);
+                p2Options = { method: 'POST', headers: { Authorization: authHeaders()['Authorization'] }, body: fd };
+            } else {
+                p2Options = { method: 'POST', headers: authHeaders(), body: JSON.stringify({
                     generation_id: imgData.id,
                     prompt:        refinedPrompt,
                     size:          imgData.size    || '1792x1024',
                     quality:       imgData.quality || 'standard',
-                })},
+                })};
+            }
+
+            await readStream(
+                `${API_URL}/api/image-phase2.php`,
+                p2Options,
                 () => {},
                 (msg2) => { loadingText.textContent = msg2; },
                 (ev2) => {
                     btn.disabled = false;
                     loadingBar.classList.remove('visible');
+                    // Mirror backend: archive old image_url into versions
+                    if (imgData.image_url) {
+                        imgData.image_versions = [...(imgData.image_versions || []), {
+                            url:            imgData.image_url,
+                            revised_prompt: imgData.revised_prompt || '',
+                            generated_at:   new Date().toISOString(),
+                        }];
+                    }
                     imgData.image_url      = ev2.image_url;
                     imgData.revised_prompt = ev2.revised_prompt;
                     if (ev2.revised_prompt && ev2.revised_prompt !== refinedPrompt) {
@@ -309,6 +390,7 @@ async function refineAndGenerate() {
                     setMainImage(ev2.image_url);
                     document.getElementById('btnDownload').href    = ev2.image_url;
                     document.getElementById('viewBadge').innerHTML = statusBadge('completed');
+                    renderVersionStrip(imgData.image_versions || []);
                     closeRefinePanel();
                 },
                 (msg2) => {

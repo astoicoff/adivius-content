@@ -43,26 +43,43 @@ if ($method === 'GET') {
     $id = $_GET['id'] ?? '';
     if (!$id) { http_response_code(400); echo json_encode(['detail' => 'Image ID is required.']); exit; }
 
-    $check = supabase_call('GET', '/rest/v1/image_generations?id=eq.' . urlencode($id) . '&user_id=eq.' . urlencode($user_id) . '&select=id');
-    if (empty(json_decode($check['body'], true))) {
+    // Fetch full row so we can delete the main image + all versions from Storage
+    $check = supabase_call('GET',
+        '/rest/v1/image_generations?id=eq.' . urlencode($id)
+        . '&user_id=eq.' . urlencode($user_id)
+        . '&select=id,image_url,image_versions'
+    );
+    $rows = json_decode($check['body'], true);
+    if (empty($rows)) {
         http_response_code(404); echo json_encode(['detail' => 'Image not found.']); exit;
     }
+    $row = $rows[0];
 
-    // Remove from Supabase Storage (non-fatal — DB row is deleted regardless)
-    $storage_path = $user_id . '/' . $id . '.jpg';
-    $ch = curl_init(SUPABASE_URL . '/storage/v1/object/generated-images/' . $storage_path);
-    curl_setopt_array($ch, [
-        CURLOPT_CUSTOMREQUEST  => 'DELETE',
-        // apikey header required with sb_secret_ keys (see image-phase2.php)
-        CURLOPT_HTTPHEADER     => [
-            'apikey: ' . SUPABASE_SERVICE_KEY,
-            'Authorization: Bearer ' . SUPABASE_SERVICE_KEY,
-        ],
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 30,
-    ]);
-    curl_exec($ch);
-    curl_close($ch);
+    // Extracts the storage-relative path from a public URL and issues a DELETE
+    // (non-fatal — DB row is deleted regardless of Storage outcome)
+    $storage_prefix = SUPABASE_URL . '/storage/v1/object/public/generated-images/';
+    $delete_by_url  = function ($url) use ($storage_prefix) {
+        if (!$url || strpos($url, $storage_prefix) !== 0) return;
+        $path = substr($url, strlen($storage_prefix));
+        $ch   = curl_init(SUPABASE_URL . '/storage/v1/object/generated-images/' . $path);
+        curl_setopt_array($ch, [
+            CURLOPT_CUSTOMREQUEST  => 'DELETE',
+            CURLOPT_HTTPHEADER     => [
+                'apikey: ' . SUPABASE_SERVICE_KEY,
+                'Authorization: Bearer ' . SUPABASE_SERVICE_KEY,
+            ],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 30,
+        ]);
+        curl_exec($ch);
+        curl_close($ch);
+    };
+
+    $delete_by_url($row['image_url'] ?? '');
+    $versions = is_array($row['image_versions']) ? $row['image_versions'] : [];
+    foreach ($versions as $v) {
+        $delete_by_url($v['url'] ?? '');
+    }
 
     supabase_call('DELETE', '/rest/v1/image_generations?id=eq.' . urlencode($id));
     echo json_encode(['status' => 'deleted']);

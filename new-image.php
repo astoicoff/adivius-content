@@ -103,6 +103,25 @@
                         <label class="form-label" for="promptEditor">Image Prompt <span style="font-weight:400;color:var(--text-muted);">(editable)</span></label>
                         <textarea class="form-textarea" id="promptEditor" rows="8"></textarea>
                     </div>
+
+                    <!-- Optional context image for AI image editing (uses /v1/images/edits) -->
+                    <div class="form-group" style="margin-bottom:20px;">
+                        <label class="form-label">Reference Image <span style="font-weight:400;color:var(--text-muted);">(optional — for image editing)</span></label>
+                        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                            <label for="contextImageInput" class="btn btn-secondary" style="cursor:pointer;margin:0;">
+                                <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                                Attach Image
+                            </label>
+                            <input type="file" id="contextImageInput" accept="image/png,image/jpeg,image/webp" style="display:none;" onchange="onContextImageChange(event)">
+                            <div id="contextImagePreview" style="display:none;align-items:center;gap:8px;background:var(--off-white);border:1px solid var(--light-gray);border-radius:8px;padding:6px 10px;">
+                                <img id="contextImageThumb" src="" alt="" style="width:36px;height:36px;object-fit:cover;border-radius:4px;flex-shrink:0;">
+                                <span id="contextImageName" style="font-size:12px;color:var(--dark);font-family:'Inter',sans-serif;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+                                <button type="button" onclick="clearContextImage()" style="background:none;border:none;cursor:pointer;padding:0 2px;color:var(--text-muted);font-size:18px;line-height:1;flex-shrink:0;" title="Remove">×</button>
+                            </div>
+                        </div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:5px;">When attached, the prompt describes how to edit the image rather than generate from scratch</div>
+                    </div>
+
                     <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;margin-bottom:20px;">
                         <div>
                             <div class="form-label" style="margin-bottom:8px;">Size</div>

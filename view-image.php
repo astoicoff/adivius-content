@@ -110,7 +110,22 @@
                     </div>
                     <div class="form-group" style="margin:0;">
                         <label class="form-label" style="margin-bottom:6px;">Modification Instruction</label>
-                        <input type="text" id="refineInstruction" class="form-input" placeholder="e.g. Change the background to a sunset over the ocean">
+                        <textarea id="refineInstruction" class="form-textarea" rows="3" placeholder="e.g. Change the background to a sunset over the ocean"></textarea>
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label class="form-label" style="margin-bottom:6px;">Reference Image <span style="font-weight:400;color:var(--text-muted);">(optional — for image editing)</span></label>
+                        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                            <label for="refineContextInput" class="btn btn-secondary" style="cursor:pointer;margin:0;">
+                                <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                                Attach Image
+                            </label>
+                            <input type="file" id="refineContextInput" accept="image/png,image/jpeg,image/webp" style="display:none;" onchange="onRefineContextChange(event)">
+                            <div id="refineContextPreview" style="display:none;align-items:center;gap:8px;background:var(--off-white);border:1px solid var(--light-gray);border-radius:8px;padding:6px 10px;">
+                                <img id="refineContextThumb" src="" alt="" style="width:36px;height:36px;object-fit:cover;border-radius:4px;flex-shrink:0;">
+                                <span id="refineContextName" style="font-size:12px;color:var(--dark);font-family:'Inter',sans-serif;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+                                <button type="button" onclick="clearRefineContextImage()" style="background:none;border:none;cursor:pointer;padding:0 2px;color:var(--text-muted);font-size:18px;line-height:1;flex-shrink:0;" title="Remove">×</button>
+                            </div>
+                        </div>
                     </div>
                     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                         <button class="btn btn-green" id="refineGenerateBtn" onclick="refineAndGenerate()">
@@ -144,6 +159,11 @@
                         <div id="imgShimmer" class="img-shimmer" style="display:none;"></div>
                         <img id="mainImage" src="" alt="" style="display:none;">
                         <div id="imgPlaceholder" style="display:none;padding:40px;color:var(--text-muted);font-size:13px;font-family:'Inter',sans-serif;text-align:center;">No image yet.</div>
+                    </div>
+                    <!-- Version history strip — shown when previous generations exist -->
+                    <div id="versionStrip" style="display:none;margin-top:12px;">
+                        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--text-muted);margin-bottom:8px;">Previous Versions</div>
+                        <div id="versionList" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;"></div>
                     </div>
                 </div>
 
