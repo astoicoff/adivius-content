@@ -8,16 +8,17 @@ $raw  = strtok($_SERVER['REQUEST_URI'] ?? '/', '?');
 // Strip /api/ prefix; trim slashes
 $path = trim(preg_replace('#^/api/?#', '', $raw), '/');
 
-// Reject empty paths, path traversal, and any characters outside [a-z0-9/_-]
+// Normalize: strip .php extension before validation so callers using
+// either /api/groups or /api/groups.php both resolve correctly
+$path = preg_replace('/\.php$/i', '', $path);
+
+// Reject empty paths, path traversal, and unsafe characters
 if (!$path || !preg_match('#^[a-zA-Z0-9/_-]+$#', $path)) {
     http_response_code(404);
     header('Content-Type: application/json');
     echo json_encode(['detail' => 'Not found.']);
     exit;
 }
-
-// Normalize: strip .php extension if the caller included it
-$path = preg_replace('/\.php$/i', '', $path);
 
 // Block internal-only files from being invoked as endpoints
 if (in_array(basename($path), ['helpers', 'index'], true)) {
