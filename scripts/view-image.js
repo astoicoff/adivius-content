@@ -282,8 +282,10 @@ async function refineAndGenerate() {
             document.getElementById('promptBox').textContent      = refinedPrompt || '';
 
             loadingText.textContent = 'Generating image…';
-            document.getElementById('imgShimmer').style.display  = '';
-            document.getElementById('mainImage').style.display   = 'none';
+            document.getElementById('imgFailedAlert').style.display  = 'none';
+            document.getElementById('imgPlaceholder').style.display  = 'none';
+            document.getElementById('imgShimmer').style.display      = '';
+            document.getElementById('mainImage').style.display       = 'none';
 
             await readStream(
                 `${API_URL}/api/image-phase2.php`,
@@ -313,8 +315,14 @@ async function refineAndGenerate() {
                     btn.disabled = false;
                     loadingBar.classList.remove('visible');
                     document.getElementById('imgShimmer').style.display = 'none';
-                    if (imgData?.image_url) setMainImage(imgData.image_url);
-                    showToast(msg2 || 'Image generation failed.');
+                    if (imgData?.image_url) {
+                        setMainImage(imgData.image_url);
+                    } else {
+                        document.getElementById('imgPlaceholder').textContent   = 'Generation failed — no image was produced.';
+                        document.getElementById('imgPlaceholder').style.display = '';
+                    }
+                    document.getElementById('imgFailedError').textContent   = msg2 || 'Image generation failed.';
+                    document.getElementById('imgFailedAlert').style.display = 'flex';
                 }
             );
         },
