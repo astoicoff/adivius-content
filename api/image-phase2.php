@@ -167,6 +167,11 @@ try {
         if (!$image_bytes) throw new Exception('Failed to download generated image from OpenAI.');
     }
 
+    // Remove embedded AI-provenance metadata (C2PA, IPTC DigitalSourceType)
+    // before the image is hosted — these travel with the file onto client
+    // sites and trigger "AI-generated" labeling in Google image search.
+    $image_bytes = strip_jpeg_metadata($image_bytes);
+
     // Each attempt gets a unique path so previous versions remain accessible
     $ts_ms        = (int)(microtime(true) * 1000);
     $storage_path = $user_id . '/' . $generation_id . '_' . $ts_ms . '.jpg';

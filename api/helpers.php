@@ -185,6 +185,33 @@ function call_perplexity($messages, $api_key) {
     return json_decode($body, true)['choices'][0]['message']['content'];
 }
 
+// Strip JPEG metadata segments — APP1 (EXIF/XMP), APP11 (JUMBF/C2PA), COM —
+// before hosting. OpenAI embeds C2PA credentials + IPTC DigitalSourceType
+// "trainedAlgorithmicMedia", which Google reads to label images as
+// AI-generated in search results. Lossless: the entropy-coded image data is
+// copied untouched (APP0/JFIF, ICC and Adobe color segments are kept).
+// Returns the input unchanged on any parse anomaly — generation must never
+// fail over metadata hygiene.
+function strip_jpeg_metadata($bytes) {
+    $len = strlen($bytes);
+    if ($len < 4 || ord($bytes[0]) !== 0xFF || ord($bytes[1]) !== 0xD8) return $bytes;
+    $out = "\xFF\xD8";
+    $i   = 2;
+    while ($i + 4 <= $len) {
+        if (ord($bytes[$i]) !== 0xFF) return $bytes;
+        $marker = ord($bytes[$i + 1]);
+        if ($marker === 0xDA) return $out . substr($bytes, $i);   // SOS: rest verbatim
+        $segLen = (ord($bytes[$i + 2]) << 8) | ord($bytes[$i + 3]);
+        $segEnd = $i + 2 + $segLen;
+        if ($segEnd > $len) return $bytes;
+        if (!in_array($marker, [0xE1, 0xEB, 0xFE], true)) {
+            $out .= substr($bytes, $i, $segEnd - $i);
+        }
+        $i = $segEnd;
+    }
+    return $bytes;
+}
+
 function parse_content_meta($raw) {
     $lines     = explode("\n", (string)$raw);
     $meta      = [];
