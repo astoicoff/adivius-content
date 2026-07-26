@@ -70,9 +70,9 @@
                         <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         Content Rules
                     </button>
-                    <button class="btn btn-secondary" onclick="openRulesPanel('image')">
+                    <button class="btn btn-secondary" onclick="openRulesPanel('image')" id="btnImageAgents">
                         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-                        Image Rules
+                        Image Agents
                     </button>
                     <button class="btn btn-secondary" onclick="openRulesPanel('wordpress')">
                         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
@@ -199,7 +199,65 @@
             </div>
         </div>
     </div>
-    <div style="display:flex;align-items:center;gap:12px;">
+    <!-- Image Agents (shown instead of textarea in image mode) -->
+    <div id="imageAgentsSection" style="display:none;flex-direction:column;gap:12px;margin-bottom:16px;">
+        <div id="agentListView">
+            <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+                <button class="btn btn-green" style="padding:5px 12px;font-size:12px;" onclick="openAgentEditor(null)">
+                    <svg viewBox="0 0 24 24" style="width:12px;height:12px;"><path d="M12 5v14M5 12h14"/></svg>
+                    New agent
+                </button>
+            </div>
+            <div id="imageAgentsList"></div>
+        </div>
+        <div id="agentEditorView" style="display:none;flex-direction:column;gap:12px;">
+            <button class="btn-back" onclick="closeAgentEditor()" style="align-self:flex-start;">
+                <svg viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+                All agents
+            </button>
+            <div class="form-group" style="margin:0;">
+                <label class="form-label">Agent Name</label>
+                <input type="text" class="form-input" id="agentNameInput" placeholder="e.g. Featured image, Social media...">
+            </div>
+            <div style="display:flex;gap:10px;">
+                <div class="form-group" style="margin:0;flex:1;">
+                    <label class="form-label">Default Size</label>
+                    <select class="form-input" id="agentSizeSelect">
+                        <option value="1792x1024">Landscape (1792×1024)</option>
+                        <option value="1024x1024">Square (1024×1024)</option>
+                        <option value="1024x1792">Portrait (1024×1792)</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin:0;flex:1;">
+                    <label class="form-label">Default Quality</label>
+                    <select class="form-input" id="agentQualitySelect">
+                        <option value="standard">Standard</option>
+                        <option value="hd">HD</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label class="form-label">Instructions</label>
+                <textarea class="form-textarea" id="agentInstructionsTextarea" rows="14" placeholder="System prompt for this agent's image prompt engineering..."></textarea>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <button id="agentSaveBtn" class="btn btn-green" onclick="saveImageAgent()">
+                    <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    Save Agent
+                </button>
+                <button id="agentDeleteBtn" class="btn btn-secondary" style="color:var(--red);display:none;" onclick="deleteImageAgent()">
+                    <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                    Delete
+                </button>
+                <span class="save-indicator" id="agentSaveIndicator">
+                    <svg style="width:14px;height:14px;stroke:#2a7a1a;fill:none;stroke-width:2;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    Saved!
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div id="rulesSaveRow" style="display:flex;align-items:center;gap:12px;">
         <button id="saveRulesBtn" class="btn btn-green" onclick="saveRules()">
             <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
             Save Rules

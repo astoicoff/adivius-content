@@ -104,6 +104,10 @@ function renderImage(data) {
 
     // Metadata
     document.getElementById('metaKeyword').textContent = data.keyword;
+    if (data.agent_name) {
+        document.getElementById('metaAgent').textContent      = data.agent_name;
+        document.getElementById('metaAgentRow').style.display = '';
+    }
     if (data.model) {
         document.getElementById('metaModel').textContent   = modelLabel(data.model);
         document.getElementById('metaModelRow').style.display = '';

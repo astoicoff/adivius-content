@@ -273,19 +273,22 @@ async function openRulesPanel(type) {
     const isWP      = type === 'wordpress';
     const isWH      = type === 'webhook';
     const isNucleus = type === 'nucleus';
+    const isImage   = type === 'image';
     const isInst    = type === 'instructions';
-    const isRulesText = !isWP && !isWH && !isNucleus;
+    const isRulesText = !isWP && !isWH && !isNucleus && !isImage;
+
+    if (isImage && !editingGroupId) { showToast('Save the group first before configuring image agents.', 'warning'); return; }
 
     const titles = {
         instructions: 'Instructions Rules', content: 'Content Rules',
-        image:        'Image Rules',
+        image:        'Image Agents',
         wordpress: 'WordPress Integration', webhook: 'Webhook on Completion',
         nucleus: 'Nucleus Integration',
     };
     const descs = {
         instructions: 'Used in Phase 1 to guide the content brief generation.',
         content:      'Used in Phase 2 to guide the final article writing.',
-        image:        'System prompt for AI image prompt engineering. Defines style, format, and output rules for this group\'s generated images.',
+        image:        'Named agents with their own prompt-engineering instructions — e.g. Featured image, Social media. Pick one when generating.',
         wordpress:    'Connect this group to a WordPress site for one-click publishing.',
         webhook:      'POST every completed generation to a custom URL (Zapier, Make, your own endpoint).',
         nucleus:      'Link this group to a Nucleus client for direct handoff and publishing.',
@@ -297,12 +300,14 @@ async function openRulesPanel(type) {
     document.getElementById("wpFieldsSection").style.display      = isWP      ? "flex" : "none";
     document.getElementById("webhookFieldsSection").style.display = isWH      ? "flex" : "none";
     document.getElementById("nucleusFieldsSection").style.display = isNucleus ? "flex" : "none";
+    document.getElementById("imageAgentsSection").style.display   = isImage   ? "flex" : "none";
+    document.getElementById("rulesSaveRow").style.display         = isImage   ? "none" : "flex";
+    if (isImage) await loadImageAgents();
 
     if (isRulesText) {
         const textMap = {
             instructions: currentGroupData?.instructions_rules || '',
             content:      currentGroupData?.content_rules      || '',
-            image:        currentGroupData?.image_rules        || '',
         };
         document.getElementById("rulesTextarea").value = textMap[type] ?? '';
     } else if (isWP) {
@@ -378,6 +383,114 @@ function collectWebhookHeaders() {
         out[name] = value;
     }
     return out;
+}
+
+// ── Image Agents ─────────────────────────────────────────────────────────────
+
+let _imageAgents    = [];
+let _editingAgentId = null;
+
+async function loadImageAgents() {
+    const list = document.getElementById("imageAgentsList");
+    document.getElementById("agentListView").style.display   = "";
+    document.getElementById("agentEditorView").style.display = "none";
+    list.innerHTML = '<div style="padding:14px 0;color:var(--text-muted);font-size:13px;font-family:\'Inter\',sans-serif;">Loading…</div>';
+    try {
+        const res  = await fetch(`${API_URL}/api/image-agents.php?group_id=${encodeURIComponent(editingGroupId)}`, { headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to load agents.');
+        _imageAgents = data.agents || [];
+        renderImageAgentsList();
+    } catch (err) {
+        list.innerHTML = `<div style="padding:14px 0;color:var(--red);font-size:13px;font-family:'Inter',sans-serif;">${escapeHtml(err.message)}</div>`;
+    }
+}
+
+function renderImageAgentsList() {
+    const list = document.getElementById("imageAgentsList");
+    if (!_imageAgents.length) {
+        list.innerHTML = `<div style="padding:20px 0;text-align:center;color:var(--text-muted);font-size:13px;font-family:'Inter',sans-serif;">
+            No image agents yet. Each agent is a reusable instruction set — e.g. Featured image, Social media.</div>`;
+        return;
+    }
+    list.innerHTML = _imageAgents.map(a => `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--light-gray);border-radius:8px;margin-bottom:8px;background:var(--card);">
+            <div style="min-width:0;">
+                <div style="font-size:13px;font-weight:600;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.name)}</div>
+                <div style="font-size:11px;color:var(--text-muted);font-family:'Inter',sans-serif;margin-top:2px;">
+                    ${escapeHtml(a.size)} · ${escapeHtml(a.quality)} · ${(a.instructions || '').length ? (a.instructions.length + ' chars') : 'no instructions'}
+                </div>
+            </div>
+            <button class="btn btn-secondary" style="padding:4px 12px;font-size:12px;flex-shrink:0;" onclick="openAgentEditor('${a.id}')">Edit</button>
+        </div>`).join('');
+}
+
+function openAgentEditor(agentId) {
+    _editingAgentId = agentId;
+    const agent = agentId ? _imageAgents.find(a => a.id === agentId) : null;
+    document.getElementById("agentNameInput").value            = agent?.name         || '';
+    document.getElementById("agentSizeSelect").value           = agent?.size         || '1792x1024';
+    document.getElementById("agentQualitySelect").value        = agent?.quality      || 'standard';
+    document.getElementById("agentInstructionsTextarea").value = agent?.instructions || '';
+    document.getElementById("agentDeleteBtn").style.display    = agent ? '' : 'none';
+    document.getElementById("agentSaveIndicator").classList.remove("visible");
+    document.getElementById("agentListView").style.display   = "none";
+    document.getElementById("agentEditorView").style.display = "flex";
+    document.getElementById("agentNameInput").focus();
+}
+
+function closeAgentEditor() {
+    document.getElementById("agentEditorView").style.display = "none";
+    document.getElementById("agentListView").style.display   = "";
+}
+
+async function saveImageAgent() {
+    const name = document.getElementById("agentNameInput").value.trim();
+    if (!name) { showToast('Agent name is required.', 'warning'); document.getElementById("agentNameInput").focus(); return; }
+    const payload = {
+        name,
+        instructions: document.getElementById("agentInstructionsTextarea").value,
+        size:         document.getElementById("agentSizeSelect").value,
+        quality:      document.getElementById("agentQualitySelect").value,
+    };
+    const done = btnBusy(document.getElementById("agentSaveBtn"));
+    try {
+        const url = `${API_URL}/api/image-agents.php?group_id=${encodeURIComponent(editingGroupId)}`
+            + (_editingAgentId ? `&id=${encodeURIComponent(_editingAgentId)}` : '');
+        const res = await fetch(url, {
+            method: _editingAgentId ? 'PATCH' : 'POST',
+            headers: authHeaders(), body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to save agent.');
+        const ind = document.getElementById("agentSaveIndicator");
+        ind.classList.add("visible");
+        setTimeout(() => ind.classList.remove("visible"), 2000);
+        await loadImageAgents();
+    } catch (err) {
+        showToast(err.message);
+    } finally {
+        done();
+    }
+}
+
+async function deleteImageAgent() {
+    if (!_editingAgentId) return;
+    const agent = _imageAgents.find(a => a.id === _editingAgentId);
+    if (!confirm(`Delete agent "${agent?.name || ''}"? Past images keep their record; this cannot be undone.`)) return;
+    const done = btnBusy(document.getElementById("agentDeleteBtn"), 'Deleting…');
+    try {
+        const res = await fetch(`${API_URL}/api/image-agents.php?group_id=${encodeURIComponent(editingGroupId)}&id=${encodeURIComponent(_editingAgentId)}`, {
+            method: 'DELETE', headers: authHeaders()
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to delete agent.');
+        await loadImageAgents();
+    } catch (err) {
+        showToast(err.message);
+    } finally {
+        done();
+    }
 }
 
 // Fetch clients + sites in parallel, then render the site dropdown. Sites
@@ -544,7 +657,7 @@ async function doSaveRules() {
             await loadGroups(); renderGroups(cachedGroups);
         } catch (err) { showToast(err.message); return; }
     } else {
-        const keyMap = { instructions: 'instructions_rules', content: 'content_rules', image: 'image_rules' };
+        const keyMap = { instructions: 'instructions_rules', content: 'content_rules' };
         const key    = keyMap[activePanelType] || 'content_rules';
         try {
             const res = await fetch(API_URL + '/api/groups.php?id=' + encodeURIComponent(editingGroupId), {

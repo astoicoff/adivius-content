@@ -9,6 +9,7 @@ $body    = json_decode(file_get_contents('php://input'), true);
 $keyword  = trim($body['keyword']  ?? '');
 $group_id = trim($body['group_id'] ?? '');
 $model    = trim($body['model']    ?? 'gpt-5.5');
+$agent_id = trim($body['agent_id'] ?? '');
 
 if (!$keyword)  { http_response_code(400); echo json_encode(['detail' => 'Keyword is required.']); exit; }
 if (!$group_id) { http_response_code(400); echo json_encode(['detail' => 'Content group is required.']); exit; }
@@ -23,11 +24,26 @@ if (!check_group_access($user_id, $group_id, 'moderator')) {
     http_response_code(403); echo json_encode(['detail' => 'Content group not found or insufficient permissions.']); exit;
 }
 
-$group_res  = supabase_call('GET', '/rest/v1/content_groups?id=eq.' . urlencode($group_id) . '&select=image_rules');
-$group_data = json_decode($group_res['body'], true);
-if (empty($group_data)) { http_response_code(400); echo json_encode(['detail' => 'Content group not found.']); exit; }
-
-$image_rules = trim($group_data[0]['image_rules'] ?? '');
+// Resolve the image agent whose instructions drive the prompt engineering.
+// Explicit agent_id wins; else the group's first agent (by sort/created);
+// else a generic fallback so groups without agents still work.
+$agent_name  = null;
+$image_rules = '';
+if ($agent_id) {
+    $agent_res  = supabase_call('GET', '/rest/v1/image_agents?id=eq.' . urlencode($agent_id) . '&group_id=eq.' . urlencode($group_id) . '&select=id,name,instructions');
+    $agent_data = json_decode($agent_res['body'], true);
+    if (empty($agent_data)) { http_response_code(400); echo json_encode(['detail' => 'Image agent not found in this group.']); exit; }
+    $agent_name  = $agent_data[0]['name'];
+    $image_rules = trim($agent_data[0]['instructions'] ?? '');
+} else {
+    $agent_res  = supabase_call('GET', '/rest/v1/image_agents?group_id=eq.' . urlencode($group_id) . '&select=id,name,instructions&order=sort.asc,created_at.asc&limit=1');
+    $agent_data = json_decode($agent_res['body'], true);
+    if (!empty($agent_data)) {
+        $agent_id    = $agent_data[0]['id'];
+        $agent_name  = $agent_data[0]['name'];
+        $image_rules = trim($agent_data[0]['instructions'] ?? '');
+    }
+}
 if (!$image_rules) {
     $image_rules = 'You are an expert AI image prompt engineer. Create a detailed, vivid, and effective AI image generation prompt based on the keyword provided. The prompt should describe the subject, composition, style, lighting, and mood clearly.';
 }
@@ -41,11 +57,13 @@ if ($generation_id) {
     }
 } else {
     $res  = supabase_call('POST', '/rest/v1/image_generations', [
-        'user_id'  => $user_id,
-        'group_id' => $group_id,
-        'keyword'  => $keyword,
-        'model'    => $model,
-        'status'   => 'pending',
+        'user_id'    => $user_id,
+        'group_id'   => $group_id,
+        'keyword'    => $keyword,
+        'model'      => $model,
+        'status'     => 'pending',
+        'agent_id'   => $agent_id ?: null,
+        'agent_name' => $agent_name,
     ], ['Prefer: return=representation']);
     $row = json_decode($res['body'], true);
     if (empty($row[0]['id'])) {
@@ -57,6 +75,8 @@ if ($generation_id) {
 supabase_call('PATCH', '/rest/v1/image_generations?id=eq.' . urlencode($generation_id), [
     'status'     => 'generating_prompt',
     'model'      => $model,
+    'agent_id'   => $agent_id ?: null,
+    'agent_name' => $agent_name,
     'updated_at' => date('c'),
 ]);
 

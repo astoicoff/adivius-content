@@ -59,6 +59,13 @@
                             </select>
                         </div>
                         <div class="form-group" style="margin-bottom:16px;">
+                            <label class="form-label" for="agentSelect">Image Agent</label>
+                            <select class="form-input" id="agentSelect">
+                                <option value="">— No agents in this group —</option>
+                            </select>
+                            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Each agent carries its own prompt-engineering instructions and size/quality defaults — manage them in the group's Image Agents panel.</div>
+                        </div>
+                        <div class="form-group" style="margin-bottom:16px;">
                             <label class="form-label" for="modelSelect">Text Model <span style="font-weight:400;color:var(--text-muted);">(for prompt engineering)</span></label>
                             <select class="form-input" id="modelSelect">
                                 <optgroup label="OpenAI">

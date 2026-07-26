@@ -123,6 +123,45 @@ async function loadGroups() {
     }
 }
 
+// ── Image agents ─────────────────────────────────────────────────────────────
+
+let _agents = [];
+
+async function loadAgentsForGroup(groupId) {
+    const sel = document.getElementById('agentSelect');
+    _agents = [];
+    sel.innerHTML = '<option value="">— No agents in this group —</option>';
+    if (!groupId) return;
+    try {
+        const res  = await fetch(`${API_URL}/api/image-agents.php?group_id=${encodeURIComponent(groupId)}`, { headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok) return;
+        _agents = data.agents || [];
+        if (_agents.length) {
+            sel.innerHTML = '';
+            _agents.forEach((a, i) => {
+                const opt = document.createElement('option');
+                opt.value       = a.id;
+                opt.textContent = a.name;
+                if (i === 0) opt.selected = true;
+                sel.appendChild(opt);
+            });
+            applyAgentDefaults(_agents[0]);
+        }
+    } catch (_) {}
+}
+
+function applyAgentDefaults(agent) {
+    if (!agent) return;
+    if (agent.size)    setSize(agent.size);
+    if (agent.quality) setQuality(agent.quality);
+}
+
+document.getElementById('groupSelect').addEventListener('change', e => loadAgentsForGroup(e.target.value));
+document.getElementById('agentSelect').addEventListener('change', e => {
+    applyAgentDefaults(_agents.find(a => a.id === e.target.value));
+});
+
 // ── Phase 1: Generate Prompt ─────────────────────────────────────────────────
 
 document.getElementById('phase1Form').addEventListener('submit', async function(e) {
@@ -148,7 +187,7 @@ document.getElementById('phase1Form').addEventListener('submit', async function(
 
     await readStream(
         `${API_URL}/api/image-phase1.php`,
-        { method: 'POST', headers: authHeaders(), body: JSON.stringify({ keyword, group_id, model }) },
+        { method: 'POST', headers: authHeaders(), body: JSON.stringify({ keyword, group_id, model, agent_id: document.getElementById('agentSelect').value || undefined }) },
         (token) => { promptEditor.value += token; },
         (msg)   => { loadingText.textContent = msg; },
         (ev)    => {
@@ -285,5 +324,14 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCostNote();
     initAuth(async () => {
         await loadGroups();
+        // Prefill from view-image's "New Prompt" link (?group=&keyword=)
+        const params  = new URLSearchParams(window.location.search);
+        const groupId = params.get('group');
+        const keyword = params.get('keyword');
+        if (groupId) {
+            document.getElementById('groupSelect').value = groupId;
+            await loadAgentsForGroup(groupId);
+        }
+        if (keyword) document.getElementById('keywordInput').value = keyword;
     });
 });

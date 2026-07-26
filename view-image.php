@@ -195,6 +195,10 @@
                                 <span class="img-meta-key">Keyword</span>
                                 <span class="img-meta-val" id="metaKeyword"></span>
                             </div>
+                            <div class="img-meta-row" id="metaAgentRow" style="display:none;">
+                                <span class="img-meta-key">Agent</span>
+                                <span class="img-meta-val" id="metaAgent"></span>
+                            </div>
                             <div class="img-meta-row" id="metaModelRow" style="display:none;">
                                 <span class="img-meta-key">Model</span>
                                 <span class="img-meta-val" id="metaModel"></span>
