@@ -98,6 +98,7 @@ try {
     //  - the stored reference from a prior run (JSON path: refine/regenerate)
     $ref_path = null;   // local file path for CURLFile
     $ref_mime = null;
+    $base_url = null;   // public URL the base was resolved from (JSON path)
     $new_ref_url = $stored_ref_url;   // carried into the final PATCH
 
     if ($is_multipart) {
@@ -166,21 +167,56 @@ try {
         }
     }
 
+    // The ORIGINAL reference rides along as a second input whenever the base
+    // is something else (refine-on-current, or a manually attached new base)
+    // — so the AI keeps fidelity to the real subject across iterations.
+    // Intermediate versions are never sent. Skipped when the base IS the
+    // stored reference (regenerate, or refine before any image exists).
+    $orig_ref_path = null;
+    $orig_ref_mime = null;
+    if ($ref_path && $stored_ref_url && $base_url !== $stored_ref_url) {
+        $ch = curl_init($stored_ref_url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_TIMEOUT        => 60,
+        ]);
+        $orig_bytes = curl_exec($ch);
+        curl_close($ch);
+        if ($orig_bytes) {
+            $orig_ref_path = tempnam(sys_get_temp_dir(), 'oref');
+            file_put_contents($orig_ref_path, $orig_bytes);
+            $ext_mime = ['png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'webp' => 'image/webp'];
+            $orig_ref_mime = $ext_mime[strtolower(pathinfo(parse_url($stored_ref_url, PHP_URL_PATH), PATHINFO_EXTENSION))] ?? 'image/jpeg';
+        }
+        // Failure to fetch the original is non-fatal — proceed with base only.
+    }
+
     if ($ref_path) {
         emit_sse(['type' => 'progress', 'message' => 'Editing image with AI…']);
-        // /v1/images/edits: multipart, uses the reference as the base
+        // /v1/images/edits: multipart, base image (+ optional original ref)
+        $post = [
+            'model'         => 'gpt-image-2',
+            'prompt'        => $prompt,
+            'n'             => '1',
+            'size'          => $size,
+            'quality'       => $api_quality,
+            'output_format' => 'jpeg',
+        ];
+        if ($orig_ref_path) {
+            $post['image[0]'] = new CURLFile($ref_path, $ref_mime, 'current.img');
+            $post['image[1]'] = new CURLFile($orig_ref_path, $orig_ref_mime, 'original-reference.img');
+            // Steer the model without polluting the stored prompt.
+            $post['prompt'] = 'Two input images are provided. The FIRST is the current image — apply the requested changes to it, preserving its composition. '
+                . 'The SECOND is the original reference — use it to stay faithful to the real subject, materials, and layout. '
+                . 'Request: ' . $prompt;
+        } else {
+            $post['image'] = new CURLFile($ref_path, $ref_mime, 'reference.' . (pathinfo($ref_path, PATHINFO_EXTENSION) ?: 'img'));
+        }
         $ch = curl_init('https://api.openai.com/v1/images/edits');
         curl_setopt_array($ch, [
             CURLOPT_POST       => true,
-            CURLOPT_POSTFIELDS => [
-                'model'         => 'gpt-image-2',
-                'image'         => new CURLFile($ref_path, $ref_mime, 'reference.' . (pathinfo($ref_path, PATHINFO_EXTENSION) ?: 'img')),
-                'prompt'        => $prompt,
-                'n'             => '1',
-                'size'          => $size,
-                'quality'       => $api_quality,
-                'output_format' => 'jpeg',
-            ],
+            CURLOPT_POSTFIELDS => $post,
             // No Content-Type header — curl sets multipart boundary automatically
             CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $openai_key],
             CURLOPT_RETURNTRANSFER => true,

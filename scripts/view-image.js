@@ -401,20 +401,34 @@ function openRefinePanel() {
     document.getElementById('refineGenerateBtn').disabled = false;
     clearRefineContextImage();
 
-    // Show exactly which base image the refinement edits: the current
-    // (latest) image; falling back to the original reference; else scratch.
-    const baseThumb = document.getElementById('refineBaseThumb');
-    const baseNote  = document.getElementById('refineBaseNote');
-    const baseUrl   = imgData?.image_url || imgData?.reference_image_url || '';
+    // Show exactly which images the AI receives: the base (current/latest
+    // image, falling back to the original reference), plus the original
+    // reference when it's distinct. Intermediate versions are never sent.
+    const baseThumb   = document.getElementById('refineBaseThumb');
+    const baseNote    = document.getElementById('refineBaseNote');
+    const origWrap    = document.getElementById('refineOrigRefWrap');
+    const baseUrl     = imgData?.image_url || imgData?.reference_image_url || '';
+    const origRefUrl  = imgData?.reference_image_url || '';
+    const origIncluded = !!(origRefUrl && baseUrl && baseUrl !== origRefUrl);
+
     if (baseUrl) {
         baseThumb.src           = baseUrl;
         baseThumb.style.display = '';
         baseNote.textContent    = imgData?.image_url
-            ? 'The refined result edits the current image (latest version).'
+            ? (origIncluded
+                ? 'The AI edits the current image and also sees the original reference for fidelity. Older versions are not used.'
+                : 'The refined result edits the current image (latest version).')
             : 'No generated image yet — the refinement edits the original reference image.';
     } else {
         baseThumb.style.display = 'none';
         baseNote.textContent    = 'No base image — the refined prompt generates from scratch.';
+    }
+
+    if (origIncluded) {
+        document.getElementById('refineOrigRefThumb').src = origRefUrl;
+        origWrap.style.display = '';
+    } else {
+        origWrap.style.display = 'none';
     }
 
     document.getElementById('refinePanel').style.display  = '';

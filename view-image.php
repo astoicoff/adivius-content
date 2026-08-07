@@ -103,13 +103,20 @@
             <div id="refinePanel" class="refine-panel" style="display:none;">
                 <div class="refine-panel-head">Refine Image Prompt</div>
                 <div class="refine-panel-body">
-                    <!-- The base the edit is applied to — refining improves THIS image -->
+                    <!-- The base the edit is applied to — refining improves THIS image.
+                         The original reference (when distinct) is also sent to the AI. -->
                     <div class="form-group" style="margin:0;">
-                        <label class="form-label" style="margin-bottom:6px;">Refining This Image</label>
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <img id="refineBaseThumb" src="" alt="Base image" style="width:96px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--light-gray);flex-shrink:0;display:none;">
-                            <span id="refineBaseNote" style="font-size:11.5px;color:var(--text-muted);font-family:'Inter',sans-serif;line-height:1.5;"></span>
+                        <div style="display:flex;gap:18px;flex-wrap:wrap;">
+                            <div>
+                                <label class="form-label" style="margin-bottom:6px;">Refining This Image</label>
+                                <img id="refineBaseThumb" src="" alt="Base image" style="width:96px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--light-gray);display:none;">
+                            </div>
+                            <div id="refineOrigRefWrap" style="display:none;">
+                                <label class="form-label" style="margin-bottom:6px;">Original Reference <span style="font-weight:400;color:var(--text-muted);">(also given to the AI)</span></label>
+                                <img id="refineOrigRefThumb" src="" alt="Original reference" style="width:96px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--light-gray);display:block;">
+                            </div>
                         </div>
+                        <div id="refineBaseNote" style="font-size:11.5px;color:var(--text-muted);font-family:'Inter',sans-serif;line-height:1.5;margin-top:6px;"></div>
                     </div>
                     <div class="form-group" style="margin:0;">
                         <label class="form-label" style="margin-bottom:6px;">Current Prompt <span style="font-weight:400;color:var(--text-muted);">(editable)</span></label>
