@@ -90,16 +90,17 @@ if ($method === 'GET') {
     $id = $_GET['id'] ?? '';
     if (!$id) { http_response_code(400); echo json_encode(['detail' => 'Image ID is required.']); exit; }
 
-    $body               = json_decode(file_get_contents('php://input'), true) ?: [];
-    $prompt             = trim($body['prompt'] ?? '');
-    $remove_reference   = !empty($body['remove_reference']);
-    $delete_version_url = trim($body['delete_version_url'] ?? '');
+    $body                = json_decode(file_get_contents('php://input'), true) ?: [];
+    $prompt              = trim($body['prompt'] ?? '');
+    $remove_reference    = !empty($body['remove_reference']);
+    $delete_version_url  = trim($body['delete_version_url']  ?? '');
+    $restore_version_url = trim($body['restore_version_url'] ?? '');
 
-    if (!$prompt && !$remove_reference && !$delete_version_url) {
-        http_response_code(400); echo json_encode(['detail' => 'Nothing to update — send prompt, remove_reference, or delete_version_url.']); exit;
+    if (!$prompt && !$remove_reference && !$delete_version_url && !$restore_version_url) {
+        http_response_code(400); echo json_encode(['detail' => 'Nothing to update — send prompt, remove_reference, delete_version_url, or restore_version_url.']); exit;
     }
 
-    $check = supabase_call('GET', '/rest/v1/image_generations?id=eq.' . urlencode($id) . '&user_id=eq.' . urlencode($user_id) . '&select=id,reference_image_url,image_versions');
+    $check = supabase_call('GET', '/rest/v1/image_generations?id=eq.' . urlencode($id) . '&user_id=eq.' . urlencode($user_id) . '&select=id,image_url,revised_prompt,updated_at,reference_image_url,image_versions');
     $rows  = json_decode($check['body'], true);
     if (empty($rows)) {
         http_response_code(404); echo json_encode(['detail' => 'Image not found.']); exit;
@@ -113,6 +114,45 @@ if ($method === 'GET') {
             'updated_at'          => date('c'),
         ]);
         echo json_encode(['status' => 'reference_removed']);
+        exit;
+    }
+
+    if ($restore_version_url) {
+        // Swap semantics: the chosen version becomes the current image, and
+        // the current image is archived in its place. No file is ever
+        // orphaned or aliased (a URL never appears as both current and a
+        // version), so per-version delete stays safe.
+        $versions = is_array($row['image_versions']) ? $row['image_versions'] : [];
+        $restored = null;
+        $kept     = [];
+        foreach ($versions as $v) {
+            if ($restored === null && ($v['url'] ?? '') === $restore_version_url) { $restored = $v; continue; }
+            $kept[] = $v;
+        }
+        if ($restored === null) {
+            http_response_code(404); echo json_encode(['detail' => 'Version not found on this image.']); exit;
+        }
+        if (!empty($row['image_url'])) {
+            $kept[] = [
+                'url'            => $row['image_url'],
+                'revised_prompt' => $row['revised_prompt'] ?? '',
+                'generated_at'   => $row['updated_at'] ?? date('c'),
+            ];
+        }
+        $patch = [
+            'image_url'      => $restored['url'],
+            'revised_prompt' => $restored['revised_prompt'] ?? '',
+            'image_versions' => $kept,
+            'status'         => 'completed',
+            'updated_at'     => date('c'),
+        ];
+        supabase_call('PATCH', '/rest/v1/image_generations?id=eq.' . urlencode($id), $patch);
+        echo json_encode([
+            'status'         => 'restored',
+            'image_url'      => $restored['url'],
+            'revised_prompt' => $restored['revised_prompt'] ?? '',
+            'image_versions' => $kept,
+        ]);
         exit;
     }
 

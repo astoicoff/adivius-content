@@ -191,8 +191,46 @@ function renderVersionStrip(versions) {
                `</a>` +
                `<button onclick="deleteImageVersion('${escHtml(v.url)}')" title="Delete this version" ` +
                `style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;border:1px solid var(--light-gray);background:var(--card);color:var(--red);font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">×</button>` +
+               `<button onclick="restoreImageVersion('${escHtml(v.url)}')" title="Restore this version as the current image" ` +
+               `style="position:absolute;top:-6px;left:-6px;width:18px;height:18px;border-radius:50%;border:1px solid var(--light-gray);background:var(--card);color:var(--green);font-size:11px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">↩</button>` +
                `</div>`;
     }).join('');
+}
+
+// Restore an archived version as the current image. The current image is
+// archived in its place (swap) — nothing is lost. Because Refine edits the
+// current image, this is the "roll back to a stable version and iterate
+// from there" path.
+async function restoreImageVersion(url) {
+    const versions = imgData?.image_versions || [];
+    const idx = versions.findIndex(v => v.url === url);
+    if (idx === -1) return;
+    if (!confirm(`Restore Version ${idx + 1} as the current image? The current image will be archived in its place — nothing is deleted. Future Refine runs will build on the restored version.`)) return;
+    try {
+        const res  = await fetch(`${API_URL}/api/images.php?id=${encodeURIComponent(imgData.id)}`, {
+            method: 'PATCH', headers: authHeaders(),
+            body: JSON.stringify({ restore_version_url: url })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Restore failed.');
+
+        imgData.image_url      = data.image_url;
+        imgData.revised_prompt = data.revised_prompt || '';
+        imgData.image_versions = data.image_versions || [];
+
+        setMainImage(imgData.image_url);
+        document.getElementById('btnDownload').href = imgData.image_url;
+        if (imgData.revised_prompt && imgData.revised_prompt !== imgData.prompt) {
+            document.getElementById('revisedText').textContent   = imgData.revised_prompt;
+            document.getElementById('revisedNote').style.display = '';
+        } else {
+            document.getElementById('revisedNote').style.display = 'none';
+        }
+        renderVersionStrip(imgData.image_versions);
+        showToast('Version restored — it is now the current image.', 'success');
+    } catch (err) {
+        showToast('Restore failed: ' + err.message);
+    }
 }
 
 // Delete a single archived version (frees its storage object; the current
