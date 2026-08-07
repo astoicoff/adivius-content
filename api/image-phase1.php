@@ -6,11 +6,12 @@ set_headers();
 $user    = get_authed_user();
 $user_id = $user['id'];
 $body    = json_decode(file_get_contents('php://input'), true);
-$keyword     = trim($body['keyword']     ?? '');
-$description = trim($body['description'] ?? '');
-$group_id    = trim($body['group_id']    ?? '');
-$model       = trim($body['model']       ?? 'gpt-5.5');
-$agent_id    = trim($body['agent_id']    ?? '');
+$keyword       = trim($body['keyword']     ?? '');
+$description   = trim($body['description'] ?? '');
+$group_id      = trim($body['group_id']    ?? '');
+$model         = trim($body['model']       ?? 'gpt-5.5');
+$agent_id      = trim($body['agent_id']    ?? '');
+$has_reference = !empty($body['has_reference']);
 
 if (!$keyword && !$description) { http_response_code(400); echo json_encode(['detail' => 'A keyword or a description is required.']); exit; }
 if (!$group_id)                 { http_response_code(400); echo json_encode(['detail' => 'Content group is required.']); exit; }
@@ -116,6 +117,19 @@ try {
     } else {
         $system_prompt = $image_rules;
         $user_input    = $keyword;
+    }
+
+    // The prompt is generated BEFORE the image call, so the model can't see
+    // whether a reference file exists — tell it explicitly, and forbid it
+    // from editorializing about reference availability either way. (Without
+    // this, prompts leaked prose like "No reference image was provided;".)
+    if ($has_reference) {
+        $system_prompt .= "\n\nREFERENCE IMAGE: a reference image IS attached and will be supplied to the image model alongside your prompt. "
+            . "Write the prompt as edit/transformation instructions relative to that image (what to keep, change, add, or restyle). "
+            . "Do not describe the reference's existence — just instruct.";
+    } else {
+        $system_prompt .= "\n\nNo reference image will be used. The prompt must describe the complete scene from scratch. "
+            . "Never mention reference images or their absence in your output.";
     }
 
     $prompt = stream_ai($system_prompt, $user_input, $model, $settings);

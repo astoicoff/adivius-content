@@ -201,11 +201,12 @@ document.getElementById('phase1Form').addEventListener('submit', async function(
 
     await readStream(
         `${API_URL}/api/image-phase1.php`,
-        { method: 'POST', headers: authHeaders(), body: JSON.stringify(
-            inputMode === 'description'
-                ? { description, group_id, model, agent_id: document.getElementById('agentSelect').value || undefined }
-                : { keyword,     group_id, model, agent_id: document.getElementById('agentSelect').value || undefined }
-        ) },
+        { method: 'POST', headers: authHeaders(), body: JSON.stringify({
+            ...(inputMode === 'description' ? { description } : { keyword }),
+            group_id, model,
+            agent_id:      document.getElementById('agentSelect').value || undefined,
+            has_reference: !!contextImageFile,
+        }) },
         (token) => { promptEditor.value += token; },
         (msg)   => { loadingText.textContent = msg; },
         (ev)    => {
