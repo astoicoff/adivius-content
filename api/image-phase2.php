@@ -19,6 +19,9 @@ if ($is_multipart) {
     $prompt        = trim($body['prompt']        ?? '');
     $size          = trim($body['size']          ?? '1792x1024');
     $quality       = trim($body['quality']       ?? 'standard');
+    // 'current'   → edit the latest generated image (Refine semantics)
+    // 'reference' → edit the original reference (Regenerate semantics, default)
+    $use_base      = trim($body['use_base']      ?? 'reference');
 }
 
 if (!$generation_id) { http_response_code(400); echo json_encode(['detail' => 'Generation ID is required.']); exit; }
@@ -132,24 +135,35 @@ try {
         // Upload failure is non-fatal: this generation still edits the tmp
         // file; only future refines lose the reference.
 
-    } elseif ($stored_ref_url) {
-        emit_sse(['type' => 'progress', 'message' => 'Loading reference image…']);
-        $ch = curl_init($stored_ref_url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_TIMEOUT        => 60,
-        ]);
-        $ref_bytes = curl_exec($ch);
-        curl_close($ch);
-        if ($ref_bytes) {
-            $ref_path = tempnam(sys_get_temp_dir(), 'ref');
-            file_put_contents($ref_path, $ref_bytes);
-            $ext_mime = ['png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'webp' => 'image/webp'];
-            $ref_mime = $ext_mime[strtolower(pathinfo(parse_url($stored_ref_url, PHP_URL_PATH), PATHINFO_EXTENSION))] ?? 'image/jpeg';
+    } else {
+        // Resolve the base URL by intent. Refine ('current') improves the
+        // latest generated image; Regenerate ('reference') re-edits the
+        // original. Each falls back down the chain: current → reference →
+        // from-scratch. URLs come from the row itself, never the client —
+        // a client-supplied URL could point at another user's object.
+        $base_url = ($use_base ?? 'reference') === 'current'
+            ? ($prev_image_url ?: $stored_ref_url)
+            : $stored_ref_url;
+
+        if ($base_url) {
+            emit_sse(['type' => 'progress', 'message' => 'Loading base image…']);
+            $ch = curl_init($base_url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_TIMEOUT        => 60,
+            ]);
+            $ref_bytes = curl_exec($ch);
+            curl_close($ch);
+            if ($ref_bytes) {
+                $ref_path = tempnam(sys_get_temp_dir(), 'ref');
+                file_put_contents($ref_path, $ref_bytes);
+                $ext_mime = ['png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'webp' => 'image/webp'];
+                $ref_mime = $ext_mime[strtolower(pathinfo(parse_url($base_url, PHP_URL_PATH), PATHINFO_EXTENSION))] ?? 'image/jpeg';
+            }
+            // Download failure falls through to from-scratch generation
+            // rather than failing the run.
         }
-        // Download failure falls through to from-scratch generation rather
-        // than failing the run.
     }
 
     if ($ref_path) {

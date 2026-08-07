@@ -362,6 +362,23 @@ function openRefinePanel() {
     document.getElementById('refineLoading').classList.remove('visible');
     document.getElementById('refineGenerateBtn').disabled = false;
     clearRefineContextImage();
+
+    // Show exactly which base image the refinement edits: the current
+    // (latest) image; falling back to the original reference; else scratch.
+    const baseThumb = document.getElementById('refineBaseThumb');
+    const baseNote  = document.getElementById('refineBaseNote');
+    const baseUrl   = imgData?.image_url || imgData?.reference_image_url || '';
+    if (baseUrl) {
+        baseThumb.src           = baseUrl;
+        baseThumb.style.display = '';
+        baseNote.textContent    = imgData?.image_url
+            ? 'The refined result edits the current image (latest version).'
+            : 'No generated image yet — the refinement edits the original reference image.';
+    } else {
+        baseThumb.style.display = 'none';
+        baseNote.textContent    = 'No base image — the refined prompt generates from scratch.';
+    }
+
     document.getElementById('refinePanel').style.display  = '';
     document.getElementById('refinePanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
     setTimeout(() => document.getElementById('refineInstruction').focus(), 300);
@@ -430,6 +447,10 @@ async function refineAndGenerate() {
                     prompt:        refinedPrompt,
                     size:          imgData.size    || '1792x1024',
                     quality:       imgData.quality || 'standard',
+                    // Refining means improving the CURRENT image — the server
+                    // edits the latest version (falls back to the original
+                    // reference, then from-scratch).
+                    use_base:      'current',
                 })};
             }
 
