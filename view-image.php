@@ -168,6 +168,18 @@
 
                 <!-- Sidebar -->
                 <div class="img-sidebar">
+                    <!-- Reference image (persisted; reused by Regenerate/Refine) -->
+                    <div class="img-meta-card" id="referenceCard" style="display:none;">
+                        <div class="img-meta-card-head" style="display:flex;align-items:center;justify-content:space-between;">
+                            <span>Reference Image</span>
+                            <button id="refRemoveBtn" class="btn btn-secondary" style="padding:3px 10px;font-size:11px;color:var(--red);" onclick="removeReference()">Remove</button>
+                        </div>
+                        <div class="img-meta-card-body">
+                            <img id="referenceThumb" src="" alt="Reference image" style="max-width:100%;border-radius:6px;border:1px solid var(--light-gray);display:block;">
+                            <div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.5;">Regenerate and Refine edit this image. Remove it to switch to from-scratch generation.</div>
+                        </div>
+                    </div>
+
                     <!-- User's full description (description input mode) -->
                     <div class="img-meta-card" id="descriptionCard" style="display:none;">
                         <div class="img-meta-card-head">Your Description</div>

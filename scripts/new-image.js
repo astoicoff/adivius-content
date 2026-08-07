@@ -242,6 +242,7 @@ function onContextImageChange(e) {
 }
 
 function clearContextImage() {
+    if (!confirm('Remove the reference image? The prompt will be written for from-scratch generation instead.')) return;
     contextImageFile = null;
     document.getElementById('contextImageInput').value          = '';
     document.getElementById('contextImagePreview').style.display = 'none';

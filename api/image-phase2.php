@@ -60,17 +60,18 @@ if (!$openai_key) {
 $check = supabase_call('GET',
     '/rest/v1/image_generations?id=eq.' . urlencode($generation_id)
     . '&user_id=eq.' . urlencode($user_id)
-    . '&select=id,image_url,image_versions,revised_prompt,updated_at'
+    . '&select=id,image_url,image_versions,revised_prompt,updated_at,reference_image_url'
 );
 $rows = json_decode($check['body'], true);
 if (empty($rows)) {
     http_response_code(404); echo json_encode(['detail' => 'Generation not found.']); exit;
 }
 
-$prev_image_url  = $rows[0]['image_url']      ?? '';
+$prev_image_url  = $rows[0]['image_url']           ?? '';
 $prev_versions   = is_array($rows[0]['image_versions']) ? $rows[0]['image_versions'] : [];
-$prev_revised    = $rows[0]['revised_prompt'] ?? '';
-$prev_updated_at = $rows[0]['updated_at']     ?? date('c');
+$prev_revised    = $rows[0]['revised_prompt']      ?? '';
+$prev_updated_at = $rows[0]['updated_at']          ?? date('c');
+$stored_ref_url  = $rows[0]['reference_image_url'] ?? '';
 
 supabase_call('PATCH', '/rest/v1/image_generations?id=eq.' . urlencode($generation_id), [
     'status'     => 'generating_image',
@@ -88,19 +89,78 @@ header('Cache-Control: no-cache');
 header('X-Accel-Buffering: no');
 
 try {
+    // Resolve the reference image, from either source:
+    //  - a fresh multipart upload (first generation) — persisted to Storage so
+    //    later Refine/Regenerate calls keep editing the same base image
+    //  - the stored reference from a prior run (JSON path: refine/regenerate)
+    $ref_path = null;   // local file path for CURLFile
+    $ref_mime = null;
+    $new_ref_url = $stored_ref_url;   // carried into the final PATCH
+
     if ($is_multipart) {
+        $ref_path = $_FILES['image']['tmp_name'];
+        $ref_mime = $_FILES['image']['type'];
+
+        emit_sse(['type' => 'progress', 'message' => 'Saving reference image…']);
+        $ext_map  = ['image/png' => 'png', 'image/jpeg' => 'jpg', 'image/webp' => 'webp'];
+        $ref_ext  = $ext_map[$ref_mime] ?? 'jpg';
+        $ref_storage_path = $user_id . '/' . $generation_id . '_ref.' . $ref_ext;
+        $ch = curl_init(SUPABASE_URL . '/storage/v1/object/generated-images/' . $ref_storage_path);
+        curl_setopt_array($ch, [
+            CURLOPT_CUSTOMREQUEST  => 'POST',
+            CURLOPT_POSTFIELDS     => file_get_contents($ref_path),
+            CURLOPT_HTTPHEADER     => [
+                'apikey: ' . SUPABASE_SERVICE_KEY,
+                'Authorization: Bearer ' . SUPABASE_SERVICE_KEY,
+                'Content-Type: ' . $ref_mime,
+                'x-upsert: true',
+            ],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 60,
+        ]);
+        curl_exec($ch);
+        $ref_up_http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($ref_up_http >= 200 && $ref_up_http < 300) {
+            $new_ref_url = SUPABASE_URL . '/storage/v1/object/public/generated-images/' . $ref_storage_path;
+            // Persist immediately — even if the AI call below fails, the
+            // reference survives for the retry.
+            supabase_call('PATCH', '/rest/v1/image_generations?id=eq.' . urlencode($generation_id), [
+                'reference_image_url' => $new_ref_url,
+            ]);
+        }
+        // Upload failure is non-fatal: this generation still edits the tmp
+        // file; only future refines lose the reference.
+
+    } elseif ($stored_ref_url) {
+        emit_sse(['type' => 'progress', 'message' => 'Loading reference image…']);
+        $ch = curl_init($stored_ref_url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_TIMEOUT        => 60,
+        ]);
+        $ref_bytes = curl_exec($ch);
+        curl_close($ch);
+        if ($ref_bytes) {
+            $ref_path = tempnam(sys_get_temp_dir(), 'ref');
+            file_put_contents($ref_path, $ref_bytes);
+            $ext_mime = ['png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'webp' => 'image/webp'];
+            $ref_mime = $ext_mime[strtolower(pathinfo(parse_url($stored_ref_url, PHP_URL_PATH), PATHINFO_EXTENSION))] ?? 'image/jpeg';
+        }
+        // Download failure falls through to from-scratch generation rather
+        // than failing the run.
+    }
+
+    if ($ref_path) {
         emit_sse(['type' => 'progress', 'message' => 'Editing image with AI…']);
-        // /v1/images/edits: multipart, uses the uploaded image as the base
+        // /v1/images/edits: multipart, uses the reference as the base
         $ch = curl_init('https://api.openai.com/v1/images/edits');
         curl_setopt_array($ch, [
             CURLOPT_POST       => true,
             CURLOPT_POSTFIELDS => [
                 'model'         => 'gpt-image-2',
-                'image'         => new CURLFile(
-                    $_FILES['image']['tmp_name'],
-                    $_FILES['image']['type'],
-                    $_FILES['image']['name']
-                ),
+                'image'         => new CURLFile($ref_path, $ref_mime, 'reference.' . (pathinfo($ref_path, PATHINFO_EXTENSION) ?: 'img')),
                 'prompt'        => $prompt,
                 'n'             => '1',
                 'size'          => $size,
@@ -212,11 +272,12 @@ try {
     }
 
     supabase_call('PATCH', '/rest/v1/image_generations?id=eq.' . urlencode($generation_id), [
-        'image_url'      => $public_url,
-        'revised_prompt' => $revised_prompt,
-        'image_versions' => $new_versions,
-        'status'         => 'completed',
-        'updated_at'     => date('c'),
+        'image_url'           => $public_url,
+        'revised_prompt'      => $revised_prompt,
+        'image_versions'      => $new_versions,
+        'reference_image_url' => $new_ref_url ?: null,
+        'status'              => 'completed',
+        'updated_at'          => date('c'),
     ]);
 
     emit_sse(['type' => 'done', 'generation_id' => $generation_id, 'image_url' => $public_url, 'revised_prompt' => $revised_prompt]);

@@ -6,6 +6,26 @@ $user    = get_authed_user();
 $user_id = $user['id'];
 $method  = $_SERVER['REQUEST_METHOD'];
 
+// Extracts the storage-relative path from a public URL and issues a DELETE.
+// Non-fatal by design: Storage cleanup must never block the DB operation.
+function storage_delete_by_url($url) {
+    $prefix = SUPABASE_URL . '/storage/v1/object/public/generated-images/';
+    if (!$url || strpos($url, $prefix) !== 0) return;
+    $path = substr($url, strlen($prefix));
+    $ch   = curl_init(SUPABASE_URL . '/storage/v1/object/generated-images/' . $path);
+    curl_setopt_array($ch, [
+        CURLOPT_CUSTOMREQUEST  => 'DELETE',
+        CURLOPT_HTTPHEADER     => [
+            'apikey: ' . SUPABASE_SERVICE_KEY,
+            'Authorization: Bearer ' . SUPABASE_SERVICE_KEY,
+        ],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 30,
+    ]);
+    curl_exec($ch);
+    curl_close($ch);
+}
+
 if ($method === 'GET') {
 
     if (isset($_GET['id'])) {
@@ -43,11 +63,12 @@ if ($method === 'GET') {
     $id = $_GET['id'] ?? '';
     if (!$id) { http_response_code(400); echo json_encode(['detail' => 'Image ID is required.']); exit; }
 
-    // Fetch full row so we can delete the main image + all versions from Storage
+    // Fetch full row so we can delete the main image + all versions + the
+    // reference image from Storage
     $check = supabase_call('GET',
         '/rest/v1/image_generations?id=eq.' . urlencode($id)
         . '&user_id=eq.' . urlencode($user_id)
-        . '&select=id,image_url,image_versions'
+        . '&select=id,image_url,image_versions,reference_image_url'
     );
     $rows = json_decode($check['body'], true);
     if (empty($rows)) {
@@ -55,30 +76,11 @@ if ($method === 'GET') {
     }
     $row = $rows[0];
 
-    // Extracts the storage-relative path from a public URL and issues a DELETE
-    // (non-fatal — DB row is deleted regardless of Storage outcome)
-    $storage_prefix = SUPABASE_URL . '/storage/v1/object/public/generated-images/';
-    $delete_by_url  = function ($url) use ($storage_prefix) {
-        if (!$url || strpos($url, $storage_prefix) !== 0) return;
-        $path = substr($url, strlen($storage_prefix));
-        $ch   = curl_init(SUPABASE_URL . '/storage/v1/object/generated-images/' . $path);
-        curl_setopt_array($ch, [
-            CURLOPT_CUSTOMREQUEST  => 'DELETE',
-            CURLOPT_HTTPHEADER     => [
-                'apikey: ' . SUPABASE_SERVICE_KEY,
-                'Authorization: Bearer ' . SUPABASE_SERVICE_KEY,
-            ],
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 30,
-        ]);
-        curl_exec($ch);
-        curl_close($ch);
-    };
-
-    $delete_by_url($row['image_url'] ?? '');
+    storage_delete_by_url($row['image_url'] ?? '');
+    storage_delete_by_url($row['reference_image_url'] ?? '');
     $versions = is_array($row['image_versions']) ? $row['image_versions'] : [];
     foreach ($versions as $v) {
-        $delete_by_url($v['url'] ?? '');
+        storage_delete_by_url($v['url'] ?? '');
     }
 
     supabase_call('DELETE', '/rest/v1/image_generations?id=eq.' . urlencode($id));
@@ -88,13 +90,47 @@ if ($method === 'GET') {
     $id = $_GET['id'] ?? '';
     if (!$id) { http_response_code(400); echo json_encode(['detail' => 'Image ID is required.']); exit; }
 
-    $body   = json_decode(file_get_contents('php://input'), true);
-    $prompt = trim($body['prompt'] ?? '');
-    if (!$prompt) { http_response_code(400); echo json_encode(['detail' => 'Prompt is required.']); exit; }
+    $body               = json_decode(file_get_contents('php://input'), true) ?: [];
+    $prompt             = trim($body['prompt'] ?? '');
+    $remove_reference   = !empty($body['remove_reference']);
+    $delete_version_url = trim($body['delete_version_url'] ?? '');
 
-    $check = supabase_call('GET', '/rest/v1/image_generations?id=eq.' . urlencode($id) . '&user_id=eq.' . urlencode($user_id) . '&select=id');
-    if (empty(json_decode($check['body'], true))) {
+    if (!$prompt && !$remove_reference && !$delete_version_url) {
+        http_response_code(400); echo json_encode(['detail' => 'Nothing to update — send prompt, remove_reference, or delete_version_url.']); exit;
+    }
+
+    $check = supabase_call('GET', '/rest/v1/image_generations?id=eq.' . urlencode($id) . '&user_id=eq.' . urlencode($user_id) . '&select=id,reference_image_url,image_versions');
+    $rows  = json_decode($check['body'], true);
+    if (empty($rows)) {
         http_response_code(404); echo json_encode(['detail' => 'Image not found.']); exit;
+    }
+    $row = $rows[0];
+
+    if ($remove_reference) {
+        storage_delete_by_url($row['reference_image_url'] ?? '');
+        supabase_call('PATCH', '/rest/v1/image_generations?id=eq.' . urlencode($id), [
+            'reference_image_url' => null,
+            'updated_at'          => date('c'),
+        ]);
+        echo json_encode(['status' => 'reference_removed']);
+        exit;
+    }
+
+    if ($delete_version_url) {
+        $versions = is_array($row['image_versions']) ? $row['image_versions'] : [];
+        $kept     = array_values(array_filter($versions, fn($v) => ($v['url'] ?? '') !== $delete_version_url));
+        if (count($kept) === count($versions)) {
+            http_response_code(404); echo json_encode(['detail' => 'Version not found on this image.']); exit;
+        }
+        // Only delete the file after confirming the URL belongs to this row —
+        // otherwise a crafted URL could delete another user's storage object.
+        storage_delete_by_url($delete_version_url);
+        supabase_call('PATCH', '/rest/v1/image_generations?id=eq.' . urlencode($id), [
+            'image_versions' => $kept,
+            'updated_at'     => date('c'),
+        ]);
+        echo json_encode(['status' => 'version_deleted', 'image_versions' => $kept]);
+        exit;
     }
 
     supabase_call('PATCH', '/rest/v1/image_generations?id=eq.' . urlencode($id), [

@@ -95,6 +95,12 @@ function renderImage(data) {
         month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
     });
 
+    // Reference image (persisted server-side; Regenerate/Refine reuse it)
+    if (data.reference_image_url) {
+        document.getElementById('referenceThumb').src          = data.reference_image_url;
+        document.getElementById('referenceCard').style.display = '';
+    }
+
     // Description (present only for description-mode generations)
     if (data.description) {
         document.getElementById('descriptionBox').textContent    = data.description;
@@ -178,11 +184,60 @@ function renderVersionStrip(versions) {
             ? new Date(v.generated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
             : 'v' + (i + 1);
         const title = 'Version ' + (i + 1) + (v.generated_at ? ' — ' + new Date(v.generated_at).toLocaleString() : '');
-        return `<a href="${escHtml(v.url)}" target="_blank" title="${escHtml(title)}" style="display:block;flex-shrink:0;text-decoration:none;">` +
+        return `<div style="position:relative;flex-shrink:0;">` +
+               `<a href="${escHtml(v.url)}" target="_blank" title="${escHtml(title)}" style="display:block;text-decoration:none;">` +
                `<img src="${escHtml(v.url)}" style="width:72px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--light-gray);display:block;" alt="${escHtml('Version ' + (i + 1))}">` +
                `<div style="font-size:10px;color:var(--text-muted);margin-top:3px;text-align:center;">${escHtml(label)}</div>` +
-               `</a>`;
+               `</a>` +
+               `<button onclick="deleteImageVersion('${escHtml(v.url)}')" title="Delete this version" ` +
+               `style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;border:1px solid var(--light-gray);background:var(--card);color:var(--red);font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">×</button>` +
+               `</div>`;
     }).join('');
+}
+
+// Delete a single archived version (frees its storage object; the current
+// image and other versions are untouched).
+async function deleteImageVersion(url) {
+    const versions = imgData?.image_versions || [];
+    const idx = versions.findIndex(v => v.url === url);
+    if (idx === -1) return;
+    if (!confirm(`Delete Version ${idx + 1}? Its stored file is removed to free space. The current image is not affected. This cannot be undone.`)) return;
+    try {
+        const res  = await fetch(`${API_URL}/api/images.php?id=${encodeURIComponent(imgData.id)}`, {
+            method: 'PATCH', headers: authHeaders(),
+            body: JSON.stringify({ delete_version_url: url })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Delete failed.');
+        imgData.image_versions = data.image_versions || versions.filter(v => v.url !== url);
+        renderVersionStrip(imgData.image_versions);
+        showToast('Version deleted.', 'success');
+    } catch (err) {
+        showToast('Delete failed: ' + err.message);
+    }
+}
+
+// Remove the persisted reference image — future Regenerate/Refine runs
+// generate from scratch instead of editing it.
+async function removeReference() {
+    if (!imgData?.reference_image_url) return;
+    if (!confirm('Remove the reference image? Regenerate and Refine will then generate from scratch instead of editing it. This cannot be undone.')) return;
+    const done = btnBusy(document.getElementById('refRemoveBtn'), 'Removing…');
+    try {
+        const res  = await fetch(`${API_URL}/api/images.php?id=${encodeURIComponent(imgData.id)}`, {
+            method: 'PATCH', headers: authHeaders(),
+            body: JSON.stringify({ remove_reference: true })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Remove failed.');
+        imgData.reference_image_url = null;
+        document.getElementById('referenceCard').style.display = 'none';
+        showToast('Reference removed — future runs generate from scratch.', 'success');
+    } catch (err) {
+        showToast('Remove failed: ' + err.message);
+    } finally {
+        done();
+    }
 }
 
 // ── Refine panel context image ────────────────────────────────────────────────
