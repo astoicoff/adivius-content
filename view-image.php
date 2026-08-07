@@ -168,6 +168,14 @@
 
                 <!-- Sidebar -->
                 <div class="img-sidebar">
+                    <!-- User's full description (description input mode) -->
+                    <div class="img-meta-card" id="descriptionCard" style="display:none;">
+                        <div class="img-meta-card-head">Your Description</div>
+                        <div class="img-meta-card-body">
+                            <div class="prompt-box" id="descriptionBox"></div>
+                        </div>
+                    </div>
+
                     <!-- Prompt -->
                     <div class="img-meta-card">
                         <div class="img-meta-card-head">Image Prompt</div>

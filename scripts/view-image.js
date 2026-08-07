@@ -95,6 +95,12 @@ function renderImage(data) {
         month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
     });
 
+    // Description (present only for description-mode generations)
+    if (data.description) {
+        document.getElementById('descriptionBox').textContent    = data.description;
+        document.getElementById('descriptionCard').style.display = '';
+    }
+
     // Prompt
     document.getElementById('promptBox').value = data.prompt || '';
     if (data.revised_prompt && data.revised_prompt !== data.prompt) {

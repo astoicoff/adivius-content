@@ -6,13 +6,25 @@ set_headers();
 $user    = get_authed_user();
 $user_id = $user['id'];
 $body    = json_decode(file_get_contents('php://input'), true);
-$keyword  = trim($body['keyword']  ?? '');
-$group_id = trim($body['group_id'] ?? '');
-$model    = trim($body['model']    ?? 'gpt-5.5');
-$agent_id = trim($body['agent_id'] ?? '');
+$keyword     = trim($body['keyword']     ?? '');
+$description = trim($body['description'] ?? '');
+$group_id    = trim($body['group_id']    ?? '');
+$model       = trim($body['model']       ?? 'gpt-5.5');
+$agent_id    = trim($body['agent_id']    ?? '');
 
-if (!$keyword)  { http_response_code(400); echo json_encode(['detail' => 'Keyword is required.']); exit; }
-if (!$group_id) { http_response_code(400); echo json_encode(['detail' => 'Content group is required.']); exit; }
+if (!$keyword && !$description) { http_response_code(400); echo json_encode(['detail' => 'A keyword or a description is required.']); exit; }
+if (!$group_id)                 { http_response_code(400); echo json_encode(['detail' => 'Content group is required.']); exit; }
+
+// Description mode: keyword becomes the short display label. Derive one from
+// the description's opening when the user didn't supply a keyword.
+if (!$keyword) {
+    $keyword = preg_replace('/\s+/', ' ', $description);
+    if (mb_strlen($keyword) > 60) {
+        $cut = mb_substr($keyword, 0, 60);
+        $sp  = mb_strrpos($cut, ' ');
+        $keyword = ($sp !== false && $sp > 30 ? mb_substr($cut, 0, $sp) : $cut) . '…';
+    }
+}
 
 $settings   = get_user_settings($user_id);
 $openai_key = $settings['openai_key'] ?? '';
@@ -57,13 +69,14 @@ if ($generation_id) {
     }
 } else {
     $res  = supabase_call('POST', '/rest/v1/image_generations', [
-        'user_id'    => $user_id,
-        'group_id'   => $group_id,
-        'keyword'    => $keyword,
-        'model'      => $model,
-        'status'     => 'pending',
-        'agent_id'   => $agent_id ?: null,
-        'agent_name' => $agent_name,
+        'user_id'     => $user_id,
+        'group_id'    => $group_id,
+        'keyword'     => $keyword,
+        'description' => $description ?: null,
+        'model'       => $model,
+        'status'      => 'pending',
+        'agent_id'    => $agent_id ?: null,
+        'agent_name'  => $agent_name,
     ], ['Prefer: return=representation']);
     $row = json_decode($res['body'], true);
     if (empty($row[0]['id'])) {
@@ -73,11 +86,12 @@ if ($generation_id) {
 }
 
 supabase_call('PATCH', '/rest/v1/image_generations?id=eq.' . urlencode($generation_id), [
-    'status'     => 'generating_prompt',
-    'model'      => $model,
-    'agent_id'   => $agent_id ?: null,
-    'agent_name' => $agent_name,
-    'updated_at' => date('c'),
+    'status'      => 'generating_prompt',
+    'model'       => $model,
+    'description' => $description ?: null,
+    'agent_id'    => $agent_id ?: null,
+    'agent_name'  => $agent_name,
+    'updated_at'  => date('c'),
 ]);
 
 // All validation passed — switch to SSE
@@ -90,7 +104,21 @@ header('X-Accel-Buffering: no');
 try {
     emit_sse(['type' => 'progress', 'message' => 'Generating image prompt…']);
 
-    $prompt = stream_ai($image_rules, $keyword, $model, $settings);
+    // Keyword mode: the agent invents a scene from a topic. Description mode:
+    // the user supplied the creative brief — the agent's style rules still
+    // apply, but the brief's specifics are binding, not inspiration.
+    if ($description) {
+        $system_prompt = $image_rules
+            . "\n\nINPUT MODE — FULL DESCRIPTION: the user has provided a complete description of the desired image, not just a keyword. "
+            . "Treat it as a binding creative brief: every subject, object, setting, and compositional detail it specifies MUST appear in the final prompt. "
+            . "Apply your style, lighting, and format rules AROUND the brief — do not replace or reinterpret its content.";
+        $user_input = $description;
+    } else {
+        $system_prompt = $image_rules;
+        $user_input    = $keyword;
+    }
+
+    $prompt = stream_ai($system_prompt, $user_input, $model, $settings);
 
     supabase_call('PATCH', '/rest/v1/image_generations?id=eq.' . urlencode($generation_id), [
         'prompt'     => $prompt,

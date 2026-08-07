@@ -2,6 +2,18 @@ let currentGenerationId = null;
 let selectedSize        = '1792x1024';
 let selectedQuality     = 'standard';
 let contextImageFile    = null;
+let inputMode           = 'keyword';   // 'keyword' | 'description'
+
+function setInputMode(mode) {
+    inputMode = mode;
+    const isKw = mode === 'keyword';
+    document.getElementById('modeKeywordBtn').classList.toggle('btn-view-active', isKw);
+    document.getElementById('modeDescriptionBtn').classList.toggle('btn-view-active', !isKw);
+    document.getElementById('keywordInput').style.display     = isKw ? '' : 'none';
+    document.getElementById('descriptionInput').style.display = isKw ? 'none' : '';
+    document.getElementById('inputModeLabel').textContent     = isKw ? 'Keyword / Topic' : 'Image Description';
+    (isKw ? document.getElementById('keywordInput') : document.getElementById('descriptionInput')).focus();
+}
 
 const COST_TABLE = {
     standard: { '1024x1024': '$0.04', '1792x1024': '$0.08', '1024x1792': '$0.08' },
@@ -168,12 +180,14 @@ document.getElementById('phase1Form').addEventListener('submit', async function(
     e.preventDefault();
     hideAlert();
 
-    const keyword  = document.getElementById('keywordInput').value.trim();
-    const group_id = document.getElementById('groupSelect').value;
-    const model    = document.getElementById('modelSelect').value;
+    const keyword     = document.getElementById('keywordInput').value.trim();
+    const description = document.getElementById('descriptionInput').value.trim();
+    const group_id    = document.getElementById('groupSelect').value;
+    const model       = document.getElementById('modelSelect').value;
 
     if (!group_id) { showAlert('Please select a content group.'); return; }
-    if (!keyword)  { showAlert('Please enter a keyword or topic.'); return; }
+    if (inputMode === 'keyword'     && !keyword)     { showAlert('Please enter a keyword or topic.'); return; }
+    if (inputMode === 'description' && !description) { showAlert('Please enter an image description.'); return; }
 
     const btn          = document.getElementById('generatePromptBtn');
     const loadingBar   = document.getElementById('phase1Loading');
@@ -187,7 +201,11 @@ document.getElementById('phase1Form').addEventListener('submit', async function(
 
     await readStream(
         `${API_URL}/api/image-phase1.php`,
-        { method: 'POST', headers: authHeaders(), body: JSON.stringify({ keyword, group_id, model, agent_id: document.getElementById('agentSelect').value || undefined }) },
+        { method: 'POST', headers: authHeaders(), body: JSON.stringify(
+            inputMode === 'description'
+                ? { description, group_id, model, agent_id: document.getElementById('agentSelect').value || undefined }
+                : { keyword,     group_id, model, agent_id: document.getElementById('agentSelect').value || undefined }
+        ) },
         (token) => { promptEditor.value += token; },
         (msg)   => { loadingText.textContent = msg; },
         (ev)    => {

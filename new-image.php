@@ -81,8 +81,15 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="keywordInput">Keyword / Topic</label>
-                            <input type="text" class="form-input" id="keywordInput" placeholder="e.g. hero image for AI agency website" required>
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;">
+                                <label class="form-label" style="margin-bottom:0;" id="inputModeLabel">Keyword / Topic</label>
+                                <div style="display:flex;gap:6px;">
+                                    <button type="button" class="btn btn-secondary btn-view-active" id="modeKeywordBtn" onclick="setInputMode('keyword')" style="padding:4px 12px;font-size:12px;">Keyword</button>
+                                    <button type="button" class="btn btn-secondary" id="modeDescriptionBtn" onclick="setInputMode('description')" style="padding:4px 12px;font-size:12px;">Description</button>
+                                </div>
+                            </div>
+                            <input type="text" class="form-input" id="keywordInput" placeholder="e.g. hero image for AI agency website">
+                            <textarea class="form-textarea" id="descriptionInput" rows="6" style="display:none;" placeholder="Describe the image you want in full — subject, setting, objects, mood, composition. The agent's style rules are applied around your description, and its specifics are kept in the final prompt."></textarea>
                         </div>
                         <button type="submit" class="btn btn-primary" id="generatePromptBtn">
                             <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
