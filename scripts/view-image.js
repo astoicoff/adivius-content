@@ -65,7 +65,11 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('backLabel').textContent = 'Content Group';
     }
 
-    initAuth(async () => { await loadImage(id); });
+    initAuth(async () => {
+        await loadImage(id);
+        // ?refine=1 (from new-image's Refine button) — jump straight in
+        if (params.get('refine') === '1' && imgData) openRefinePanel();
+    });
 });
 
 // ── Load ──────────────────────────────────────────────────────────────────────
@@ -486,12 +490,17 @@ async function refineAndGenerate() {
 
             let p2Options;
             if (refineContextFile) {
+                // The attachment is supplementary context ONLY. The base is
+                // still the current image (+ original reference), resolved
+                // server-side; the file is never persisted as the reference.
                 const fd = new FormData();
                 fd.append('generation_id', imgData.id);
                 fd.append('prompt', refinedPrompt);
                 fd.append('size', imgData.size || '1792x1024');
                 fd.append('quality', imgData.quality || 'standard');
                 fd.append('image', refineContextFile);
+                fd.append('image_role', 'context');
+                fd.append('use_base', 'current');
                 p2Options = { method: 'POST', headers: { Authorization: authHeaders()['Authorization'] }, body: fd };
             } else {
                 p2Options = { method: 'POST', headers: authHeaders(), body: JSON.stringify({

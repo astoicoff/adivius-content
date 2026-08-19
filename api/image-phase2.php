@@ -6,13 +6,20 @@ set_headers();
 $user    = get_authed_user();
 $user_id = $user['id'];
 
-// Accept both multipart/form-data (with context image) and plain JSON
+// Accept both multipart/form-data (with an attached image) and plain JSON.
+// image_role says what an attached file IS:
+//   'base'    (default) — the image to edit; persisted as the stored reference
+//   'context' — supplementary guidance only; the base is still resolved from
+//               the row (current image / original reference), and the file is
+//               NEVER persisted as the reference. Used by the refine flow.
 $is_multipart  = !empty($_FILES['image']['tmp_name']);
 if ($is_multipart) {
     $generation_id = trim($_POST['generation_id'] ?? '');
     $prompt        = trim($_POST['prompt']        ?? '');
     $size          = trim($_POST['size']          ?? '1792x1024');
     $quality       = trim($_POST['quality']       ?? 'standard');
+    $image_role    = trim($_POST['image_role']    ?? 'base');
+    $use_base      = trim($_POST['use_base']      ?? 'reference');
 } else {
     $body          = json_decode(file_get_contents('php://input'), true);
     $generation_id = trim($body['generation_id'] ?? '');
@@ -22,6 +29,7 @@ if ($is_multipart) {
     // 'current'   → edit the latest generated image (Refine semantics)
     // 'reference' → edit the original reference (Regenerate semantics, default)
     $use_base      = trim($body['use_base']      ?? 'reference');
+    $image_role    = 'base';
 }
 
 if (!$generation_id) { http_response_code(400); echo json_encode(['detail' => 'Generation ID is required.']); exit; }
@@ -92,31 +100,56 @@ header('Cache-Control: no-cache');
 header('X-Accel-Buffering: no');
 
 try {
-    // Resolve the reference image, from either source:
-    //  - a fresh multipart upload (first generation) — persisted to Storage so
-    //    later Refine/Regenerate calls keep editing the same base image
-    //  - the stored reference from a prior run (JSON path: refine/regenerate)
-    $ref_path = null;   // local file path for CURLFile
-    $ref_mime = null;
-    $base_url = null;   // public URL the base was resolved from (JSON path)
+    // Resolve the images for this run. Three possible inputs, strict roles:
+    //   base       — the image being edited (current image, original
+    //                reference, or a role=base upload)
+    //   orig ref   — the original reference, fidelity anchor, sent whenever
+    //                it is distinct from the base
+    //   context    — a role=context upload: supplementary guidance ONLY;
+    //                never the base, never persisted as the reference
+    // Intermediate versions are never sent.
+    $helper_download = function ($url, $tmp_prefix) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_TIMEOUT        => 60,
+        ]);
+        $bytes = curl_exec($ch);
+        curl_close($ch);
+        if (!$bytes) return [null, null];
+        $path = tempnam(sys_get_temp_dir(), $tmp_prefix);
+        file_put_contents($path, $bytes);
+        $ext_mime = ['png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'webp' => 'image/webp'];
+        $mime = $ext_mime[strtolower(pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION))] ?? 'image/jpeg';
+        return [$path, $mime];
+    };
+
+    $base_path = null; $base_mime = null; $base_url = null;
+    $context_path = null; $context_mime = null;
     $new_ref_url = $stored_ref_url;   // carried into the final PATCH
 
-    if ($is_multipart) {
-        $ref_path = $_FILES['image']['tmp_name'];
-        $ref_mime = $_FILES['image']['type'];
+    if ($is_multipart && $image_role === 'context') {
+        // Attached file is guidance only; base comes from the row below.
+        $context_path = $_FILES['image']['tmp_name'];
+        $context_mime = $_FILES['image']['type'];
+    } elseif ($is_multipart) {
+        // role=base: the upload is the image to edit AND the new stored ref.
+        $base_path = $_FILES['image']['tmp_name'];
+        $base_mime = $_FILES['image']['type'];
 
         emit_sse(['type' => 'progress', 'message' => 'Saving reference image…']);
         $ext_map  = ['image/png' => 'png', 'image/jpeg' => 'jpg', 'image/webp' => 'webp'];
-        $ref_ext  = $ext_map[$ref_mime] ?? 'jpg';
+        $ref_ext  = $ext_map[$base_mime] ?? 'jpg';
         $ref_storage_path = $user_id . '/' . $generation_id . '_ref.' . $ref_ext;
         $ch = curl_init(SUPABASE_URL . '/storage/v1/object/generated-images/' . $ref_storage_path);
         curl_setopt_array($ch, [
             CURLOPT_CUSTOMREQUEST  => 'POST',
-            CURLOPT_POSTFIELDS     => file_get_contents($ref_path),
+            CURLOPT_POSTFIELDS     => file_get_contents($base_path),
             CURLOPT_HTTPHEADER     => [
                 'apikey: ' . SUPABASE_SERVICE_KEY,
                 'Authorization: Bearer ' . SUPABASE_SERVICE_KEY,
-                'Content-Type: ' . $ref_mime,
+                'Content-Type: ' . $base_mime,
                 'x-upsert: true',
             ],
             CURLOPT_RETURNTRANSFER => true,
@@ -135,66 +168,41 @@ try {
         }
         // Upload failure is non-fatal: this generation still edits the tmp
         // file; only future refines lose the reference.
+    }
 
-    } else {
-        // Resolve the base URL by intent. Refine ('current') improves the
-        // latest generated image; Regenerate ('reference') re-edits the
-        // original. Each falls back down the chain: current → reference →
-        // from-scratch. URLs come from the row itself, never the client —
-        // a client-supplied URL could point at another user's object.
+    if (!$base_path) {
+        // JSON path, or a context-role upload: resolve the base by intent.
+        // Refine ('current') improves the latest generated image; Regenerate
+        // ('reference') re-edits the original. Fallback chain: current →
+        // reference → from-scratch. URLs come from the row itself, never
+        // the client — a client-supplied URL could point at another user's
+        // storage object.
         $base_url = ($use_base ?? 'reference') === 'current'
             ? ($prev_image_url ?: $stored_ref_url)
             : $stored_ref_url;
-
         if ($base_url) {
             emit_sse(['type' => 'progress', 'message' => 'Loading base image…']);
-            $ch = curl_init($base_url);
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_TIMEOUT        => 60,
-            ]);
-            $ref_bytes = curl_exec($ch);
-            curl_close($ch);
-            if ($ref_bytes) {
-                $ref_path = tempnam(sys_get_temp_dir(), 'ref');
-                file_put_contents($ref_path, $ref_bytes);
-                $ext_mime = ['png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'webp' => 'image/webp'];
-                $ref_mime = $ext_mime[strtolower(pathinfo(parse_url($base_url, PHP_URL_PATH), PATHINFO_EXTENSION))] ?? 'image/jpeg';
-            }
-            // Download failure falls through to from-scratch generation
-            // rather than failing the run.
+            [$base_path, $base_mime] = $helper_download($base_url, 'base');
+            // Download failure falls through to from-scratch generation.
         }
     }
 
-    // The ORIGINAL reference rides along as a second input whenever the base
-    // is something else (refine-on-current, or a manually attached new base)
-    // — so the AI keeps fidelity to the real subject across iterations.
-    // Intermediate versions are never sent. Skipped when the base IS the
-    // stored reference (regenerate, or refine before any image exists).
+    // Original reference rides along whenever it's distinct from the base.
     $orig_ref_path = null;
     $orig_ref_mime = null;
-    if ($ref_path && $stored_ref_url && $base_url !== $stored_ref_url) {
-        $ch = curl_init($stored_ref_url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_TIMEOUT        => 60,
-        ]);
-        $orig_bytes = curl_exec($ch);
-        curl_close($ch);
-        if ($orig_bytes) {
-            $orig_ref_path = tempnam(sys_get_temp_dir(), 'oref');
-            file_put_contents($orig_ref_path, $orig_bytes);
-            $ext_mime = ['png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'webp' => 'image/webp'];
-            $orig_ref_mime = $ext_mime[strtolower(pathinfo(parse_url($stored_ref_url, PHP_URL_PATH), PATHINFO_EXTENSION))] ?? 'image/jpeg';
-        }
-        // Failure to fetch the original is non-fatal — proceed with base only.
+    if ($base_path && $stored_ref_url && $base_url !== $stored_ref_url) {
+        [$orig_ref_path, $orig_ref_mime] = $helper_download($stored_ref_url, 'oref');
+        // Failure to fetch the original is non-fatal — proceed without it.
     }
 
-    if ($ref_path) {
+    // Assemble the input list in role order: base, original ref, context.
+    $inputs = [];
+    if ($base_path)     $inputs[] = ['path' => $base_path,     'mime' => $base_mime,     'name' => 'current.img',            'role' => 'base'];
+    if ($orig_ref_path) $inputs[] = ['path' => $orig_ref_path, 'mime' => $orig_ref_mime, 'name' => 'original-reference.img', 'role' => 'origref'];
+    if ($context_path)  $inputs[] = ['path' => $context_path,  'mime' => $context_mime,  'name' => 'context.img',            'role' => 'context'];
+
+    if ($inputs) {
         emit_sse(['type' => 'progress', 'message' => 'Editing image with AI…']);
-        // /v1/images/edits: multipart, base image (+ optional original ref)
         $post = [
             'model'         => 'gpt-image-2',
             'prompt'        => $prompt,
@@ -203,15 +211,24 @@ try {
             'quality'       => $api_quality,
             'output_format' => 'jpeg',
         ];
-        if ($orig_ref_path) {
-            $post['image[0]'] = new CURLFile($ref_path, $ref_mime, 'current.img');
-            $post['image[1]'] = new CURLFile($orig_ref_path, $orig_ref_mime, 'original-reference.img');
-            // Steer the model without polluting the stored prompt.
-            $post['prompt'] = 'Two input images are provided. The FIRST is the current image — apply the requested changes to it, preserving its composition. '
-                . 'The SECOND is the original reference — use it to stay faithful to the real subject, materials, and layout. '
-                . 'Request: ' . $prompt;
+        if (count($inputs) === 1) {
+            $post['image'] = new CURLFile($inputs[0]['path'], $inputs[0]['mime'], $inputs[0]['name']);
         } else {
-            $post['image'] = new CURLFile($ref_path, $ref_mime, 'reference.' . (pathinfo($ref_path, PATHINFO_EXTENSION) ?: 'img'));
+            // Multi-image: name each input's role in a payload-only preamble
+            // (the stored prompt stays clean).
+            $ordinals = ['FIRST', 'SECOND', 'THIRD'];
+            $lines    = [];
+            foreach ($inputs as $i => $img) {
+                $post['image[' . $i . ']'] = new CURLFile($img['path'], $img['mime'], $img['name']);
+                if ($img['role'] === 'base') {
+                    $lines[] = "The {$ordinals[$i]} image is the current image — apply the requested changes to it, preserving its composition.";
+                } elseif ($img['role'] === 'origref') {
+                    $lines[] = "The {$ordinals[$i]} image is the original reference — use it to stay faithful to the real subject, materials, and layout.";
+                } else {
+                    $lines[] = "The {$ordinals[$i]} image is an additional context image supplied by the user — treat it as guidance or source material for the requested changes (a style, texture, or object to incorporate); it is NOT the image being edited.";
+                }
+            }
+            $post['prompt'] = 'Input images: ' . implode(' ', $lines) . ' Request: ' . $prompt;
         }
         $ch = curl_init('https://api.openai.com/v1/images/edits');
         curl_setopt_array($ch, [

@@ -21,7 +21,16 @@
     .gallery-thumb.landscape  { aspect-ratio: 16/9; }
     .gallery-thumb.square     { aspect-ratio: 1; }
     .gallery-thumb.portrait   { aspect-ratio: 9/16; }
-    .gallery-thumb img        { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .gallery-thumb img        { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s ease; }
+    .gallery-card:hover .gallery-thumb img { transform: scale(1.045); }
+
+    /* Keyword lives ON the image — landscape cards carry their title instead of dead space */
+    .gallery-overlay          { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 12px 9px; background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.62) 100%); pointer-events: none; }
+    .gallery-overlay-title    { color: #fff; font-size: 12.5px; font-weight: 600; line-height: 1.35; letter-spacing: 0.2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+    .gallery-status-pin       { position: absolute; top: 8px; right: 8px; }
+
+    .gallery-chip-meta        { display: inline-flex; align-items: center; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: var(--off-white); border: 1px solid var(--light-gray); color: var(--text-muted); font-family: 'Inter', sans-serif; white-space: nowrap; }
+    .gallery-chip-agent       { background: #EDF7FF; color: var(--blue); border-color: rgba(0,143,214,0.25); max-width: 130px; overflow: hidden; text-overflow: ellipsis; display: inline-block; }
 
     .gallery-placeholder      { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
     .gallery-placeholder svg  { width: 28px; height: 28px; stroke: var(--text-muted); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }

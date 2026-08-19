@@ -1,18 +1,22 @@
 <?php $pageTitle = 'Content Groups | Content Creator'; ?>
 <?php require_once __DIR__ . '/includes/head.php'; ?>
 <style>
-    .img-grid          { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
-    .img-thumb-card    { display: block; text-decoration: none; color: inherit; border: 1px solid var(--light-gray); border-radius: 8px; overflow: hidden; background: var(--card); transition: border-color 0.15s, box-shadow 0.15s; }
-    .img-thumb-card:hover { border-color: #bbb; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-    .img-thumb-wrap    { aspect-ratio: 16/9; background: var(--off-white); overflow: hidden; }
+    .img-grid          { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 13px; }
+    .img-thumb-card    { display: flex; flex-direction: column; text-decoration: none; color: inherit; border: 1px solid var(--light-gray); border-radius: 10px; overflow: hidden; background: var(--card); transition: box-shadow 0.15s, transform 0.15s; }
+    .img-thumb-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.10); transform: translateY(-2px); }
+    .img-thumb-wrap    { position: relative; aspect-ratio: 16/9; background: var(--off-white); overflow: hidden; }
     .img-thumb-wrap.square { aspect-ratio: 1; }
     .img-thumb-wrap.portrait { aspect-ratio: 9/16; }
-    .img-thumb-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .img-thumb-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s ease; }
+    .img-thumb-card:hover .img-thumb-wrap img { transform: scale(1.045); }
     .img-thumb-wrap .img-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
     .img-thumb-wrap .img-placeholder svg { width: 28px; height: 28px; stroke: var(--light-gray); fill: none; stroke-width: 1.5; }
-    .img-thumb-info    { padding: 8px 10px; }
+    .img-thumb-overlay { position: absolute; left: 0; right: 0; bottom: 0; padding: 24px 11px 8px; background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.62) 100%); pointer-events: none; }
+    .img-thumb-overlay-title { color: #fff; font-size: 12px; font-weight: 600; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+    .img-thumb-info    { padding: 8px 10px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
     .img-thumb-title   { font-size: 12px; font-weight: 600; color: var(--dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .img-thumb-date    { font-size: 11px; color: var(--text-muted); font-family: 'Inter', sans-serif; margin-top: 2px; }
+    .img-thumb-date    { font-size: 11px; color: var(--text-muted); font-family: 'Inter', sans-serif; white-space: nowrap; }
+    .img-thumb-chip    { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: #EDF7FF; border: 1px solid rgba(0,143,214,0.25); color: var(--blue); font-family: 'Inter', sans-serif; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .content-tab-bar   { display: flex; gap: 0; border-bottom: 1px solid var(--light-gray); margin-bottom: 16px; }
     .content-tab-btn   { background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 16px 10px; font-size: 13px; font-family: 'Poppins', sans-serif; font-weight: 500; color: var(--text-muted); cursor: pointer; margin-bottom: -1px; transition: color 0.15s, border-color 0.15s; white-space: nowrap; }
     .content-tab-btn.active { color: var(--dark); border-bottom-color: var(--blue); }

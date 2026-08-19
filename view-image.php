@@ -127,7 +127,7 @@
                         <textarea id="refineInstruction" class="form-textarea" rows="3" placeholder="e.g. Change the background to a sunset over the ocean"></textarea>
                     </div>
                     <div class="form-group" style="margin:0;">
-                        <label class="form-label" style="margin-bottom:6px;">Use a Different Base <span style="font-weight:400;color:var(--text-muted);">(optional — replaces the image above for this run)</span></label>
+                        <label class="form-label" style="margin-bottom:6px;">Additional Context Image <span style="font-weight:400;color:var(--text-muted);">(optional — extra guidance; does NOT replace the image being refined or the reference)</span></label>
                         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                             <label for="refineContextInput" class="btn btn-secondary" style="cursor:pointer;margin:0;">
                                 <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>

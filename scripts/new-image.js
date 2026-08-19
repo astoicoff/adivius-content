@@ -241,8 +241,9 @@ function onContextImageChange(e) {
     reader.readAsDataURL(file);
 }
 
-function clearContextImage() {
-    if (!confirm('Remove the reference image? The prompt will be written for from-scratch generation instead.')) return;
+function clearContextImage(skipConfirm = false) {
+    if (contextImageFile && !skipConfirm
+        && !confirm('Remove the reference image? The prompt will be written for from-scratch generation instead.')) return;
     contextImageFile = null;
     document.getElementById('contextImageInput').value          = '';
     document.getElementById('contextImagePreview').style.display = 'none';
@@ -312,6 +313,15 @@ function showResult(imageUrl, revisedPrompt) {
 
     document.getElementById('downloadBtn').href = imageUrl;
 
+    // Jump straight into refinement on view-image (?refine=1 auto-opens it)
+    const refineBtn = document.getElementById('refineResultBtn');
+    if (refineBtn && currentGenerationId) {
+        const groupId = document.getElementById('groupSelect').value;
+        refineBtn.href = `/view-image?id=${encodeURIComponent(currentGenerationId)}`
+            + (groupId ? `&group=${encodeURIComponent(groupId)}` : '') + '&refine=1';
+        refineBtn.style.display = '';
+    }
+
     if (revisedPrompt) {
         document.getElementById('revisedPromptText').textContent = revisedPrompt;
         document.getElementById('revisedPromptNote').style.display = '';
@@ -330,7 +340,9 @@ function resetToNew() {
     document.getElementById('revisedPromptNote').style.display = 'none';
     document.getElementById('phase2Section').classList.add('hidden');
     document.getElementById('phase3Section').classList.add('hidden');
-    clearContextImage();
+    const refineBtn = document.getElementById('refineResultBtn');
+    if (refineBtn) refineBtn.style.display = 'none';
+    clearContextImage(true);
     hideAlert();
     setStep(1);
     window.scrollTo({ top: 0, behavior: 'smooth' });

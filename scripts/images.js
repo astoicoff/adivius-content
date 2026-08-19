@@ -109,10 +109,13 @@ function renderGrid(images) {
         const groupName = groupMap[img.group_id] || '';
         const date      = new Date(img.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         const href      = `/view-image?id=${encodeURIComponent(img.id)}${img.group_id ? '&group=' + encodeURIComponent(img.group_id) : ''}`;
+        const hasImage  = !!(img.image_url && img.status === 'completed');
+        const aspect    = { '1792x1024': '16:9', '1024x1024': '1:1', '1024x1792': '9:16' }[img.size] || img.size || '';
 
         let thumbHtml;
-        if (img.image_url && img.status === 'completed') {
-            thumbHtml = `<img src="${escHtml(img.image_url)}" alt="${escHtml(img.keyword)}" loading="lazy">`;
+        if (hasImage) {
+            thumbHtml = `<img src="${escHtml(img.image_url)}" alt="${escHtml(img.keyword)}" loading="lazy">`
+                + `<div class="gallery-overlay"><div class="gallery-overlay-title">${escHtml(img.keyword)}</div></div>`;
         } else if (img.status === 'generating_image' || img.status === 'generating_prompt') {
             thumbHtml = `<div class="gallery-shimmer"></div>`;
         } else {
@@ -122,17 +125,25 @@ function renderGrid(images) {
             const label = img.status === 'failed' ? 'Failed' : 'Pending';
             thumbHtml = `<div class="gallery-placeholder">${icon}<span>${label}</span></div>`;
         }
+        if (img.status !== 'completed') {
+            thumbHtml += `<div class="gallery-status-pin">${statusBadge(img.status)}</div>`;
+        }
+
+        const chips = [
+            img.agent_name ? `<span class="gallery-chip-meta gallery-chip-agent" title="${escHtml(img.agent_name)}">${escHtml(img.agent_name)}</span>` : '',
+            aspect         ? `<span class="gallery-chip-meta">${escHtml(aspect)}</span>` : '',
+        ].filter(Boolean).join('');
 
         return `
 <a class="gallery-card" href="${escHtml(href)}">
     <div class="gallery-thumb ${ratio}">${thumbHtml}</div>
     <div class="gallery-info">
-        <div class="gallery-keyword">${escHtml(img.keyword)}</div>
+        ${hasImage ? '' : `<div class="gallery-keyword">${escHtml(img.keyword)}</div>`}
         <div class="gallery-footer">
+            <div style="display:flex;gap:5px;align-items:center;min-width:0;">${chips}</div>
             <div class="gallery-date">${escHtml(date)}</div>
-            ${statusBadge(img.status)}
         </div>
-        ${groupName ? `<div style="font-size:11px;color:var(--text-muted);font-family:'Inter',sans-serif;margin-top:2px;">${escHtml(groupName)}</div>` : ''}
+        ${groupName ? `<div style="font-size:11px;color:var(--text-muted);font-family:'Inter',sans-serif;">${escHtml(groupName)}</div>` : ''}
     </div>
 </a>`;
     }).join('');

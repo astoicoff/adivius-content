@@ -42,7 +42,7 @@ if ($method === 'GET') {
         }
         $res  = supabase_call('GET',
             '/rest/v1/image_generations?group_id=eq.' . urlencode($group_id)
-            . '&select=id,keyword,image_url,size,quality,model,status,created_at,updated_at'
+            . '&select=id,keyword,image_url,size,quality,model,status,agent_name,created_at,updated_at'
             . '&order=created_at.desc'
         );
         $data = json_decode($res['body'], true);
@@ -52,7 +52,7 @@ if ($method === 'GET') {
         $limit = min(200, max(1, intval($_GET['limit'] ?? 100)));
         $res  = supabase_call('GET',
             '/rest/v1/image_generations?user_id=eq.' . urlencode($user_id)
-            . '&select=id,keyword,image_url,size,quality,model,status,group_id,created_at,updated_at'
+            . '&select=id,keyword,image_url,size,quality,model,status,agent_name,group_id,created_at,updated_at'
             . '&order=created_at.desc&limit=' . $limit
         );
         $data = json_decode($res['body'], true);
