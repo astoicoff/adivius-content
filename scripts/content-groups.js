@@ -171,7 +171,7 @@ function renderImageItems(images) {
     const ratioClass = (size) => {
         if (size === '1024x1024') return 'square';
         if (size === '1024x1792') return 'portrait';
-        return '';
+        return 'landscape';
     };
 
     list.innerHTML = `<div class="img-grid">` + images.map(img => {
@@ -183,7 +183,7 @@ function renderImageItems(images) {
             ? `<img src="${escapeHtml(img.image_url)}" alt="${escapeHtml(img.keyword)}" loading="lazy">`
               + `<div class="img-thumb-overlay"><div class="img-thumb-overlay-title">${escapeHtml(title)}</div></div>`
             : `<div class="img-placeholder"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>`;
-        return `<a class="img-thumb-card" href="${url}">
+        return `<a class="img-thumb-card ${cls}" href="${url}">
             <div class="img-thumb-wrap ${cls}">${thumb}</div>
             <div class="img-thumb-info">
                 ${img.image_url

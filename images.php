@@ -12,10 +12,18 @@
     .gallery-meta        { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; font-size: 12px; color: var(--text-muted); font-family: 'Inter', sans-serif; }
     .gallery-count       { font-weight: 700; color: var(--dark); }
 
-    .gallery-grid        { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+    /* Masonry: cards flow into columns and each card hugs its image's natural
+       shape — landscape cards are wide+short, portraits tall+narrow. No cell
+       stretching, no dead space. Order is column-flow (visual balance > order). */
+    .gallery-grid        { columns: 250px; column-gap: 14px; }
 
-    .gallery-card        { text-decoration: none; color: inherit; display: flex; flex-direction: column; border-radius: 10px; overflow: hidden; border: 1px solid var(--light-gray); background: var(--card); transition: box-shadow 0.15s, transform 0.15s; }
-    .gallery-card:hover  { box-shadow: 0 4px 16px rgba(0,0,0,0.10); transform: translateY(-2px); }
+    .gallery-card        { text-decoration: none; color: inherit; display: flex; flex-direction: column; width: 100%; margin: 0 0 14px; break-inside: avoid; -webkit-column-break-inside: avoid; border-radius: 10px; overflow: hidden; border: 1px solid var(--light-gray); background: var(--card); transition: box-shadow 0.15s; }
+    .gallery-card:hover  { box-shadow: 0 4px 16px rgba(0,0,0,0.10); }
+
+    /* Orientation-specific character */
+    .gallery-card.portrait .gallery-overlay  { padding-top: 48px; }   /* longer fade on tall images */
+    .gallery-card.landscape .gallery-info    { padding: 7px 11px; }   /* slimmer footer on short cards */
+    .gallery-card.landscape .gallery-overlay-title { font-size: 12px; -webkit-line-clamp: 1; }
 
     .gallery-thumb            { position: relative; width: 100%; overflow: hidden; background: var(--off-white); }
     .gallery-thumb.landscape  { aspect-ratio: 16/9; }

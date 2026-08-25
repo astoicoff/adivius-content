@@ -1,9 +1,12 @@
 <?php $pageTitle = 'Content Groups | Content Creator'; ?>
 <?php require_once __DIR__ . '/includes/head.php'; ?>
 <style>
-    .img-grid          { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 13px; }
-    .img-thumb-card    { display: flex; flex-direction: column; text-decoration: none; color: inherit; border: 1px solid var(--light-gray); border-radius: 10px; overflow: hidden; background: var(--card); transition: box-shadow 0.15s, transform 0.15s; }
-    .img-thumb-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.10); transform: translateY(-2px); }
+    /* Masonry — each card hugs its image's natural shape (see /images) */
+    .img-grid          { columns: 230px; column-gap: 13px; }
+    .img-thumb-card    { display: flex; flex-direction: column; width: 100%; margin: 0 0 13px; break-inside: avoid; -webkit-column-break-inside: avoid; text-decoration: none; color: inherit; border: 1px solid var(--light-gray); border-radius: 10px; overflow: hidden; background: var(--card); transition: box-shadow 0.15s; }
+    .img-thumb-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.10); }
+    .img-thumb-card.portrait .img-thumb-overlay { padding-top: 44px; }
+    .img-thumb-card.landscape .img-thumb-info   { padding: 7px 10px; }
     .img-thumb-wrap    { position: relative; aspect-ratio: 16/9; background: var(--off-white); overflow: hidden; }
     .img-thumb-wrap.square { aspect-ratio: 1; }
     .img-thumb-wrap.portrait { aspect-ratio: 9/16; }

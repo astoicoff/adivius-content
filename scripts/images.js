@@ -135,7 +135,7 @@ function renderGrid(images) {
         ].filter(Boolean).join('');
 
         return `
-<a class="gallery-card" href="${escHtml(href)}">
+<a class="gallery-card ${ratio}" href="${escHtml(href)}">
     <div class="gallery-thumb ${ratio}">${thumbHtml}</div>
     <div class="gallery-info">
         ${hasImage ? '' : `<div class="gallery-keyword">${escHtml(img.keyword)}</div>`}
