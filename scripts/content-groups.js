@@ -179,19 +179,20 @@ function renderImageItems(images) {
         const date  = new Date(img.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
         const url   = `/view-image?id=${encodeURIComponent(img.id)}&group=${encodeURIComponent(editingGroupId)}`;
         const cls   = ratioClass(img.size);
-        const thumb = img.image_url
-            ? `<img src="${escapeHtml(img.image_url)}" alt="${escapeHtml(img.keyword)}" loading="lazy">`
-              + `<div class="img-thumb-overlay"><div class="img-thumb-overlay-title">${escapeHtml(title)}</div></div>`
-            : `<div class="img-placeholder"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>`;
-        return `<a class="img-thumb-card ${cls}" href="${url}">
-            <div class="img-thumb-wrap ${cls}">${thumb}</div>
-            <div class="img-thumb-info">
-                ${img.image_url
-                    ? (img.agent_name ? `<span class="img-thumb-chip" title="${escapeHtml(img.agent_name)}">${escapeHtml(img.agent_name)}</span>` : `<span></span>`)
-                    : `<div class="img-thumb-title">${escapeHtml(title)}</div>`}
-                <div class="img-thumb-date">${date}</div>
-            </div>
-        </a>`;
+        const inner = img.image_url
+            ? `<img class="img-thumb-img" src="${escapeHtml(img.image_url)}" alt="${escapeHtml(img.keyword)}" loading="lazy">`
+              + `<div class="img-thumb-overlay">`
+              +   `<div class="img-thumb-overlay-title">${escapeHtml(title)}</div>`
+              +   `<div class="img-thumb-overlay-meta">`
+              +     (img.agent_name ? `<span class="img-thumb-chip" title="${escapeHtml(img.agent_name)}">${escapeHtml(img.agent_name)}</span>` : `<span></span>`)
+              +     `<span class="img-thumb-date">${date}</span>`
+              +   `</div>`
+              + `</div>`
+            : `<div class="img-thumb-noimg">`
+              +   `<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>`
+              +   `<div class="img-thumb-noimg-title">${escapeHtml(title)}</div>`
+              + `</div>`;
+        return `<a class="img-thumb-card ${cls}" href="${url}">${inner}</a>`;
     }).join('') + `</div>`;
 }
 

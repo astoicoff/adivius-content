@@ -110,42 +110,37 @@ function renderGrid(images) {
         const date      = new Date(img.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         const href      = `/view-image?id=${encodeURIComponent(img.id)}${img.group_id ? '&group=' + encodeURIComponent(img.group_id) : ''}`;
         const hasImage  = !!(img.image_url && img.status === 'completed');
-        const aspect    = { '1792x1024': '16:9', '1024x1024': '1:1', '1024x1792': '9:16' }[img.size] || img.size || '';
 
-        let thumbHtml;
+        let inner;
         if (hasImage) {
-            thumbHtml = `<img src="${escHtml(img.image_url)}" alt="${escHtml(img.keyword)}" loading="lazy">`
-                + `<div class="gallery-overlay"><div class="gallery-overlay-title">${escHtml(img.keyword)}</div></div>`;
+            const chips = [
+                img.agent_name ? `<span class="gallery-chip-meta" title="${escHtml(img.agent_name)}">${escHtml(img.agent_name)}</span>` : '',
+                groupName      ? `<span class="gallery-chip-meta" title="${escHtml(groupName)}">${escHtml(groupName)}</span>` : '',
+            ].filter(Boolean).join('');
+            inner = `<img class="gallery-img" src="${escHtml(img.image_url)}" alt="${escHtml(img.keyword)}" loading="lazy">`
+                + `<div class="gallery-overlay">`
+                +   `<div class="gallery-overlay-title">${escHtml(img.keyword)}</div>`
+                +   `<div class="gallery-overlay-meta">`
+                +     `<div style="display:flex;gap:5px;align-items:center;min-width:0;overflow:hidden;">${chips}</div>`
+                +     `<div class="gallery-overlay-date">${escHtml(date)}</div>`
+                +   `</div>`
+                + `</div>`;
         } else if (img.status === 'generating_image' || img.status === 'generating_prompt') {
-            thumbHtml = `<div class="gallery-shimmer"></div>`;
+            inner = `<div class="gallery-shimmer"></div>`;
         } else {
             const icon = img.status === 'failed'
                 ? `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`
                 : `<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>`;
-            const label = img.status === 'failed' ? 'Failed' : 'Pending';
-            thumbHtml = `<div class="gallery-placeholder">${icon}<span>${label}</span></div>`;
+            inner = `<div class="gallery-noimg">${icon}`
+                + `<div class="gallery-noimg-title">${escHtml(img.keyword)}</div>`
+                + `<div class="gallery-noimg-label">${escHtml(groupName || '')}${groupName ? ' · ' : ''}${escHtml(date)}</div>`
+                + `</div>`;
         }
         if (img.status !== 'completed') {
-            thumbHtml += `<div class="gallery-status-pin">${statusBadge(img.status)}</div>`;
+            inner += `<div class="gallery-status-pin">${statusBadge(img.status)}</div>`;
         }
 
-        const chips = [
-            img.agent_name ? `<span class="gallery-chip-meta gallery-chip-agent" title="${escHtml(img.agent_name)}">${escHtml(img.agent_name)}</span>` : '',
-            aspect         ? `<span class="gallery-chip-meta">${escHtml(aspect)}</span>` : '',
-        ].filter(Boolean).join('');
-
-        return `
-<a class="gallery-card ${ratio}" href="${escHtml(href)}">
-    <div class="gallery-thumb ${ratio}">${thumbHtml}</div>
-    <div class="gallery-info">
-        ${hasImage ? '' : `<div class="gallery-keyword">${escHtml(img.keyword)}</div>`}
-        <div class="gallery-footer">
-            <div style="display:flex;gap:5px;align-items:center;min-width:0;">${chips}</div>
-            <div class="gallery-date">${escHtml(date)}</div>
-        </div>
-        ${groupName ? `<div style="font-size:11px;color:var(--text-muted);font-family:'Inter',sans-serif;">${escHtml(groupName)}</div>` : ''}
-    </div>
-</a>`;
+        return `<a class="gallery-card ${ratio}" href="${escHtml(href)}">${inner}</a>`;
     }).join('');
 }
 

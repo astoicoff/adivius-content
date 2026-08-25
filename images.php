@@ -12,39 +12,42 @@
     .gallery-meta        { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; font-size: 12px; color: var(--text-muted); font-family: 'Inter', sans-serif; }
     .gallery-count       { font-weight: 700; color: var(--dark); }
 
-    /* Masonry: cards flow into columns and each card hugs its image's natural
-       shape — landscape cards are wide+short, portraits tall+narrow. No cell
-       stretching, no dead space. Order is column-flow (visual balance > order). */
-    .gallery-grid        { columns: 250px; column-gap: 14px; }
+    /* Equal-size swapped-orientation tiles on a fine unit grid:
+       landscape spans 16×9 units, portrait spans 9×16 — the exact same
+       rectangle rotated. Square spans 12×12 (near-identical area). Dense
+       flow tetris-packs them; order yields to visual balance. The whole
+       card IS the image; title and meta live on a gradient overlay. */
+    .gallery-grid        { display: grid; grid-template-columns: repeat(auto-fill, 18px); grid-auto-rows: 18px; gap: 6px; grid-auto-flow: dense; justify-content: center; }
 
-    .gallery-card        { text-decoration: none; color: inherit; display: flex; flex-direction: column; width: 100%; margin: 0 0 14px; break-inside: avoid; -webkit-column-break-inside: avoid; border-radius: 10px; overflow: hidden; border: 1px solid var(--light-gray); background: var(--card); transition: box-shadow 0.15s; }
-    .gallery-card:hover  { box-shadow: 0 4px 16px rgba(0,0,0,0.10); }
+    .gallery-card        { position: relative; display: block; text-decoration: none; color: inherit; border-radius: 10px; overflow: hidden; border: 1px solid var(--light-gray); background: var(--off-white); transition: box-shadow 0.15s; }
+    .gallery-card:hover  { box-shadow: 0 4px 16px rgba(0,0,0,0.14); }
+    .gallery-card.landscape { grid-column: span 16; grid-row: span 9;  }
+    .gallery-card.portrait  { grid-column: span 9;  grid-row: span 16; }
+    .gallery-card.square    { grid-column: span 12; grid-row: span 12; }
 
-    /* Orientation-specific character */
-    .gallery-card.portrait .gallery-overlay  { padding-top: 48px; }   /* longer fade on tall images */
-    .gallery-card.landscape .gallery-info    { padding: 7px 11px; }   /* slimmer footer on short cards */
-    .gallery-card.landscape .gallery-overlay-title { font-size: 12px; -webkit-line-clamp: 1; }
+    .gallery-img         { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
+    .gallery-card:hover .gallery-img { transform: scale(1.05); }
 
-    .gallery-thumb            { position: relative; width: 100%; overflow: hidden; background: var(--off-white); }
-    .gallery-thumb.landscape  { aspect-ratio: 16/9; }
-    .gallery-thumb.square     { aspect-ratio: 1; }
-    .gallery-thumb.portrait   { aspect-ratio: 9/16; }
-    .gallery-thumb img        { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s ease; }
-    .gallery-card:hover .gallery-thumb img { transform: scale(1.045); }
+    .gallery-overlay        { position: absolute; left: 0; right: 0; bottom: 0; padding: 34px 11px 9px; background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.72) 100%); display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
+    .gallery-overlay-title  { color: #fff; font-size: 12.5px; font-weight: 600; line-height: 1.35; letter-spacing: 0.2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-shadow: 0 1px 3px rgba(0,0,0,0.45); }
+    .gallery-card.landscape .gallery-overlay-title { -webkit-line-clamp: 1; }
+    .gallery-overlay-meta   { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-width: 0; }
+    .gallery-overlay-date   { color: rgba(255,255,255,0.85); font-size: 10.5px; font-family: 'Inter', sans-serif; white-space: nowrap; }
+    .gallery-status-pin     { position: absolute; top: 8px; right: 8px; }
 
-    /* Keyword lives ON the image — landscape cards carry their title instead of dead space */
-    .gallery-overlay          { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 12px 9px; background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.62) 100%); pointer-events: none; }
-    .gallery-overlay-title    { color: #fff; font-size: 12.5px; font-weight: 600; line-height: 1.35; letter-spacing: 0.2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-shadow: 0 1px 3px rgba(0,0,0,0.4); }
-    .gallery-status-pin       { position: absolute; top: 8px; right: 8px; }
+    /* Frosted chips readable on any image */
+    .gallery-chip-meta      { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: rgba(255,255,255,0.20); border: 1px solid rgba(255,255,255,0.35); color: #fff; font-family: 'Inter', sans-serif; white-space: nowrap; max-width: 120px; overflow: hidden; text-overflow: ellipsis; backdrop-filter: blur(3px); }
 
-    .gallery-chip-meta        { display: inline-flex; align-items: center; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: var(--off-white); border: 1px solid var(--light-gray); color: var(--text-muted); font-family: 'Inter', sans-serif; white-space: nowrap; }
-    .gallery-chip-agent       { background: #EDF7FF; color: var(--blue); border-color: rgba(0,143,214,0.25); max-width: 130px; overflow: hidden; text-overflow: ellipsis; display: inline-block; }
+    .gallery-noimg          { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 12px; text-align: center; }
+    .gallery-noimg svg      { width: 26px; height: 26px; stroke: var(--text-muted); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    .gallery-noimg-title    { font-size: 11.5px; font-weight: 600; color: var(--dark); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .gallery-noimg-label    { font-size: 10.5px; color: var(--text-muted); font-family: 'Inter', sans-serif; }
 
     .gallery-placeholder      { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
     .gallery-placeholder svg  { width: 28px; height: 28px; stroke: var(--text-muted); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
     .gallery-placeholder span { font-size: 11px; color: var(--text-muted); font-family: 'Inter', sans-serif; }
 
-    .gallery-shimmer     { width: 100%; height: 100%; background: linear-gradient(90deg, var(--off-white) 25%, var(--light-gray) 50%, var(--off-white) 75%); background-size: 200% 100%; animation: gshimmer 1.5s infinite; }
+    .gallery-shimmer     { position: absolute; inset: 0; background: linear-gradient(90deg, var(--off-white) 25%, var(--light-gray) 50%, var(--off-white) 75%); background-size: 200% 100%; animation: gshimmer 1.5s infinite; }
     @keyframes gshimmer  { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
     .gallery-info        { padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
