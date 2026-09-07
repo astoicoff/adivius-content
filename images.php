@@ -17,7 +17,11 @@
        rectangle rotated. Square spans 12×12 (near-identical area). Dense
        flow tetris-packs them; order yields to visual balance. The whole
        card IS the image; title and meta live on a gradient overlay. */
-    .gallery-grid        { display: grid; grid-template-columns: repeat(auto-fill, 18px); grid-auto-rows: 18px; gap: 6px; grid-auto-flow: dense; justify-content: center; }
+    .gallery-grid        { --u: 18px; --g: 6px; display: grid; grid-template-columns: repeat(auto-fill, var(--u)); grid-auto-rows: var(--u); gap: var(--g); grid-auto-flow: dense; justify-content: center; }
+    /* A landscape tile is 16 units + 15 gaps wide (378px at 18px). Shrink the
+       unit on narrow screens or the widest tile outruns the column track. */
+    @media (max-width: 768px) { .gallery-grid { --u: 15px; --g: 5px; } }
+    @media (max-width: 420px) { .gallery-grid { --u: 12px; --g: 4px; } }
 
     .gallery-card        { position: relative; display: block; text-decoration: none; color: inherit; border-radius: 10px; overflow: hidden; border: 1px solid var(--light-gray); background: var(--off-white); transition: box-shadow 0.15s; }
     .gallery-card:hover  { box-shadow: 0 4px 16px rgba(0,0,0,0.14); }

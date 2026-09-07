@@ -179,3 +179,67 @@ function statusBadge(status) {
     const s = map[status] || { cls: "badge-yellow", label: status };
     return `<span class="badge ${s.cls}"><span class="badge-dot"></span>${s.label}</span>`;
 }
+
+// ── Mobile navigation ─────────────────────────────────────────────────────────
+// Below 768px the sidebar becomes an overlay drawer. The trigger belongs in the
+// top bar (as in Nucleus), but every page writes its own .top-bar markup — so
+// rather than editing eleven templates, the button and backdrop are injected
+// here, once, before any page script runs.
+
+function openMobileNav() {
+    document.body.classList.add('nav-open');
+    document.documentElement.classList.add('nav-open');
+    const t = document.querySelector('.nav-toggle');
+    if (t) t.setAttribute('aria-expanded', 'true');
+}
+
+function closeMobileNav() {
+    document.body.classList.remove('nav-open');
+    document.documentElement.classList.remove('nav-open');
+    const t = document.querySelector('.nav-toggle');
+    if (t) t.setAttribute('aria-expanded', 'false');
+}
+
+function toggleMobileNav() {
+    document.body.classList.contains('nav-open') ? closeMobileNav() : openMobileNav();
+}
+
+function initShell() {
+    const sidebar = document.querySelector('.sidebar');
+    const topBar  = document.querySelector('.top-bar');
+    if (!sidebar || !topBar) return;   // login and other chrome-less pages
+
+    if (!topBar.querySelector('.nav-toggle')) {
+        const btn = document.createElement('button');
+        btn.type      = 'button';
+        btn.className = 'nav-toggle';
+        btn.setAttribute('aria-label',    'Open navigation');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>';
+        btn.addEventListener('click', toggleMobileNav);
+        topBar.insertBefore(btn, topBar.firstChild);
+    }
+
+    if (!document.querySelector('.nav-backdrop')) {
+        const bd = document.createElement('div');
+        bd.className = 'nav-backdrop';
+        bd.setAttribute('aria-hidden', 'true');
+        bd.addEventListener('click', closeMobileNav);
+        document.body.appendChild(bd);
+    }
+
+    // Choosing a destination is the implicit "done" gesture.
+    sidebar.querySelectorAll('.nav-item').forEach(a => a.addEventListener('click', closeMobileNav));
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') closeMobileNav();
+    });
+
+    // Rotating to landscape past the breakpoint would otherwise leave the page
+    // scroll-locked behind a drawer that is no longer visible.
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) closeMobileNav();
+    });
+}
+
+document.addEventListener('DOMContentLoaded', initShell);

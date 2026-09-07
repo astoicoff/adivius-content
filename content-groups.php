@@ -3,7 +3,9 @@
 <style>
     /* Equal-size swapped-orientation tiles (see /images): landscape 16×9
        units, portrait 9×16 — same rectangle rotated; square 12×12. */
-    .img-grid          { display: grid; grid-template-columns: repeat(auto-fill, 16px); grid-auto-rows: 16px; gap: 6px; grid-auto-flow: dense; justify-content: center; }
+    .img-grid          { --u: 16px; --g: 6px; display: grid; grid-template-columns: repeat(auto-fill, var(--u)); grid-auto-rows: var(--u); gap: var(--g); grid-auto-flow: dense; justify-content: center; }
+    @media (max-width: 768px) { .img-grid { --u: 14px; --g: 5px; } }
+    @media (max-width: 420px) { .img-grid { --u: 11px; --g: 4px; } }
     .img-thumb-card    { position: relative; display: block; text-decoration: none; color: inherit; border: 1px solid var(--light-gray); border-radius: 10px; overflow: hidden; background: var(--off-white); transition: box-shadow 0.15s; }
     .img-thumb-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.14); }
     .img-thumb-card.landscape { grid-column: span 16; grid-row: span 9;  }

@@ -22,9 +22,24 @@
             --red-tint: #FFF0F0;
             --sidebar-bg: #FFFFFF;
             --sidebar-width: 240px;
+            /* Mobile drawer is wider than the desktop rail — a thumb needs more
+               target than a mouse. Mirrors Nucleus's w-[17rem] max-w-[85vw]. */
+            --drawer-width: 272px;
+            /* THE alignment token. The sidebar's logo block and the page's top
+               bar are both exactly this tall, so their bottom borders form one
+               continuous rule across the viewport — the Nucleus shell's
+               defining detail (its h-14 header pair). Change it in one place
+               and both sides stay locked together. */
+            --topbar-height: 56px;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html {
+            -webkit-text-size-adjust: 100%;
+            /* The top bar is sticky, so scrollIntoView() targets must clear it. */
+            scroll-padding-top: calc(var(--topbar-height) + 16px);
+        }
 
         body {
             font-family: 'Poppins', sans-serif;
@@ -37,7 +52,6 @@
         /* ── Sidebar ── */
         .sidebar {
             width: var(--sidebar-width);
-            min-height: 100vh;
             background: var(--sidebar-bg);
             border-right: 1px solid var(--light-gray);
             display: flex;
@@ -48,17 +62,19 @@
         }
 
         .sidebar-logo {
-            padding: 22px 20px 18px;
+            height: var(--topbar-height);
+            flex-shrink: 0;
+            padding: 0 20px;
             border-bottom: 1px solid var(--light-gray);
             display: flex;
             align-items: center;
-            
+            gap: 9px;
         }
 
         .logo-dot {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
             background: transparent;
             display: flex;
             align-items: center;
@@ -66,7 +82,7 @@
             flex-shrink: 0;
         }
 
-        .logo-dot svg { width: 18px; height: 18px; }
+        .logo-dot svg { width: 24px; height: 24px; }
 
         .logo-text { font-size: 15px; font-weight: 700; color: var(--dark); line-height: 1.2; }
         .logo-text span { color: var(--red); }
@@ -176,21 +192,73 @@
         .btn-logout svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
         /* ── Main ── */
-        .main { margin-left: var(--sidebar-width); flex: 1; min-height: 100vh; display: flex; flex-direction: column; }
+        .main { margin-left: var(--sidebar-width); flex: 1; min-width: 0; min-height: 100vh; display: flex; flex-direction: column; }
 
+        /* Height-locked to --topbar-height so its bottom border continues the
+           sidebar logo block's border. Sticky, so that line stays put while the
+           page scrolls (the sidebar is fixed, so it never moves either). */
         .top-bar {
             background: var(--card);
             border-bottom: 1px solid var(--light-gray);
-            padding: 16px 28px;
+            height: var(--topbar-height);
+            flex-shrink: 0;
+            padding: 0 24px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 60;
         }
 
-        .top-bar-title { font-size: 16px; font-weight: 700; color: var(--dark); }
-        .top-bar-subtitle { font-size: 12px; color: var(--text-muted); font-weight: 400; margin-top: 1px; }
+        /* The title block is always the first <div> in a .top-bar; it takes the
+           slack so trailing actions sit hard right. Targeting :first-of-type
+           (not :first-child) leaves room for the injected mobile nav toggle,
+           which is a <button>. */
+        .top-bar > div:first-of-type { flex: 1; min-width: 0; }
 
-        .content-area { padding: 28px; flex: 1; }
+        .top-bar-title { font-size: 14.5px; font-weight: 700; color: var(--dark); line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .top-bar-subtitle { font-size: 11.5px; color: var(--text-muted); font-weight: 400; line-height: 1.3; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* ── Mobile navigation (drawer) ──
+           Injected by shared.js so every page gets it without per-page markup.
+           Hidden entirely from 769px up, where the sidebar is a permanent rail. */
+        .nav-toggle {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 auto;
+            width: 34px; height: 34px;
+            margin-left: -7px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+        }
+        .nav-toggle:hover { background: var(--off-white); color: var(--dark); }
+        .nav-toggle svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+        .sidebar-close {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            margin-left: auto;
+            width: 30px; height: 30px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+        }
+        .sidebar-close:hover { background: var(--off-white); color: var(--dark); }
+        .sidebar-close svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+        .nav-backdrop { display: none; position: fixed; inset: 0; background: rgba(26,26,26,0.45); z-index: 99; }
+
+        .content-area { padding: 28px; flex: 1; min-width: 0; }
 
         /* ── Cards ── */
         .card { background: var(--card); border: 1px solid var(--light-gray); border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
@@ -379,7 +447,79 @@
         .density-bar-wrap { display: flex; align-items: center; }
         .density-bar-fill { height: 6px; border-radius: 3px; background: var(--blue); min-width: 2px; }
 
-        @media (max-width: 768px) { .sidebar { transform: translateX(-100%); } .main { margin-left: 0; } }
+        /* ── Responsive ──────────────────────────────────────────────────────
+           Two breakpoints. At ≤1024px the chrome tightens but the layout is
+           unchanged. At ≤768px (Nucleus's `md`) the sidebar stops being a rail
+           and becomes an overlay drawer, opened from the top bar. */
+
+        @media (max-width: 1024px) {
+            .content-area { padding: 22px 20px; }
+            .top-bar      { padding: 0 20px; }
+            .card-header  { padding: 18px 18px 0; }
+            .card-body    { padding: 18px; }
+        }
+
+        @media (max-width: 768px) {
+            /* Sidebar → off-canvas drawer. It is already position:fixed, so it
+               only needs to slide; `body.nav-open` is the single switch. */
+            .sidebar {
+                width: var(--drawer-width);
+                max-width: 85vw;
+                transform: translateX(-100%);
+                transition: transform 0.22s ease-out;
+            }
+            body.nav-open .sidebar     { transform: translateX(0); box-shadow: 0 12px 40px rgba(0,0,0,0.28); }
+            body.nav-open .nav-backdrop { display: block; }
+            /* Lock the page behind the drawer — otherwise it scrolls under the
+               backdrop on iOS. Set on both because overflow propagates from
+               <html> to the viewport when <body> alone is overridden. */
+            html.nav-open, body.nav-open { overflow: hidden; }
+
+            .main         { margin-left: 0; }
+            .nav-toggle,
+            .sidebar-close { display: inline-flex; }
+
+            .top-bar      { padding: 0 14px; }
+            .content-area { padding: 18px 14px; }
+            .card         { border-radius: 10px; margin-bottom: 16px; }
+            .card-header  { padding: 16px 15px 0; flex-wrap: wrap; gap: 10px; }
+            .card-body    { padding: 15px; }
+
+            /* Row layouts that rely on horizontal room */
+            .history-item,
+            .group-card,
+            .content-item-header,
+            .groups-header,
+            .key-row            { flex-wrap: wrap; gap: 10px; }
+            .key-row .form-input { flex: 1 1 100%; }
+
+            .progress-steps .step-label { display: none; }
+            .progress-steps .step-line  { margin: 0 6px; }
+
+            .content-rendered { padding: 15px; font-size: 13.5px; }
+
+            /* Wide tables scroll inside their container rather than the page */
+            .density-content { overflow-x: auto; padding: 16px 15px; }
+            .density-table   { min-width: 440px; }
+
+            /* Modals claim almost the whole viewport. Setting `width` (not
+               max-width) is deliberate: several modals carry an inline
+               max-width, and an inline declaration would win — a width the
+               inline rule can only shrink, never widen, is the safe lever. */
+            .density-modal        { width: calc(100vw - 20px); max-height: calc(100vh - 24px); border-radius: 12px; }
+            .density-modal-header { padding: 16px 15px 14px; }
+            .rules-panel          { width: 100%; max-width: 100%; padding: 18px 15px; }
+
+            #toast-container { left: 12px; right: 12px; bottom: 12px; }
+            .toast           { max-width: none; }
+        }
+
+        /* Anything that must never push the page sideways */
+        @media (max-width: 480px) {
+            .top-bar-subtitle { display: none; }
+            .content-area     { padding: 16px 12px; }
+        }
+
         .hidden { display: none !important; }
 
         /* ── Toast ── */
