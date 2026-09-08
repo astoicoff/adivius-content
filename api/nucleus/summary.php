@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../helpers.php';
+require_once __DIR__ . '/../contracts/hub_contract.php';
 
 // Machine-to-machine: service token auth, no user session
 $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
@@ -8,6 +9,9 @@ if (!$auth && function_exists('getallheaders')) {
     $auth = $h['Authorization'] ?? $h['authorization'] ?? '';
 }
 header('Content-Type: application/json');
+// Contract version on every response so Nucleus can detect drift rather than
+// discovering it through a broken pipeline view. Roadmap §1.2.
+header(HUB_CONTRACT_VERSION_HEADER . ': ' . HUB_CONTRACT_VERSION);
 
 if (!preg_match('/^Bearer\s+(.+)$/i', $auth, $m)
     || !NUCLEUS_SERVICE_TOKEN

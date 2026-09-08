@@ -1,0 +1,80 @@
+name: CI
+
+# Roadmap §6.1 and §6.2 — the sharpest edge in the constellation.
+#
+# Content has no staging: a push to main is production within ~60 seconds. There
+# is no PHP runtime on the dev machine either, so PHP here is written blind and
+# has never been syntax-checked before reaching users. `php -l` in CI is the
+# single highest-value gate in this repo, and it is a HARD gate from day one
+# because it is deterministic — it either parses or it doesn't.
+#
+# The smoke job then proves the deploy actually serves traffic, because a green
+# lint on a broken deploy is worthless.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: php -l (hard gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          # Match production exactly: content.adivius.com reports PHP/8.2.20
+          # via X-Powered-By. A newer PHP here could accept syntax the runtime
+          # rejects, which would defeat the entire point of this gate.
+          php-version: '8.2'
+
+      - name: Syntax-check every PHP file
+        run: |
+          fail=0
+          while IFS= read -r -d '' f; do
+            if ! php -l "$f" > /dev/null 2>&1; then
+              echo "::error file=$f::$(php -l "$f" 2>&1 | head -n 1)"
+              fail=1
+            fi
+          done < <(find . -name '*.php' -not -path './vendor/*' -print0)
+          if [ "$fail" -eq 1 ]; then
+            echo "PHP syntax errors found — this would have broken production."
+            exit 1
+          fi
+          echo "All PHP files parse."
+
+  smoke:
+    name: post-deploy smoke (§6.2)
+    needs: lint
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Vercel to publish
+        # Deploys land in ~60s; give it margin before probing.
+        run: sleep 120
+
+      - name: Hub endpoints must exist and reject anonymous callers
+        # An unauthenticated call returning 401 proves the route is deployed AND
+        # that auth is wired. A 404 means the route vanished; a 200 would mean
+        # the endpoint stopped checking its service token, which is worse.
+        run: |
+          fail=0
+          for path in \
+            /api/nucleus/summary \
+            /api/nucleus/known-ids \
+            /api/nucleus/publish-completed \
+            /api/nucleus/content-updated \
+            /api/nucleus/content-returned
+          do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' "https://content.adivius.com$path")
+            case "$code" in
+              401|405) echo "ok   $path -> $code" ;;
+              *)       echo "::error::$path returned $code (expected 401 or 405)"; fail=1 ;;
+            esac
+          done
+          code=$(curl -sS -o /dev/null -w '%{http_code}' https://content.adivius.com/login)
+          [ "$code" = "200" ] && echo "ok   /login -> 200" || { echo "::error::/login returned $code"; fail=1; }
+          exit $fail

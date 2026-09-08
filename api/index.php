@@ -20,8 +20,11 @@ if (!$path || !preg_match('#^[a-zA-Z0-9/_-]+$#', $path)) {
     exit;
 }
 
-// Block internal-only files from being invoked as endpoints
-if (in_array(basename($path), ['helpers', 'index'], true)) {
+// Block internal-only files from being invoked as endpoints. `contracts/` holds
+// generated shared definitions (constants + validators, no output) that are
+// require'd by handlers — reachable as a route only by accident.
+if (str_starts_with($path, 'contracts/')
+    || in_array(basename($path), ['helpers', 'index', 'hub_contract'], true)) {
     http_response_code(404);
     header('Content-Type: application/json');
     echo json_encode(['detail' => 'Not found.']);
