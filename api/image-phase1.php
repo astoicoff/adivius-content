@@ -105,6 +105,21 @@ header('X-Accel-Buffering: no');
 try {
     emit_sse(['type' => 'progress', 'message' => 'Generating image prompt…']);
 
+    // Agent instructions are written by people, often as a persona talking to
+    // a client ("you ask to receive the source photo…", "report every edit…").
+    // Here they run unattended and the reply is fed verbatim to the image
+    // model — so the frame states that job first. Without it, GPT-6 Sol took a
+    // retoucher persona literally and answered "I don't see an image attached.
+    // Please upload…", which then became the image prompt.
+    $frame = "You are the prompt-writing step of an automated image pipeline. Your reply is sent VERBATIM, "
+        . "with no human in between, to an image model as its prompt.\n"
+        . "- Output ONLY the image prompt: plain prose instructions for the image model. No preamble, headings, notes, questions, or reports.\n"
+        . "- You cannot see any image, and you do not need to. Never ask for files, never say an image is missing, never address the user.\n"
+        . "- The AGENT BRIEF below sets the standards the final image must meet. Apply its visual rules (what to keep, fix, avoid, and how it should look). "
+        . "Ignore any part of it about asking for inputs, pushing back, file formats, filenames, or writing reports — those are handled elsewhere.\n\n"
+        . "=== AGENT BRIEF ===\n";
+    $image_rules = $frame . $image_rules . "\n=== END AGENT BRIEF ===";
+
     // Keyword mode: the agent invents a scene from a topic. Description mode:
     // the user supplied the creative brief — the agent's style rules still
     // apply, but the brief's specifics are binding, not inspiration.
@@ -126,6 +141,8 @@ try {
     if ($has_reference) {
         $system_prompt .= "\n\nREFERENCE IMAGE: a reference image IS attached and will be supplied to the image model alongside your prompt. "
             . "Write the prompt as edit/transformation instructions relative to that image (what to keep, change, add, or restyle). "
+            . "When the request says \"the attached image\", \"this photo\", \"refine\" or similar, it means that image. "
+            . "If the request gives no specific changes, instruct the image model to apply the brief's standards to it. "
             . "Do not describe the reference's existence — just instruct.";
     } else {
         $system_prompt .= "\n\nNo reference image will be used. The prompt must describe the complete scene from scratch. "

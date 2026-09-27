@@ -189,6 +189,16 @@ document.getElementById('phase1Form').addEventListener('submit', async function(
     if (inputMode === 'keyword'     && !keyword)     { showAlert('Please enter a keyword or topic.'); return; }
     if (inputMode === 'description' && !description) { showAlert('Please enter an image description.'); return; }
 
+    // The prompt is written now, before any image is sent — so a request that
+    // talks about "the attached image" with nothing attached can only produce
+    // a from-scratch image. Catch it here instead of after two paid calls.
+    const request = inputMode === 'description' ? description : keyword;
+    if (!contextImageFile && /\b(attached|attachment|this (photo|image|picture|pic)|the (photo|image|picture) (above|below)|refine|retouch)\b/i.test(request)) {
+        showAlert('Your request refers to an attached image, but none is attached. Add it under Reference Image, then generate the prompt.');
+        document.getElementById('contextImageInput')?.closest('.form-group')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+    }
+
     const btn          = document.getElementById('generatePromptBtn');
     const loadingBar   = document.getElementById('phase1Loading');
     const loadingText  = document.getElementById('phase1LoadingText');
