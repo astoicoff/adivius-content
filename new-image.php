@@ -69,11 +69,14 @@
                             <label class="form-label" for="modelSelect">Text Model <span style="font-weight:400;color:var(--text-muted);">(for prompt engineering)</span></label>
                             <select class="form-input" id="modelSelect">
                                 <optgroup label="OpenAI">
-                                    <option value="gpt-5.5" selected>GPT-5.5</option>
+                                    <option value="gpt-6-sol" selected>GPT-6 Sol — recommended</option>
+                                    <option value="gpt-6-astra">GPT-6 Astra — most capable, 5× cost</option>
+                                    <option value="gpt-6-luna">GPT-6 Luna — fastest, lowest cost</option>
+                                    <option value="gpt-5.5">GPT-5.5 (previous)</option>
                                 </optgroup>
                                 <optgroup label="Anthropic">
-                                    <option value="claude-opus-4-7">Claude Opus 4.7</option>
-                                    <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
+                                    <option value="claude-opus-5">Claude Opus 5</option>
+                                    <option value="claude-sonnet-5">Claude Sonnet 5</option>
                                 </optgroup>
                                 <optgroup label="Google">
                                     <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>

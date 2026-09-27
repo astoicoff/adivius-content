@@ -76,9 +76,9 @@ function test_provider($provider, $key) {
             if ($r['code'] === 200) {
                 $data   = json_decode($r['body'], true);
                 $models = array_column($data['data'] ?? [], 'id');
-                $hasGpt5 = in_array('gpt-5.5', $models, true);
+                $hasDefault = in_array(DEFAULT_TEXT_MODEL, $models, true);
                 $count   = count($models);
-                return ['ok' => true, 'detail' => "$count models available" . ($hasGpt5 ? ' · gpt-5.5 ✓' : ' · gpt-5.5 not available on this key')];
+                return ['ok' => true, 'detail' => "$count models available" . ($hasDefault ? ' · ' . DEFAULT_TEXT_MODEL . ' ✓' : ' · ' . DEFAULT_TEXT_MODEL . ' not available on this key')];
             }
             return ['ok' => false, 'detail' => err_msg($r, 'Connection failed')];
         }
@@ -90,9 +90,12 @@ function test_provider($provider, $key) {
                 'anthropic-version: 2023-06-01',
             ]);
             if ($r['code'] === 200) {
-                $data  = json_decode($r['body'], true);
-                $count = count($data['data'] ?? []);
-                return ['ok' => true, 'detail' => "$count models available"];
+                $data    = json_decode($r['body'], true);
+                $ids     = array_column($data['data'] ?? [], 'id');
+                $count   = count($ids);
+                $offered = array_values(array_filter(['claude-opus-5', 'claude-sonnet-5'], fn($m) => in_array($m, $ids, true)));
+                return ['ok' => true, 'detail' => "$count models available"
+                    . ($offered ? ' · ' . implode(', ', $offered) . ' ✓' : ' · Claude Opus 5 / Sonnet 5 not on this key')];
             }
             return ['ok' => false, 'detail' => err_msg($r, 'Connection failed')];
         }

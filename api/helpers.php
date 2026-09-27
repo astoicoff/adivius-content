@@ -19,6 +19,15 @@ if (!defined('SUPABASE_URL')) {
     define('AUTH_SUPABASE_ANON_KEY', getenv('AUTH_SUPABASE_ANON_KEY') ?: '');
 }
 
+// Model defaults — the one place to change when a new model ships.
+// Verified 2026-09-25 against /v1/models: GPT-6 Sol answers the exact Chat
+// Completions request shape used below (no temperature/reasoning params),
+// streaming included, at $2/$10 per 1M tokens vs GPT-5.5's $5/$30.
+// GPT Image 2.5 Flare takes the same size/quality/output_format params as
+// gpt-image-2 at the same token price, with higher quality and lower latency.
+const DEFAULT_TEXT_MODEL = 'gpt-6-sol';
+const IMAGE_MODEL        = 'gpt-image-2.5-flare';
+
 function set_headers() {
     header('Content-Type: application/json');
     $allowed = ['https://adivius.com', 'https://www.adivius.com', 'http://localhost:8000',
@@ -293,7 +302,7 @@ function fire_webhook($url, $payload, $extra_headers = []) {
     return ['ok' => false, 'attempts' => $attempts, 'error' => $lastErr];
 }
 
-function call_openai($system_prompt, $user_prompt, $api_key, $model = 'gpt-5.5') {
+function call_openai($system_prompt, $user_prompt, $api_key, $model = DEFAULT_TEXT_MODEL) {
     if (!$api_key) { http_response_code(400); echo json_encode(['detail' => 'OpenAI API key is required. Please add it in API Keys settings.']); exit; }
     $ch = curl_init('https://api.openai.com/v1/chat/completions');
     curl_setopt_array($ch, [
@@ -316,30 +325,69 @@ function call_openai($system_prompt, $user_prompt, $api_key, $model = 'gpt-5.5')
     return json_decode($body, true)['choices'][0]['message']['content'] ?? 'Error: empty response.';
 }
 
-function call_claude($system_prompt, $user_prompt, $api_key, $model = 'claude-sonnet-4-6') {
+// Claude request shape, shared by the streaming and non-streaming paths.
+//
+// Opus 5 / Sonnet 5 think by default when `thinking` is omitted (4.7/4.6 did
+// not), and max_tokens caps thinking + answer together — so the streaming path,
+// which writes whole articles, gets 64K of headroom. The non-streaming path
+// stays at 16K: that keeps it under the API's long-request limit for
+// non-streamed calls, and it only ever returns one edited HTML document.
+//
+// Opus 5's safety classifiers can decline a request (HTTP 200,
+// stop_reason "refusal"). `fallbacks: "default"` re-runs a declined request on
+// Anthropic's recommended substitute server-side. It's documented for Opus 5
+// specifically, so it is only sent for that model.
+function claude_request(string $model, string $system_prompt, string $user_prompt, bool $stream, string $api_key): array {
+    $body = [
+        'model'      => $model,
+        'max_tokens' => $stream ? 64000 : 16000,
+        'system'     => $system_prompt,
+        'messages'   => [['role' => 'user', 'content' => $user_prompt]],
+    ];
+    $headers = [
+        'x-api-key: ' . $api_key,
+        'anthropic-version: 2023-06-01',
+        'Content-Type: application/json',
+    ];
+    if ($model === 'claude-opus-5') {
+        $body['fallbacks'] = 'default';
+        $headers[]         = 'anthropic-beta: server-side-fallback-2026-07-01';
+    }
+    if ($stream) $body['stream'] = true;
+    return [$headers, json_encode($body)];
+}
+
+function claude_refusal_message(?array $stop_details): string {
+    $why = $stop_details['explanation'] ?? $stop_details['category'] ?? null;
+    return 'Claude declined this request' . ($why ? ' (' . $why . ')' : '') . '. Try again, or pick a different model.';
+}
+
+function call_claude($system_prompt, $user_prompt, $api_key, $model = 'claude-sonnet-5') {
     if (!$api_key) { http_response_code(400); echo json_encode(['detail' => 'Anthropic API key is required. Please add it in API Keys settings.']); exit; }
+    [$headers, $payload] = claude_request($model, $system_prompt, $user_prompt, false, $api_key);
     $ch = curl_init('https://api.anthropic.com/v1/messages');
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST           => true,
-        CURLOPT_HTTPHEADER     => [
-            'x-api-key: ' . $api_key,
-            'anthropic-version: 2023-06-01',
-            'Content-Type: application/json',
-        ],
-        CURLOPT_POSTFIELDS => json_encode([
-            'model'      => $model,
-            'max_tokens' => 16000,
-            'system'     => $system_prompt,
-            'messages'   => [['role' => 'user', 'content' => $user_prompt]],
-        ]),
-        CURLOPT_TIMEOUT => 300,
+        CURLOPT_HTTPHEADER     => $headers,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_TIMEOUT        => 300,
     ]);
     $body   = curl_exec($ch);
     $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
     if ($status !== 200) { http_response_code(500); echo json_encode(['detail' => 'Claude API Error: ' . $body]); exit; }
-    return json_decode($body, true)['content'][0]['text'] ?? 'Error: empty response.';
+    $data = json_decode($body, true);
+    if (($data['stop_reason'] ?? '') === 'refusal') {
+        http_response_code(422); echo json_encode(['detail' => claude_refusal_message($data['stop_details'] ?? null)]); exit;
+    }
+    // With thinking on, content[0] is usually a thinking block — collect the text blocks.
+    $text = '';
+    foreach ($data['content'] ?? [] as $block) {
+        if (($block['type'] ?? '') === 'text') $text .= $block['text'];
+    }
+    if ($text === '') { http_response_code(500); echo json_encode(['detail' => 'Claude returned an empty response.']); exit; }
+    return $text;
 }
 
 function call_gemini($system_prompt, $user_prompt, $api_key, $model = 'gemini-2.5-pro') {
@@ -383,6 +431,7 @@ function stream_openai(string $system_prompt, string $user_prompt, string $api_k
     if (!$api_key) throw new \RuntimeException('OpenAI API key is required. Please add it in API Keys settings.');
     $full = '';
     $buf  = '';
+    $raw  = '';   // on a 4xx OpenAI sends a plain JSON error body, not SSE lines
     $ch   = curl_init('https://api.openai.com/v1/chat/completions');
     curl_setopt_array($ch, [
         CURLOPT_POST          => true,
@@ -396,8 +445,9 @@ function stream_openai(string $system_prompt, string $user_prompt, string $api_k
             ],
         ]),
         CURLOPT_TIMEOUT       => 300,
-        CURLOPT_WRITEFUNCTION => function ($ch, $data) use (&$full, &$buf) {
+        CURLOPT_WRITEFUNCTION => function ($ch, $data) use (&$full, &$buf, &$raw) {
             $buf .= $data;
+            if (strlen($raw) < 2000) $raw .= $data;
             $lines = explode("\n", $buf);
             $buf   = array_pop($lines);
             foreach ($lines as $line) {
@@ -415,39 +465,46 @@ function stream_openai(string $system_prompt, string $user_prompt, string $api_k
     $err  = curl_error($ch);
     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    if ($err || $code >= 400) throw new \RuntimeException('OpenAI stream error: ' . ($err ?: 'HTTP ' . $code));
+    if ($err || $code >= 400) {
+        // Surface OpenAI's own reason ("model not found", "quota exceeded"...)
+        // rather than a bare status code.
+        $msg = json_decode($raw, true)['error']['message'] ?? null;
+        throw new \RuntimeException('OpenAI error: ' . ($err ?: 'HTTP ' . $code . ($msg ? ' — ' . $msg : '')));
+    }
     return $full;
 }
 
 function stream_claude(string $system_prompt, string $user_prompt, string $api_key, string $model): string {
     if (!$api_key) throw new \RuntimeException('Anthropic API key is required. Please add it in API Keys settings.');
-    $full = '';
-    $buf  = '';
-    $ch   = curl_init('https://api.anthropic.com/v1/messages');
+    $full         = '';
+    $buf          = '';
+    $raw          = '';     // on a 4xx the body is plain JSON, not SSE
+    $stop_reason  = null;
+    $stop_details = null;
+    [$headers, $payload] = claude_request($model, $system_prompt, $user_prompt, true, $api_key);
+    $ch = curl_init('https://api.anthropic.com/v1/messages');
     curl_setopt_array($ch, [
         CURLOPT_POST          => true,
-        CURLOPT_HTTPHEADER    => [
-            'x-api-key: ' . $api_key,
-            'anthropic-version: 2023-06-01',
-            'Content-Type: application/json',
-        ],
-        CURLOPT_POSTFIELDS    => json_encode([
-            'model'      => $model,
-            'max_tokens' => 16000,
-            'stream'     => true,
-            'system'     => $system_prompt,
-            'messages'   => [['role' => 'user', 'content' => $user_prompt]],
-        ]),
+        CURLOPT_HTTPHEADER    => $headers,
+        CURLOPT_POSTFIELDS    => $payload,
         CURLOPT_TIMEOUT       => 300,
-        CURLOPT_WRITEFUNCTION => function ($ch, $data) use (&$full, &$buf) {
+        CURLOPT_WRITEFUNCTION => function ($ch, $data) use (&$full, &$buf, &$raw, &$stop_reason, &$stop_details) {
             $buf .= $data;
+            if (strlen($raw) < 2000) $raw .= $data;
             $lines = explode("\n", $buf);
             $buf   = array_pop($lines);
             foreach ($lines as $line) {
                 $line = trim($line);
                 if (!str_starts_with($line, 'data: ')) continue;
-                $ev = json_decode(substr($line, 6), true);
-                if (($ev['type'] ?? '') !== 'content_block_delta') continue;
+                $ev   = json_decode(substr($line, 6), true);
+                $type = $ev['type'] ?? '';
+                if ($type === 'message_delta') {
+                    $stop_reason  = $ev['delta']['stop_reason']  ?? $stop_reason;
+                    $stop_details = $ev['delta']['stop_details'] ?? $stop_details;
+                    continue;
+                }
+                // Only text deltas reach the page — thinking deltas are skipped.
+                if ($type !== 'content_block_delta' || ($ev['delta']['type'] ?? '') !== 'text_delta') continue;
                 $tok = $ev['delta']['text'] ?? null;
                 if ($tok !== null && $tok !== '') { $full .= $tok; emit_sse(['type' => 'token', 'text' => $tok]); }
             }
@@ -458,7 +515,13 @@ function stream_claude(string $system_prompt, string $user_prompt, string $api_k
     $err  = curl_error($ch);
     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    if ($err || $code >= 400) throw new \RuntimeException('Claude stream error: ' . ($err ?: 'HTTP ' . $code));
+    if ($err || $code >= 400) {
+        $msg = json_decode($raw, true)['error']['message'] ?? null;
+        throw new \RuntimeException('Claude error: ' . ($err ?: 'HTTP ' . $code . ($msg ? ' — ' . $msg : '')));
+    }
+    // A refusal can land mid-stream; the partial text must not be saved as a finished article.
+    if ($stop_reason === 'refusal') throw new \RuntimeException(claude_refusal_message($stop_details));
+    if ($stop_reason === 'max_tokens') throw new \RuntimeException('Claude hit its output limit before finishing. Try again, or use a shorter brief.');
     return $full;
 }
 

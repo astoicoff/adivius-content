@@ -204,7 +204,7 @@ try {
     if ($inputs) {
         emit_sse(['type' => 'progress', 'message' => 'Editing image with AI…']);
         $post = [
-            'model'         => 'gpt-image-2',
+            'model'         => IMAGE_MODEL,
             'prompt'        => $prompt,
             'n'             => '1',
             'size'          => $size,
@@ -246,7 +246,7 @@ try {
         curl_setopt_array($ch, [
             CURLOPT_POST       => true,
             CURLOPT_POSTFIELDS => json_encode([
-                'model'         => 'gpt-image-2',
+                'model'         => IMAGE_MODEL,
                 'prompt'        => $prompt,
                 'n'             => 1,
                 'size'          => $size,

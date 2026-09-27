@@ -40,6 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'group_id'  => $gen['group_id']  ?? null,
         'content'   => $gen['content']   ?? null,
         'status'    => 'completed',
+        'model'     => $gen['model'] ?? DEFAULT_TEXT_MODEL,   // else the column default silently replaces it
         'client_id' => $gen['client_id'] ?? null,
         'site_id'   => $gen['site_id']   ?? null,
     ], ['Prefer: return=representation']);

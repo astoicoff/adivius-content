@@ -9,7 +9,7 @@ $body    = json_decode(file_get_contents('php://input'), true);
 $keyword       = trim($body['keyword']     ?? '');
 $description   = trim($body['description'] ?? '');
 $group_id      = trim($body['group_id']    ?? '');
-$model         = trim($body['model']       ?? 'gpt-5.5');
+$model         = trim($body['model']       ?? DEFAULT_TEXT_MODEL);
 $agent_id      = trim($body['agent_id']    ?? '');
 $has_reference = !empty($body['has_reference']);
 
