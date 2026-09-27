@@ -13,6 +13,7 @@ $pages = [
     '/images'        => 'images.php',
     '/content-groups'=> 'content-groups.php',
     '/history'       => 'history.php',
+    '/articles'      => 'articles.php',
     '/api-keys'      => 'api-keys.php',
     '/view-content'  => 'view-content.php',
     '/view-image'    => 'view-image.php',

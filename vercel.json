@@ -7,12 +7,12 @@
     { "src": "favicon.svg",   "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/(login|dashboard|new-content|new-image|images|content-groups|history|api-keys|view-content|view-image|accept-invite)\\.html$", "headers": { "Location": "/$1" }, "status": 301 },
-    { "src": "/(login|dashboard|new-content|new-image|images|content-groups|history|api-keys|view-content|view-image|accept-invite)\\.php$",  "headers": { "Location": "/$1" }, "status": 301 },
+    { "src": "/(login|dashboard|new-content|new-image|images|content-groups|history|articles|api-keys|view-content|view-image|accept-invite)\\.html$", "headers": { "Location": "/$1" }, "status": 301 },
+    { "src": "/(login|dashboard|new-content|new-image|images|content-groups|history|articles|api-keys|view-content|view-image|accept-invite)\\.php$",  "headers": { "Location": "/$1" }, "status": 301 },
     { "src": "^/api/(.+)$",                                "dest": "/api/index.php" },
     { "src": "^/scripts/(.+)$",                           "dest": "/scripts/$1" },
     { "src": "^/favicon\\.svg$",                          "dest": "/favicon.svg" },
-    { "src": "^/(login|dashboard|new-content|new-image|images|content-groups|history|api-keys|view-content|view-image|accept-invite)$", "dest": "/router.php" },
+    { "src": "^/(login|dashboard|new-content|new-image|images|content-groups|history|articles|api-keys|view-content|view-image|accept-invite)$", "dest": "/router.php" },
     { "src": "^/$",                                        "dest": "/router.php" }
   ]
 }
