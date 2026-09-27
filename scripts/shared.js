@@ -248,3 +248,39 @@ function initShell() {
 }
 
 document.addEventListener('DOMContentLoaded', initShell);
+
+// ── Image uploads ─────────────────────────────────────────────────────────────
+// Vercel rejects any function request body over 4.5 MB (413
+// FUNCTION_PAYLOAD_TOO_LARGE) before our code runs — and a phone photo is
+// often 4-10 MB. The image model works at ~1.5K px anyway, so large or
+// non-JPEG/PNG/WebP files are re-encoded here: long edge <= 2048 px, JPEG,
+// stepping quality/size down until the file fits comfortably under the cap.
+const UPLOAD_SAFE_BYTES = 3.5 * 1024 * 1024;
+
+async function prepareUploadImage(file) {
+    const okType = ['image/png', 'image/jpeg', 'image/webp'].includes(file.type);
+    if (okType && file.size <= UPLOAD_SAFE_BYTES) return file;
+
+    let bitmap;
+    try { bitmap = await createImageBitmap(file); }
+    catch (_) { throw new Error('This image format can\'t be read by the browser. Please use a JPEG, PNG or WebP.'); }
+
+    for (const [edge, quality] of [[2048, 0.9], [2048, 0.8], [1600, 0.8], [1280, 0.75]]) {
+        const scale  = Math.min(1, edge / Math.max(bitmap.width, bitmap.height));
+        const canvas = document.createElement('canvas');
+        canvas.width  = Math.round(bitmap.width  * scale);
+        canvas.height = Math.round(bitmap.height * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff';                       // PNG transparency → white, not black, in JPEG
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
+        if (blob && blob.size <= UPLOAD_SAFE_BYTES) {
+            bitmap.close?.();
+            const name = (file.name || 'image').replace(/\.[^.]+$/, '') + '.jpg';
+            return new File([blob], name, { type: 'image/jpeg' });
+        }
+    }
+    bitmap.close?.();
+    throw new Error('This image is too large to upload even after resizing. Please use a smaller photo.');
+}

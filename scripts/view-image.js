@@ -14,7 +14,7 @@ async function readStream(url, options, onToken, onProgress, onDone, onError) {
     const ct = res.headers.get('Content-Type') || '';
     if (!ct.includes('text/event-stream')) {
         try { const d = await res.json(); onError(d.detail || `HTTP ${res.status}`); }
-        catch { onError(`HTTP ${res.status}`); }
+        catch { onError(res.status === 413 ? 'The image is too large to upload (limit about 4 MB). Try a smaller photo.' : `HTTP ${res.status}`); }
         return;
     }
     const reader = res.body.getReader();
@@ -452,6 +452,13 @@ async function refineAndGenerate() {
     if (!instruction) { showToast('Enter a modification instruction.'); return; }
     if (!promptVal)   { showToast('No prompt to refine.'); return; }
 
+    // Shrink before any paid call: Vercel 413s request bodies over 4.5 MB.
+    let uploadFile = null;
+    if (refineContextFile) {
+        try { uploadFile = await prepareUploadImage(refineContextFile); }
+        catch (err) { showToast(err.message); return; }
+    }
+
     const btn         = document.getElementById('refineGenerateBtn');
     const loadingBar  = document.getElementById('refineLoading');
     const loadingText = document.getElementById('refineLoadingText');
@@ -498,7 +505,7 @@ async function refineAndGenerate() {
                 fd.append('prompt', refinedPrompt);
                 fd.append('size', imgData.size || '1792x1024');
                 fd.append('quality', imgData.quality || 'standard');
-                fd.append('image', refineContextFile);
+                fd.append('image', uploadFile);
                 fd.append('image_role', 'context');
                 fd.append('use_base', 'current');
                 p2Options = { method: 'POST', headers: { Authorization: authHeaders()['Authorization'] }, body: fd };

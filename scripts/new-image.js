@@ -77,7 +77,7 @@ async function readStream(url, options, onToken, onProgress, onDone, onError) {
     const ct = res.headers.get('Content-Type') || '';
     if (!ct.includes('text/event-stream')) {
         try { const d = await res.json(); onError(d.detail || `HTTP ${res.status}`); }
-        catch { onError(`HTTP ${res.status}`); }
+        catch { onError(res.status === 413 ? 'The image is too large to upload (limit about 4 MB). Try a smaller photo.' : `HTTP ${res.status}`); }
         return;
     }
     const reader = res.body.getReader();
@@ -268,6 +268,15 @@ async function generateImage() {
     if (!prompt)              { showAlert('Prompt cannot be empty.'); return; }
     if (!currentGenerationId) { showAlert('Please complete Phase 1 first.'); return; }
 
+    // Shrink before uploading: Vercel 413s request bodies over 4.5 MB, and
+    // phone photos are often larger. That rejection used to end the run
+    // with nothing generated and the reference never stored.
+    let uploadFile = null;
+    if (contextImageFile) {
+        try { uploadFile = await prepareUploadImage(contextImageFile); }
+        catch (err) { showAlert(err.message); return; }
+    }
+
     const btn         = document.getElementById('generateImageBtn');
     const loadingBar  = document.getElementById('phase2Loading');
     const loadingText = document.getElementById('phase2LoadingText');
@@ -290,7 +299,7 @@ async function generateImage() {
         fd.append('prompt', prompt);
         fd.append('size', selectedSize);
         fd.append('quality', selectedQuality);
-        fd.append('image', contextImageFile);
+        fd.append('image', uploadFile);
         fetchOptions = { method: 'POST', headers: { Authorization: authHeaders()['Authorization'] }, body: fd };
     } else {
         fetchOptions = { method: 'POST', headers: authHeaders(), body: JSON.stringify({ generation_id: currentGenerationId, prompt, size: selectedSize, quality: selectedQuality }) };
