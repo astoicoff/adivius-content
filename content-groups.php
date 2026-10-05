@@ -235,6 +235,8 @@
                         <option value="1792x1024">Landscape (1792×1024)</option>
                         <option value="1024x1024">Square (1024×1024)</option>
                         <option value="1024x1792">Portrait (1024×1792)</option>
+                        <option value="1536x1024">Photo landscape 3:2 (1536×1024)</option>
+                        <option value="1024x1536">Photo portrait 2:3 (1024×1536)</option>
                     </select>
                 </div>
                 <div class="form-group" style="margin:0;flex:1;">

@@ -156,6 +156,14 @@
                                     <svg viewBox="0 0 14 22" style="width:10px;height:16px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0;"><rect x="1" y="1" width="12" height="20" rx="2"/></svg>
                                     Portrait 9:16
                                 </button>
+                                <button type="button" class="btn btn-secondary" id="size32Btn" onclick="setSize('1536x1024')">
+                                    <svg viewBox="0 0 22 16" style="width:15px;height:11px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0;"><rect x="1" y="1" width="20" height="14" rx="2"/><circle cx="11" cy="8" r="3"/></svg>
+                                    Photo 3:2
+                                </button>
+                                <button type="button" class="btn btn-secondary" id="size23Btn" onclick="setSize('1024x1536')">
+                                    <svg viewBox="0 0 16 22" style="width:11px;height:15px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0;"><rect x="1" y="1" width="14" height="20" rx="2"/><circle cx="8" cy="11" r="3"/></svg>
+                                    Photo 2:3
+                                </button>
                             </div>
                         </div>
                         <div>
@@ -164,6 +172,7 @@
                                 <button type="button" class="btn btn-secondary btn-view-active" id="qualStdBtn" onclick="setQuality('standard')">Standard</button>
                                 <button type="button" class="btn btn-secondary" id="qualHdBtn" onclick="setQuality('hd')">HD</button>
                             </div>
+                            <div id="sizeMatchNote" style="display:none;font-size:11px;color:var(--text-muted);margin-top:5px;"></div>
                             <div id="qualityNote" style="font-size:11px;color:var(--text-muted);margin-top:5px;"></div>
                         </div>
                     </div>

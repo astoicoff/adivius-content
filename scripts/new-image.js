@@ -3,6 +3,33 @@ let selectedSize        = '1792x1024';
 let selectedQuality     = 'standard';
 let contextImageFile    = null;
 let inputMode           = 'keyword';   // 'keyword' | 'description'
+let referenceMatchedSize = null;       // size auto-picked to match the attached photo
+
+// Output sizes the image model accepts, as width/height ratios. An edit whose
+// output shape differs from the photo forces the model to crop or recompose
+// the scene, so an attached photo preselects the nearest shape.
+const SIZE_RATIOS = {
+    '1792x1024': 1792 / 1024, '1536x1024': 1536 / 1024, '1024x1024': 1,
+    '1024x1536': 1024 / 1536, '1024x1792': 1024 / 1792,
+};
+const SIZE_LABELS = {
+    '1792x1024': '16:9', '1536x1024': '3:2', '1024x1024': '1:1', '1024x1536': '2:3', '1024x1792': '9:16',
+};
+
+function nearestSize(width, height) {
+    const r = Math.log(width / height);
+    return Object.keys(SIZE_RATIOS).reduce((best, s) =>
+        Math.abs(Math.log(SIZE_RATIOS[s]) - r) < Math.abs(Math.log(SIZE_RATIOS[best]) - r) ? s : best);
+}
+
+function matchSizeToReference(width, height) {
+    const size = nearestSize(width, height);
+    referenceMatchedSize = size;
+    setSize(size);
+    const note = document.getElementById('sizeMatchNote');
+    note.textContent   = `Matched to your photo's shape (${SIZE_LABELS[size]}) so the scene isn't cropped or recomposed.`;
+    note.style.display = '';
+}
 
 function setInputMode(mode) {
     inputMode = mode;
@@ -27,6 +54,10 @@ function setSize(size) {
     document.getElementById('size169Btn').classList.toggle('btn-view-active', size === '1792x1024');
     document.getElementById('size11Btn') .classList.toggle('btn-view-active', size === '1024x1024');
     document.getElementById('size916Btn').classList.toggle('btn-view-active', size === '1024x1792');
+    document.getElementById('size32Btn') .classList.toggle('btn-view-active', size === '1536x1024');
+    document.getElementById('size23Btn') .classList.toggle('btn-view-active', size === '1024x1536');
+    const note = document.getElementById('sizeMatchNote');
+    if (note && size !== referenceMatchedSize) note.style.display = 'none';
     updateCostNote();
 }
 
@@ -39,7 +70,7 @@ function setQuality(q) {
 
 function updateCostNote() {
     const cost = COST_TABLE[selectedQuality]?.[selectedSize] ?? '';
-    document.getElementById('qualityNote').textContent = cost + ' / image';
+    document.getElementById('qualityNote').textContent = cost ? cost + ' / image' : '';
 }
 
 // ── Alert ────────────────────────────────────────────────────────────────────
@@ -165,7 +196,8 @@ async function loadAgentsForGroup(groupId) {
 
 function applyAgentDefaults(agent) {
     if (!agent) return;
-    if (agent.size)    setSize(agent.size);
+    // An attached photo's shape wins over the agent's default size.
+    if (agent.size && !contextImageFile) setSize(agent.size);
     if (agent.quality) setQuality(agent.quality);
 }
 
@@ -247,6 +279,9 @@ function onContextImageChange(e) {
         document.getElementById('contextImageThumb').src       = ev.target.result;
         document.getElementById('contextImageName').textContent = file.name;
         document.getElementById('contextImagePreview').style.display = 'flex';
+        const probe = new Image();
+        probe.onload = () => matchSizeToReference(probe.naturalWidth, probe.naturalHeight);
+        probe.src = ev.target.result;
     };
     reader.readAsDataURL(file);
 }
@@ -255,6 +290,8 @@ function clearContextImage(skipConfirm = false) {
     if (contextImageFile && !skipConfirm
         && !confirm('Remove the reference image? The prompt will be written for from-scratch generation instead.')) return;
     contextImageFile = null;
+    referenceMatchedSize = null;
+    document.getElementById('sizeMatchNote').style.display = 'none';
     document.getElementById('contextImageInput').value          = '';
     document.getElementById('contextImagePreview').style.display = 'none';
 }

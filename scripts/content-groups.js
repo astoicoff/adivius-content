@@ -170,7 +170,7 @@ function renderImageItems(images) {
 
     const ratioClass = (size) => {
         if (size === '1024x1024') return 'square';
-        if (size === '1024x1792') return 'portrait';
+        if (size === '1024x1792' || size === '1024x1536') return 'portrait';
         return 'landscape';
     };
 
