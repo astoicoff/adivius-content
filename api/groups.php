@@ -139,6 +139,22 @@ if ($method === 'GET') {
     }
     if (array_key_exists('client_id',       $body)) $update['client_id']       = $body['client_id'] ?: null;
     if (array_key_exists('site_id',         $body)) $update['site_id']         = $body['site_id']   ?: null;
+    // Publishing fields sent on handoff. The DB CHECK enforces the pillar set
+    // too; validating here turns a bad value into a readable 400.
+    if (array_key_exists('pillar', $body)) {
+        $pillar = $body['pillar'] ?: null;
+        if ($pillar !== null && !in_array($pillar, HUB_BLOG_PILLARS, true)) {
+            http_response_code(400); echo json_encode(['detail' => 'Pillar must be one of: ' . implode(', ', HUB_BLOG_PILLARS) . '.']); exit;
+        }
+        $update['pillar'] = $pillar;
+    }
+    if (array_key_exists('author_slug', $body)) {
+        $author = strtolower(trim((string)($body['author_slug'] ?? '')));
+        if ($author !== '' && !preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $author)) {
+            http_response_code(400); echo json_encode(['detail' => 'Author slug may use lowercase letters, digits and single hyphens (e.g. "alex").']); exit;
+        }
+        $update['author_slug'] = $author ?: null;
+    }
 
     $res = supabase_call('PATCH', '/rest/v1/content_groups?id=eq.' . urlencode($id), $update);
     if ($res['status'] >= 400) { http_response_code(500); echo json_encode(['detail' => 'Failed to update group: ' . $res['body']]); exit; }

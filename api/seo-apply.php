@@ -43,21 +43,11 @@ $style_suffix = $style_rules
     ? "\n\nSTYLE RULES — every sentence you write or modify MUST follow the content style rules below (tone, sentence length, paragraph structure, heading conventions). These rules governed the original article; your edits must be indistinguishable from it:\n---\n" . $style_rules . "\n---"
     : '';
 
-// Strip meta lines to get just the HTML body; preserve meta prefix for reconstruction
-$parsed    = parse_content_meta($full_content);
-$html_body = $parsed['body'];
-
-$all_lines  = explode("\n", $full_content);
-$body_start = 0;
-$has_meta   = false;
-foreach ($all_lines as $i => $line) {
-    $trim = trim($line);
-    if (!$trim) { if ($has_meta) { $body_start = $i + 1; break; } continue; }
-    if (isset($trim[0]) && $trim[0] === '<') { $body_start = $i; break; }
-    if (preg_match('/^(h1|title|url)\s*:\s*(.+)$/i', $trim)) { $has_meta = true; $body_start = $i + 1; }
-    else break;
-}
-$meta_prefix = $body_start > 0 ? implode("\n", array_slice($all_lines, 0, $body_start)) . "\n" : '';
+// Strip the header lines (h1/title/url/description) to get just the HTML
+// body; keep the header verbatim to put back on the rewritten body.
+$parsed      = parse_content_meta($full_content);
+$html_body   = $parsed['body'];
+$meta_prefix = $parsed['prefix'];
 
 if ($type === 'batch') {
     // One coherent revision pass covering every selected checklist item —

@@ -5,8 +5,9 @@ let versionsData    = [];
 let lastSeoData     = null;
 let autoSaveTimer   = null;
 
-// Parse h1/title/url meta lines from the top of raw content.
-// Returns { meta: {h1,title,url} | null, content: string }
+// Parse the h1/title/url/description header lines from the top of raw
+// content. Mirrors parse_content_meta() in api/helpers.php — change together.
+// Returns { meta: {h1,title,url,description} | null, content: string }
 function parseContentMeta(raw) {
     if (!raw) return { meta: null, content: raw };
     const lines = raw.split('\n');
@@ -21,8 +22,12 @@ function parseContentMeta(raw) {
             continue;
         }
         if (trim.startsWith('<')) { end = i; break; }
-        const m = trim.match(/^(h1|title|url)\s*:\s*(.+)$/i);
-        if (m) { meta[m[1].toLowerCase()] = m[2].trim(); end = i + 1; }
+        const m = trim.match(/^(h1|title|url|(?:meta[ _-]?)?description)\s*:\s*(.+)$/i);
+        if (m) {
+            const key = m[1].toLowerCase().endsWith('description') ? 'description' : m[1].toLowerCase();
+            meta[key] = m[2].trim();
+            end = i + 1;
+        }
         else break;
     }
 
@@ -38,6 +43,8 @@ function showMetaPanel(meta) {
         { row: "metaRowH1",    el: "metaH1",    val: meta.h1    },
         { row: "metaRowTitle", el: "metaTitle",  val: meta.title },
         { row: "metaRowUrl",   el: "metaUrl",    val: meta.url   },
+        { row: "metaRowDesc",  el: "metaDesc",   val: meta.description
+            ? `${meta.description}  (${meta.description.length}/155)` : '' },
     ];
     let any = false;
     fields.forEach(({ row, el, val }) => {

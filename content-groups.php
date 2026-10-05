@@ -183,6 +183,23 @@
                 <option value="">— Not linked —</option>
             </select>
         </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <div class="form-group" style="margin:0;flex:1;min-width:160px;">
+                <label class="form-label" style="margin-bottom:2px;">Blog pillar</label>
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;line-height:1.5;">Which pillar articles file under on the site's blog.</div>
+                <select class="form-input" id="nucleusPillarSelect">
+                    <option value="">Site default</option>
+                    <option value="ai-automation">AI automation</option>
+                    <option value="ai-seo">AI SEO</option>
+                    <option value="digital-transformation">Digital transformation</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin:0;flex:1;min-width:160px;">
+                <label class="form-label" style="margin-bottom:2px;">Author slug</label>
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;line-height:1.5;">The author articles are credited to, e.g. <code>alex</code>.</div>
+                <input type="text" class="form-input" id="nucleusAuthorInput" placeholder="alex" autocomplete="off" spellcheck="false">
+            </div>
+        </div>
     </div>
 
     <!-- Webhook fields (shown instead of textarea in webhook mode) -->

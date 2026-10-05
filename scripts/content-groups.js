@@ -322,6 +322,8 @@ async function openRulesPanel(type) {
         document.getElementById("webhookUrl").value = currentGroupData?.webhook_url || '';
         renderWebhookHeaders(currentGroupData?.webhook_headers);
     } else if (isNucleus) {
+        document.getElementById("nucleusPillarSelect").value = currentGroupData?.pillar || '';
+        document.getElementById("nucleusAuthorInput").value  = currentGroupData?.author_slug || 'alex';
         await loadNucleusPanel(currentGroupData?.site_id || '');
     }
 
@@ -622,15 +624,22 @@ async function doSaveRules() {
         // Derive client_id from the site's parent — Nucleus's inbound endpoint
         // requires client_id even when site_id is provided.
         const clientId = siteId ? (_nucleusSitesById[siteId]?.client_id || null) : null;
+        const pillar   = document.getElementById("nucleusPillarSelect").value || null;
+        const author   = document.getElementById("nucleusAuthorInput").value.trim().toLowerCase() || null;
         try {
             const res = await fetch(API_URL + '/api/groups.php?id=' + encodeURIComponent(editingGroupId), {
                 method: 'PATCH', headers: authHeaders(),
-                body: JSON.stringify({ site_id: siteId, client_id: clientId })
+                body: JSON.stringify({ site_id: siteId, client_id: clientId, pillar, author_slug: author })
             });
-            if (!res.ok) throw new Error('Failed to save Nucleus settings.');
+            if (!res.ok) {
+                const d = await res.json().catch(() => ({}));
+                throw new Error(d.detail || 'Failed to save Nucleus settings.');
+            }
             if (currentGroupData) {
-                currentGroupData.site_id   = siteId;
-                currentGroupData.client_id = clientId;
+                currentGroupData.site_id     = siteId;
+                currentGroupData.client_id   = clientId;
+                currentGroupData.pillar      = pillar;
+                currentGroupData.author_slug = author;
             }
             const ind = document.getElementById("rulesSaveIndicator");
             ind.classList.add("visible");

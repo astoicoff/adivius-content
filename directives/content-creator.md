@@ -76,10 +76,11 @@ Do not include these labels in output:
 
 ## Output
 - The output has to be ready to be imported into WordPress. WordPress needs to understand the heading sections, styles, lists, etc.
-- Always keep the h1, title, and URL before the actual content. Example: 
+- Always keep the h1, title, URL, and description before the actual content. The description is the meta description: at most 155 characters, answer-first (open with the main answer or takeaway). Example: 
 "h1: How to Be a Gentleman
 Title: How to Be a Gentleman: Reverent and Stylish in 4 Weeks
 URL: how-to-be-a-gentleman
+Description: Being a gentleman comes down to consistent respect, reliability and self-control. Here are the habits that build it in four weeks.
 How to be a gentleman matters because people still remember how you made them feel, not what you claimed to be..."
 - Do not add additional comments or metadata after the content required by the instructions.
 

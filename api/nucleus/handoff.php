@@ -13,6 +13,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $body   = json_decode(file_get_contents('php://input'), true) ?: [];
 $gen_id = trim($body['generation_id'] ?? '');
+// ?dry_run=1 returns the exact body that would be sent (and any contract
+// problems) without sending it or changing any state. Same access rules.
+$dry_run = !empty($_GET['dry_run']);
 if (!$gen_id) {
     http_response_code(400); ob_end_clean();
     echo json_encode(['detail' => 'generation_id is required.']); exit;
@@ -40,58 +43,52 @@ if ($gen['user_id'] !== $user_id && !check_group_access($user_id, $gen['group_id
 // It clears on publish success, publish failure, and return — so completed
 // pieces re-send after a return, and published pieces re-send to update the
 // live post (Nucleus PUTs to the stored WP post id on republish).
-if (!empty($gen['handed_off_at'])) {
+if (!empty($gen['handed_off_at']) && !$dry_run) {
     http_response_code(409); ob_end_clean();
     echo json_encode(['detail' => 'Already at Nucleus awaiting review (sent ' . $gen['handed_off_at'] . '). Edit it there, or wait for it to publish or be returned.']); exit;
 }
 
-if (!NUCLEUS_BASE_URL || !NUCLEUS_SERVICE_TOKEN) {
+if ((!NUCLEUS_BASE_URL || !NUCLEUS_SERVICE_TOKEN) && !$dry_run) {
     http_response_code(503); ob_end_clean();
     echo json_encode(['detail' => 'Nucleus integration is not configured on this server.']); exit;
 }
 
-// A publishable piece needs a site (routes the article). Nucleus's
-// contract v1 (post the §4.1 update) accepts site-only handoffs — no
-// client required. Fall back to the group's current site_id if the
-// generation was created before a site was set.
-if (empty($gen['site_id'])) {
-    $grpRes  = supabase_call('GET', '/rest/v1/content_groups?id=eq.' . urlencode($gen['group_id'] ?? '') . '&select=site_id');
-    $grpData = json_decode($grpRes['body'], true);
-    $gen['site_id'] = $grpData[0]['site_id'] ?? null;
+// The group supplies the publishing fields (pillar, author) and, for a
+// generation created before its group was linked, the site.
+$group = [];
+if (!empty($gen['group_id'])) {
+    $grpRes = supabase_call('GET', '/rest/v1/content_groups?id=eq.' . urlencode($gen['group_id']) . '&select=site_id,client_id,pillar,author_slug');
+    $group  = json_decode($grpRes['body'], true)[0] ?? [];
 }
 
+// A publishable piece needs a site (routes the article). Nucleus's
+// contract v1 (post the §4.1 update) accepts site-only handoffs — no
+// client required. Fall back to the group's current site (and its client)
+// if the generation was created before a site was set.
 if (empty($gen['site_id'])) {
+    $gen['site_id']   = $group['site_id']   ?? null;
+    $gen['client_id'] = $group['client_id'] ?? null;
+}
+
+if (empty($gen['site_id']) && !$dry_run) {
     http_response_code(400); ob_end_clean();
     echo json_encode(['detail' => 'This group has no Nucleus site set. Open the content group and pick a site in the Nucleus panel.']); exit;
 }
 
-// Parse meta prefix from content (same logic as seo-apply.php)
-$raw      = $gen['content'] ?? '';
-$lines    = explode("\n", $raw);
-$meta     = [];
-$bodyStart = 0;
-foreach ($lines as $i => $line) {
-    $trim = trim($line);
-    if (!$trim) { if (!empty($meta)) { $bodyStart = $i + 1; break; } continue; }
-    if (isset($trim[0]) && $trim[0] === '<') { $bodyStart = $i; break; }
-    if (preg_match('/^(h1|title|url)\s*:\s*(.+)$/i', $trim, $m)) {
-        $meta[strtolower($m[1])] = trim($m[2]);
-        $bodyStart = $i + 1;
-    } else break;
-}
-$body_html = trim(implode("\n", array_slice($lines, $bodyStart)));
-$title     = $meta['title'] ?? $meta['h1'] ?? $gen['keyword'];
-$slug      = $meta['url'] ?? '';
+// The full content-ready body: every HUB_CONTENT_READY_SPEC key present,
+// em dashes replaced (adivius.com house rule). A shape problem is logged,
+// never blocking — Nucleus validates too, and still accepts the old body.
+// site_id routes the article; Nucleus verifies it belongs to our workspace
+// and hands it to the site's adapter.
+$payload  = build_content_ready_payload($gen, $group);
+$problems = hub_validate_shape($payload, HUB_CONTENT_READY_SPEC, 'content-ready');
+if ($problems) error_log('[handoff ' . $gen['id'] . '] content-ready shape: ' . implode('; ', $problems));
 
-// POST to Nucleus inbound endpoint. site_id routes the article; Nucleus
-// verifies it belongs to our workspace and hands it to the site's adapter.
-$payload = [
-    'site_id'    => $gen['site_id'],
-    'title'      => $title,
-    'body_html'  => $body_html,
-    'source_ref' => $gen['id'],
-];
-if ($slug) $payload['slug'] = $slug;
+if ($dry_run) {
+    ob_end_clean();
+    echo json_encode(['dry_run' => true, 'payload' => $payload, 'problems' => $problems]);
+    exit;
+}
 
 $ch = curl_init(rtrim(NUCLEUS_BASE_URL, '/') . '/api/inbound/content-ready');
 curl_setopt_array($ch, [

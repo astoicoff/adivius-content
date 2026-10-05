@@ -210,6 +210,10 @@
                             <span class="meta-key">URL</span>
                             <code class="meta-val meta-code" id="metaUrl"></code>
                         </div>
+                        <div class="meta-row" id="metaRowDesc" style="display:none;">
+                            <span class="meta-key">Desc</span>
+                            <span class="meta-val" id="metaDesc"></span>
+                        </div>
                     </div>
                 </div>
             </div>

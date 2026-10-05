@@ -19,6 +19,10 @@ if (!defined('SUPABASE_URL')) {
     define('AUTH_SUPABASE_ANON_KEY', getenv('AUTH_SUPABASE_ANON_KEY') ?: '');
 }
 
+// The hub contract (generated from scripts/hub-contract.mjs): specs and
+// HUB_BLOG_PILLARS, used by the Nucleus handoff builder below.
+require_once __DIR__ . '/contracts/hub_contract.php';
+
 // Model defaults — the one place to change when a new model ships.
 // Verified 2026-09-25 against /v1/models: GPT-6 Sol answers the exact Chat
 // Completions request shape used below (no temperature/reasoning params),
@@ -221,6 +225,13 @@ function strip_jpeg_metadata($bytes) {
     return $bytes;
 }
 
+// Article header: `h1:` / `title:` / `url:` / `description:` lines above the
+// HTML body. Every server-side reader of stored content goes through
+// parse_content_meta() (webhook, SEO rewrite, Nucleus handoff), and
+// parseContentMeta() in view-content.js mirrors it — change both together.
+// "Meta description:" is accepted too; models write it that way unprompted.
+const CONTENT_META_LINE = '/^(h1|title|url|(?:meta[ _-]?)?description)\s*:\s*(.+)$/i';
+
 function parse_content_meta($raw) {
     $lines     = explode("\n", (string)$raw);
     $meta      = [];
@@ -229,20 +240,27 @@ function parse_content_meta($raw) {
         $trim = trim($line);
         if (!$trim) { if (!empty($meta)) { $bodyStart = $i + 1; break; } continue; }
         if ($trim[0] === '<') { $bodyStart = $i; break; }
-        if (preg_match('/^(h1|title|url)\s*:\s*(.+)$/i', $trim, $m)) {
-            $meta[strtolower($m[1])] = trim($m[2]);
-            $bodyStart = $i + 1;
+        if (preg_match(CONTENT_META_LINE, $trim, $m)) {
+            $key = strtolower($m[1]);
+            if (str_ends_with($key, 'description')) $key = 'description';
+            $meta[$key] = trim($m[2]);
+            $bodyStart  = $i + 1;
         } else break;
     }
     $body = trim(implode("\n", array_slice($lines, $bodyStart)));
 
+    // The header exactly as stored, so a rewrite of the body can put it back.
+    $prefix           = $bodyStart > 0 ? implode("\n", array_slice($lines, 0, $bodyStart)) . "\n" : '';
+    $description_line = $meta['description'] ?? null;
+
     // Enrich meta for downstream consumers (webhooks, Nucleus). `url` is the
     // URL slug in this system; downstream schemas often name that field `slug`.
-    // `description` is derived from the first ~155 chars of the stripped body.
+    // `description` is the generated line when the article has one, else the
+    // first ~155 chars of the body — webhooks require it to be a string.
     $meta['slug']        = $meta['url'] ?? '';
-    $meta['description'] = extract_meta_description($body, $meta);
+    $meta['description'] = $description_line ?? extract_meta_description($body, $meta);
 
-    return ['meta' => $meta, 'body' => $body];
+    return ['meta' => $meta, 'body' => $body, 'prefix' => $prefix, 'description_line' => $description_line];
 }
 
 function extract_meta_description($body, $meta = []) {
@@ -255,6 +273,118 @@ function extract_meta_description($body, $meta = []) {
     $sp  = mb_strrpos($cut, ' ');
     if ($sp !== false && $sp > 100) $cut = mb_substr($cut, 0, $sp);
     return $cut . '…';
+}
+
+// House rule for adivius.com (2026-10-04): no em dashes anywhere — the site's
+// build fails on one. Mirrors Nucleus's own replacement (" - "), and catches
+// the HTML entity forms too, since those render as the same character.
+function no_em_dashes(?string $s): ?string {
+    if ($s === null) return null;
+    return preg_replace('/[ \t]*(?:\x{2014}|&mdash;|&#8212;|&#x2014;)[ \t]*/iu', ' - ', $s);
+}
+
+// Visible text of an HTML fragment, whitespace collapsed.
+function html_text(string $html): string {
+    $html = preg_replace('/<\/(p|li|h[1-6]|div|tr)>|<br\s*\/?>/i', ' ', $html);
+    $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    return trim(preg_replace('/[\s\x{00A0}]+/u', ' ', $text));
+}
+
+// Cut at a word boundary to at most $max characters (no ellipsis — this is a
+// meta description, not a teaser).
+function clamp_words(string $s, int $max): string {
+    $s = trim($s);
+    if (mb_strlen($s) <= $max) return $s;
+    $cut = mb_substr($s, 0, $max);
+    $sp  = mb_strrpos($cut, ' ');
+    return rtrim($sp !== false && $sp > $max * 0.6 ? mb_substr($cut, 0, $sp) : $cut, " ,;:-");
+}
+
+// FAQ pairs from an article's FAQ section: the first H2 whose text names one
+// ("FAQ", "FAQs", "Frequently asked…"), each H3 inside it a question, and the
+// content up to the next H3 its answer. Ends at the next H2. [] if none.
+function extract_faq(string $html): array {
+    if (!preg_match_all('/<h2\b[^>]*>(.*?)<\/h2>/is', $html, $h2s, PREG_OFFSET_CAPTURE)) return [];
+    $start = null;
+    $end   = strlen($html);
+    foreach ($h2s[0] as $i => [$tag, $offset]) {
+        if ($start === null) {
+            if (preg_match('/\bFAQs?\b|frequently\s+asked/i', html_text($h2s[1][$i][0]))) $start = $offset + strlen($tag);
+        } else {
+            $end = $offset;
+            break;
+        }
+    }
+    if ($start === null) return [];
+
+    $parts = preg_split('/(<h3\b[^>]*>.*?<\/h3>)/is', substr($html, $start, $end - $start), -1, PREG_SPLIT_DELIM_CAPTURE);
+    $faq   = [];
+    for ($i = 1; $i < count($parts); $i += 2) {
+        $q = html_text($parts[$i]);
+        $a = html_text($parts[$i + 1] ?? '');
+        if ($q !== '' && $a !== '') $faq[] = ['q' => $q, 'a' => $a];
+    }
+    return $faq;
+}
+
+// Stored content after a Nucleus edit (content-updated callback). Keeps the
+// header lines Nucleus doesn't send back (description, and the title line).
+// The handoff sends the h1 as `title`, falling back to the title line when
+// there is no h1, so an edited title lands on that same line.
+function apply_nucleus_edit(string $stored_content, string $title, string $slug, string $body_html): string {
+    $stored = parse_content_meta($stored_content);
+    $header = [
+        'h1'          => $stored['meta']['h1']    ?? null,
+        'title'       => $stored['meta']['title'] ?? null,
+        'url'         => $stored['meta']['url']   ?? null,
+        'description' => $stored['description_line'],
+    ];
+    if ($title !== '') {
+        if ($header['h1'] !== null || $header['title'] === null) $header['h1'] = $title;
+        else                                                      $header['title'] = $title;
+    }
+    if ($slug !== '') $header['url'] = $slug;
+
+    $content = '';
+    foreach ($header as $key => $value) {
+        if ($value !== null && $value !== '') $content .= "{$key}: {$value}\n";
+    }
+    return $content . "\n" . $body_html;
+}
+
+// The POST /api/inbound/content-ready body (HUB_CONTENT_READY_SPEC): every
+// key present, null or [] when unknown. Pure — $gen is the generation row
+// (id, keyword, content, site_id, client_id), $group its content group
+// (pillar, author_slug).
+function build_content_ready_payload(array $gen, array $group): array {
+    $parsed = parse_content_meta($gen['content'] ?? '');
+    $meta   = $parsed['meta'];
+    $desc   = $parsed['description_line'];
+    $pillar = $group['pillar'] ?? null;
+
+    return [
+        // The on-page heading. A site that renders its own <title> takes
+        // meta_title for that, so h1 wins here (it used to be the title line).
+        'title'            => no_em_dashes($meta['h1'] ?? $meta['title'] ?? (string)($gen['keyword'] ?? '')),
+        'site_id'          => $gen['site_id']   ?? null,
+        'client_id'        => $gen['client_id'] ?? null,
+        'body_html'        => no_em_dashes($parsed['body']),
+        'body_markdown'    => null,
+        'slug'             => ($meta['url'] ?? '') !== '' ? $meta['url'] : null,
+        'excerpt'          => null,
+        'source_ref'       => isset($gen['id']) ? (string)$gen['id'] : null,
+        'meta_title'       => isset($meta['title']) ? no_em_dashes($meta['title']) : null,
+        // null when the article has no description line — Nucleus derives one.
+        'meta_description' => $desc !== null ? clamp_words(no_em_dashes($desc), 155) : null,
+        'author_slug'      => trim((string)($group['author_slug'] ?? '')) ?: null,
+        'pillar'           => in_array($pillar, HUB_BLOG_PILLARS, true) ? $pillar : null,
+        'tags'             => [],
+        'faq'              => array_map(fn($f) => ['q' => no_em_dashes($f['q']), 'a' => no_em_dashes($f['a'])],
+                                        extract_faq($parsed['body'])),
+        // Filled once images are linked to articles (roadmap v3 Phase 8).
+        'featured_image'   => null,
+        'images'           => [],
+    ];
 }
 
 function fire_webhook($url, $payload, $extra_headers = []) {

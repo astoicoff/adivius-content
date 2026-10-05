@@ -54,7 +54,7 @@ if (!$gen_id) {
 
 // Confirm the generation exists before writing.
 $genRes  = supabase_call('GET',
-    '/rest/v1/content_generations?id=eq.' . urlencode($gen_id) . '&select=id&limit=1'
+    '/rest/v1/content_generations?id=eq.' . urlencode($gen_id) . '&select=id,content&limit=1'
 );
 $gen_row = json_decode($genRes['body'], true);
 if (empty($gen_row)) {
@@ -63,12 +63,7 @@ if (empty($gen_row)) {
     exit;
 }
 
-// Rebuild the meta-prefixed content string parse_content_meta() expects: a
-// short `title:` / `url:` header, a blank line, then the body HTML.
-$content = '';
-if ($title) $content .= "title: {$title}\n";
-if ($slug)  $content .= "url: {$slug}\n";
-$content .= "\n" . $body_html;
+$content = apply_nucleus_edit($gen_row[0]['content'] ?? '', $title, $slug, $body_html);
 
 $patch = [
     'content'           => $content,

@@ -49,7 +49,18 @@ try {
 
     // 3. AI content generation (streaming)
     emit_sse(['type' => 'progress', 'step' => 3, 'message' => 'Writing content…']);
-    $system_prompt = $group_data[0]['content_rules'];
+    // Each group holds its own copy of the content rules (seeded from
+    // directives/content-creator.md when the group was created), so the
+    // header format is appended here — that reaches every group, not only
+    // ones created after the directive changed. parse_content_meta() reads it.
+    $system_prompt = $group_data[0]['content_rules']
+        . "\n\n## Article header (required)\n"
+        . "Begin the output with these four lines, each on its own line, before any HTML, then one blank line, then the HTML body:\n"
+        . "h1: <the on-page heading>\n"
+        . "title: <the SEO title tag>\n"
+        . "url: <the URL slug>\n"
+        . "description: <the meta description>\n"
+        . "The description is at most 155 characters and answer-first: open with the article's main answer or takeaway, not with \"In this article\" or \"Learn how\". It is plain text, not HTML.";
     $user_prompt   = "I have provided you with all tool outputs necessary below. Please 'think' step-by-step applying the E-E-A-T framework and then output the WordPress HTML text!\n\n"
         . "Content Brief from Phase 1:\n$edited_brief\n\n"
         . "Competitors (from SerpApi Phase 1):\n$serpapi_text\n\n"
