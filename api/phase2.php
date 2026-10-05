@@ -20,7 +20,7 @@ $perp_key = $settings['perplexity_key'] ?: '';
 if (!check_group_access($user_id, $group_id, 'moderator')) {
     http_response_code(403); echo json_encode(['detail' => 'Content group not found or insufficient permissions.']); exit;
 }
-$group_res  = supabase_call('GET', '/rest/v1/content_groups?id=eq.' . urlencode($group_id) . '&select=content_rules,webhook_url,webhook_headers,name');
+$group_res  = supabase_call('GET', '/rest/v1/content_groups?id=eq.' . urlencode($group_id) . '&select=content_rules,webhook_url,webhook_headers,name,pillar');
 $group_data = json_decode($group_res['body'], true);
 if (empty($group_data)) { http_response_code(400); echo json_encode(['detail' => 'Content group not found.']); exit; }
 
@@ -53,14 +53,19 @@ try {
     // directives/content-creator.md when the group was created), so the
     // header format is appended here — that reaches every group, not only
     // ones created after the directive changed. parse_content_meta() reads it.
+    // A group with a default pillar publishes to a pillar blog, so each of its
+    // articles names its own pillar; the group's value is only the fallback.
+    $pillar_blog   = !empty($group_data[0]['pillar']);
     $system_prompt = $group_data[0]['content_rules']
         . "\n\n## Article header (required)\n"
-        . "Begin the output with these four lines, each on its own line, before any HTML, then one blank line, then the HTML body:\n"
+        . "Begin the output with these " . ($pillar_blog ? 'five' : 'four') . " lines, each on its own line, before any HTML, then one blank line, then the HTML body:\n"
         . "h1: <the on-page heading>\n"
         . "title: <the SEO title tag>\n"
         . "url: <the URL slug>\n"
         . "description: <the meta description>\n"
-        . "The description is at most 155 characters and answer-first: open with the article's main answer or takeaway, not with \"In this article\" or \"Learn how\". It is plain text, not HTML.";
+        . ($pillar_blog ? "pillar: <exactly one of: " . implode(', ', HUB_BLOG_PILLARS) . ">\n" : '')
+        . "The description is at most 155 characters and answer-first: open with the article's main answer or takeaway, not with \"In this article\" or \"Learn how\". It is plain text, not HTML."
+        . ($pillar_blog ? " The pillar is the one the content instructions name; if they name none, pick the one the topic belongs to." : '');
     $user_prompt   = "I have provided you with all tool outputs necessary below. Please 'think' step-by-step applying the E-E-A-T framework and then output the WordPress HTML text!\n\n"
         . "Content Brief from Phase 1:\n$edited_brief\n\n"
         . "Competitors (from SerpApi Phase 1):\n$serpapi_text\n\n"

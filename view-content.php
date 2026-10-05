@@ -214,6 +214,10 @@
                             <span class="meta-key">Desc</span>
                             <span class="meta-val" id="metaDesc"></span>
                         </div>
+                        <div class="meta-row" id="metaRowPillar" style="display:none;">
+                            <span class="meta-key">Pillar</span>
+                            <code class="meta-val meta-code" id="metaPillar"></code>
+                        </div>
                     </div>
                 </div>
             </div>

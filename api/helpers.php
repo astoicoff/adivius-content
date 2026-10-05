@@ -226,12 +226,20 @@ function strip_jpeg_metadata($bytes) {
     return $bytes;
 }
 
-// Article header: `h1:` / `title:` / `url:` / `description:` lines above the
-// HTML body. Every server-side reader of stored content goes through
+// Article header: `h1:` / `title:` / `url:` / `description:` / `pillar:` lines
+// above the HTML body. Every server-side reader of stored content goes through
 // parse_content_meta() (webhook, SEO rewrite, Nucleus handoff), and
 // parseContentMeta() in view-content.js mirrors it — change both together.
 // "Meta description:" is accepted too; models write it that way unprompted.
-const CONTENT_META_LINE = '/^(h1|title|url|(?:meta[ _-]?)?description)\s*:\s*(.+)$/i';
+const CONTENT_META_LINE = '/^(h1|title|url|pillar|(?:meta[ _-]?)?description)\s*:\s*(.+)$/i';
+
+// An article's `pillar:` line as a HUB_BLOG_PILLARS slug, or null. Accepts the
+// slug or the menu label in any case ("AI SEO", "ai_seo", "Digital Transformation").
+function normalize_pillar(?string $value): ?string {
+    if ($value === null) return null;
+    $slug = trim(preg_replace('/[^a-z0-9]+/', '-', strtolower($value)), '-');
+    return in_array($slug, HUB_BLOG_PILLARS, true) ? $slug : null;
+}
 
 function parse_content_meta($raw) {
     $lines     = explode("\n", (string)$raw);
@@ -329,7 +337,7 @@ function extract_faq(string $html): array {
 }
 
 // Stored content after a Nucleus edit (content-updated callback). Keeps the
-// header lines Nucleus doesn't send back (description, and the title line).
+// header lines Nucleus doesn't send back (description, pillar, title line).
 // The handoff sends the h1 as `title`, falling back to the title line when
 // there is no h1, so an edited title lands on that same line.
 function apply_nucleus_edit(string $stored_content, string $title, string $slug, string $body_html): string {
@@ -339,6 +347,7 @@ function apply_nucleus_edit(string $stored_content, string $title, string $slug,
         'title'       => $stored['meta']['title'] ?? null,
         'url'         => $stored['meta']['url']   ?? null,
         'description' => $stored['description_line'],
+        'pillar'      => $stored['meta']['pillar'] ?? null,
     ];
     if ($title !== '') {
         if ($header['h1'] !== null || $header['title'] === null) $header['h1'] = $title;
@@ -361,7 +370,9 @@ function build_content_ready_payload(array $gen, array $group): array {
     $parsed = parse_content_meta($gen['content'] ?? '');
     $meta   = $parsed['meta'];
     $desc   = $parsed['description_line'];
-    $pillar = $group['pillar'] ?? null;
+    // The article names its own pillar; the group's is the default for
+    // articles without one (or with a value outside the set).
+    $pillar = normalize_pillar($meta['pillar'] ?? null) ?? normalize_pillar($group['pillar'] ?? null);
 
     return [
         // The on-page heading. A site that renders its own <title> takes
@@ -378,7 +389,7 @@ function build_content_ready_payload(array $gen, array $group): array {
         // null when the article has no description line — Nucleus derives one.
         'meta_description' => $desc !== null ? clamp_words(no_em_dashes($desc), 155) : null,
         'author_slug'      => trim((string)($group['author_slug'] ?? '')) ?: null,
-        'pillar'           => in_array($pillar, HUB_BLOG_PILLARS, true) ? $pillar : null,
+        'pillar'           => $pillar,
         'tags'             => [],
         'faq'              => array_map(fn($f) => ['q' => no_em_dashes($f['q']), 'a' => no_em_dashes($f['a'])],
                                         extract_faq($parsed['body'])),
