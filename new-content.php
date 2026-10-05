@@ -82,10 +82,11 @@
                         <label class="form-label" for="modelSelect">AI Model</label>
                         <select class="form-input" id="modelSelect">
                             <optgroup label="OpenAI">
-                                <option value="gpt-6-sol" selected>GPT-6 Sol — recommended</option>
+                                <option value="gpt-6.1-sol" selected>GPT-6.1 Sol — recommended</option>
                                 <option value="gpt-6-astra">GPT-6 Astra — most capable, 5× cost</option>
                                 <option value="gpt-6-luna">GPT-6 Luna — fastest, lowest cost</option>
-                                <option value="gpt-5.5">GPT-5.5 (previous)</option>
+                                <option value="gpt-6-sol">GPT-6 Sol (previous)</option>
+                                <option value="gpt-5.5">GPT-5.5 (older)</option>
                             </optgroup>
                             <optgroup label="Anthropic">
                                 <option value="claude-opus-5">Claude Opus 5</option>

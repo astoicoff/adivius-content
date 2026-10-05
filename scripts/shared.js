@@ -138,6 +138,7 @@ function modelLabel(model) {
         'gpt-5':             'GPT-5',
         'gpt-5.5':           'GPT-5.5',
         'gpt-6-sol':         'GPT-6 Sol',
+        'gpt-6.1-sol':       'GPT-6.1 Sol',
         'gpt-6-astra':       'GPT-6 Astra',
         'gpt-6-luna':        'GPT-6 Luna',
         'claude-opus-4-7':   'Opus 4.7',

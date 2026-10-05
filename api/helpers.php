@@ -24,12 +24,13 @@ if (!defined('SUPABASE_URL')) {
 require_once __DIR__ . '/contracts/hub_contract.php';
 
 // Model defaults — the one place to change when a new model ships.
-// Verified 2026-09-25 against /v1/models: GPT-6 Sol answers the exact Chat
-// Completions request shape used below (no temperature/reasoning params),
-// streaming included, at $2/$10 per 1M tokens vs GPT-5.5's $5/$30.
+// Verified 2026-10-05 against /v1/models: GPT-6.1 Sol (released 2026-09-29,
+// near GPT-6 Astra on professional work) answers the exact Chat Completions
+// request shape used below (no temperature/reasoning params), streaming
+// included, at GPT-6 Sol's price ($2/$10 per 1M tokens; cached input $0.10).
 // GPT Image 2.5 Flare takes the same size/quality/output_format params as
 // gpt-image-2 at the same token price, with higher quality and lower latency.
-const DEFAULT_TEXT_MODEL = 'gpt-6-sol';
+const DEFAULT_TEXT_MODEL = 'gpt-6.1-sol';
 const IMAGE_MODEL        = 'gpt-image-2.5-flare';
 
 function set_headers() {
