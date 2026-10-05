@@ -1,6 +1,6 @@
 <?php
 // GENERATED FILE — DO NOT EDIT.
-// Source: contracts/hub-contract.mjs (constellation root)
+// Source: scripts/hub-contract.mjs (constellation root)
 // Regenerate: node scripts/sync-contracts.mjs
 
 const HUB_CONTRACT_VERSION        = '1';
@@ -29,6 +29,28 @@ const HUB_NUCLEUS_SITE_ITEM_SPEC = [
     'domain' => ['kind' => 'string', 'nullable' => true],
     'client_id' => ['kind' => 'uuid', 'nullable' => true],
 ];
+
+// POST /api/inbound/content-ready body: Content sends this (website roadmap §6.3).
+const HUB_CONTENT_READY_SPEC = [
+    'title' => ['kind' => 'string'],
+    'site_id' => ['kind' => 'uuid', 'nullable' => true],
+    'client_id' => ['kind' => 'uuid', 'nullable' => true],
+    'body_html' => ['kind' => 'string', 'nullable' => true],
+    'body_markdown' => ['kind' => 'string', 'nullable' => true],
+    'slug' => ['kind' => 'string', 'nullable' => true],
+    'excerpt' => ['kind' => 'string', 'nullable' => true],
+    'source_ref' => ['kind' => 'string', 'nullable' => true],
+    'meta_title' => ['kind' => 'string', 'nullable' => true],
+    'meta_description' => ['kind' => 'string', 'nullable' => true],
+    'author_slug' => ['kind' => 'string', 'nullable' => true],
+    'pillar' => ['kind' => 'string', 'nullable' => true],
+    'tags' => ['kind' => 'array'],
+    'faq' => ['kind' => 'array'],
+    'featured_image' => ['kind' => 'object', 'nullable' => true],
+    'images' => ['kind' => 'array'],
+];
+
+const HUB_BLOG_PILLARS = ['ai-automation', 'ai-seo', 'digital-transformation'];
 
 /**
  * Validate a decoded payload against a spec. Returns a list of problems;
