@@ -83,7 +83,6 @@ if ($intent)                 $brief_meta['intent']              = $intent;
 if ($target_wc > 0)          $brief_meta['target_word_count']   = $target_wc;
 if (!empty($links))          $brief_meta['internal_links']      = array_slice($links, 0, 10);
 if ($src_ai_id)              $brief_meta['source_ai_output_id'] = $src_ai_id;
-if (!empty($brief_meta))     $row['nucleus_brief']              = $brief_meta;
 
 $res  = supabase_call('POST', '/rest/v1/content_generations', $row, ['Prefer: return=representation']);
 $data = json_decode($res['body'], true);
@@ -93,6 +92,12 @@ if (!$id || $res['status'] >= 400) {
     http_response_code(500);
     echo json_encode(['ok' => false, 'reason' => 'storage_error']);
     exit;
+}
+
+// The brief Nucleus sent travels with the piece's Nucleus state (§3.1).
+if (!empty($brief_meta)) {
+    $hb = upsert_handoff($id, ['brief' => $brief_meta]);
+    if ($hb['status'] >= 400) error_log('[content-briefs ' . $id . '] could not store the brief: HTTP ' . $hb['status']);
 }
 
 http_response_code(202);

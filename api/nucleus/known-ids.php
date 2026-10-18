@@ -72,7 +72,7 @@ $clientIds = array_values(array_unique(array_merge(
 $siteIds = array_values(array_unique(array_merge(
     collect_ids('content_groups', 'site_id'),
     collect_ids('content_generations', 'site_id'),
-    collect_ids('content_generations', 'nucleus_resolved_site_id')
+    collect_ids('content_handoffs', 'resolved_site_id')
 )));
 
 sort($clientIds);

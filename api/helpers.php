@@ -152,6 +152,43 @@ function update_generation_row($id, $fields) {
     supabase_call('PATCH', '/rest/v1/content_generations?id=eq.' . urlencode($id), $fields);
 }
 
+// ---- Nucleus handoff state (content_handoffs, roadmap §3.1) ------------------
+// The article lives in content_generations; its trip through Nucleus (the
+// brief Nucleus sent, the queue item, the resolved site, handed off / edited /
+// returned / published / failed) lives in content_handoffs, one row per
+// generation that has touched Nucleus. Reads embed it and flatten it back to
+// the field names the UI and the Nucleus endpoints have always used.
+
+const HANDOFF_EMBED = 'content_handoffs(nucleus_queue_id,resolved_site_id,resolved_site_domain,handed_off_at,edited_at,returned_at,return_note,publish_error,published_at,brief)';
+
+/** A generation row with HANDOFF_EMBED, flattened to the legacy field names. */
+function flatten_handoff(array $gen): array {
+    $h = $gen['content_handoffs'] ?? null;
+    if (is_array($h) && array_is_list($h)) $h = $h[0] ?? null;  // to-one embeds come as an object; be lenient
+    if (!is_array($h)) $h = [];
+    unset($gen['content_handoffs']);
+    $gen['handed_off_at']                = $h['handed_off_at']        ?? null;
+    $gen['nucleus_queue_id']             = $h['nucleus_queue_id']     ?? null;
+    $gen['nucleus_resolved_site_id']     = $h['resolved_site_id']     ?? null;
+    $gen['nucleus_resolved_site_domain'] = $h['resolved_site_domain'] ?? null;
+    $gen['nucleus_edited_at']            = $h['edited_at']            ?? null;
+    $gen['nucleus_returned_at']          = $h['returned_at']          ?? null;
+    $gen['nucleus_return_note']          = $h['return_note']          ?? null;
+    $gen['nucleus_publish_error']        = $h['publish_error']        ?? null;
+    $gen['published_at']                 = $h['published_at']         ?? null;
+    $gen['nucleus_brief']                = $h['brief']                ?? null;
+    return $gen;
+}
+
+/** Writes handoff state for a generation, creating its row on first touch. Only the given fields change. */
+function upsert_handoff(string $gen_id, array $fields): array {
+    return supabase_call('POST',
+        '/rest/v1/content_handoffs?on_conflict=generation_id',
+        array_merge($fields, ['generation_id' => $gen_id, 'updated_at' => date('c')]),
+        ['Prefer: resolution=merge-duplicates,return=minimal']
+    );
+}
+
 function call_serpapi($keyword, $api_key) {
     if (!$api_key) {
         return ['text' => '[Mock SerpApi Data: Missing API Key]', 'urls' => [

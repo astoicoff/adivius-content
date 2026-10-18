@@ -65,16 +65,13 @@ if (empty($gen_row)) {
 
 $content = apply_nucleus_edit($gen_row[0]['content'] ?? '', $title, $slug, $body_html);
 
-$patch = [
-    'content'           => $content,
-    'nucleus_edited_at' => date('c'),
-    'updated_at'        => date('c'),
-];
-
 $res = supabase_call('PATCH',
     '/rest/v1/content_generations?id=eq.' . urlencode($gen_id),
-    $patch
+    ['content' => $content, 'updated_at' => date('c')]
 );
+if ($res['status'] < 400) {
+    $res = upsert_handoff($gen_id, ['edited_at' => date('c')]);
+}
 if ($res['status'] >= 400) {
     http_response_code(500);
     echo json_encode(['ok' => false, 'reason' => 'storage_error']);

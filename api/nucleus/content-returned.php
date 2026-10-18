@@ -65,18 +65,15 @@ if (empty($gen_row)) {
 // item and expects a fresh handoff once the writer revises ("returned pieces
 // belong to Content until a revision comes back"). Without this, our
 // handoff endpoint would 409 the re-send and the revision loop dead-ends.
-$patch = [
-    'nucleus_returned_at' => date('c'),
-    'nucleus_return_note' => $note !== '' ? substr($note, 0, 1000) : null,
-    'handed_off_at'       => null,
-    'nucleus_queue_id'    => null,
-    'updated_at'          => date('c'),
-];
-
-$res = supabase_call('PATCH',
-    '/rest/v1/content_generations?id=eq.' . urlencode($gen_id),
-    $patch
-);
+$res = upsert_handoff($gen_id, [
+    'returned_at'      => date('c'),
+    'return_note'      => $note !== '' ? substr($note, 0, 1000) : null,
+    'handed_off_at'    => null,
+    'nucleus_queue_id' => null,
+]);
+if ($res['status'] < 400) {
+    supabase_call('PATCH', '/rest/v1/content_generations?id=eq.' . urlencode($gen_id), ['updated_at' => date('c')]);
+}
 if ($res['status'] >= 400) {
     http_response_code(500);
     echo json_encode(['ok' => false, 'reason' => 'storage_error']);

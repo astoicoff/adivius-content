@@ -39,7 +39,7 @@ if ($groups) {
 $res = supabase_call('GET',
     '/rest/v1/content_generations?or=(' . $filter . ')'
     . '&select=id,keyword,status,model,group_id,user_id,created_at,updated_at,'
-    . 'handed_off_at,published_at,nucleus_publish_error,wp_post_url'
+    . 'wp_post_url,' . HANDOFF_EMBED
     . '&order=created_at.desc&limit=1000'
 );
 if ($res['status'] >= 400) {
@@ -47,6 +47,6 @@ if ($res['status'] >= 400) {
 }
 
 echo json_encode([
-    'articles' => json_decode($res['body'], true) ?: [],
+    'articles' => array_map('flatten_handoff', json_decode($res['body'], true) ?: []),
     'groups'   => $groups,
 ]);

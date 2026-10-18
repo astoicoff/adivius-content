@@ -62,40 +62,44 @@ if (!in_array($status, ['published', 'failed'], true)) {
     exit;
 }
 
-// Locate the generation by nucleus_queue_id.
+// Locate the generation by the Nucleus queue id (content_handoffs, §3.1).
 $genRes  = supabase_call('GET',
-    '/rest/v1/content_generations?nucleus_queue_id=eq.' . urlencode($queue_id)
-    . '&select=id&limit=1'
+    '/rest/v1/content_handoffs?nucleus_queue_id=eq.' . urlencode($queue_id)
+    . '&select=generation_id&limit=1'
 );
 $genData = json_decode($genRes['body'], true);
-$gen_id  = $genData[0]['id'] ?? null;
+$gen_id  = $genData[0]['generation_id'] ?? null;
 if (!$gen_id) {
     http_response_code(404);
     echo json_encode(['ok' => false, 'reason' => 'unknown_queue_id']);
     exit;
 }
 
-$patch = ['updated_at' => date('c')];
+$article = ['updated_at' => date('c')];
 if ($status === 'published') {
-    $patch['status'] = 'published';
-    $patch['published_at'] = trim($body['published_at'] ?? '') ?: date('c');
-    $patch['nucleus_publish_error'] = null;
-    // The handoff cycle is over — clearing this re-arms Send to Nucleus so an
-    // edited piece can be re-sent (Nucleus updates the live post in place).
-    $patch['handed_off_at'] = null;
-    if ($live_url) $patch['wp_post_url'] = $live_url;
+    $article['status'] = 'published';
+    if ($live_url) $article['wp_post_url'] = $live_url;
+    // The handoff cycle is over — clearing handed_off_at re-arms Send to
+    // Nucleus so an edited piece can be re-sent (Nucleus updates the live post in place).
+    $handoff = [
+        'published_at'  => trim($body['published_at'] ?? '') ?: date('c'),
+        'publish_error' => null,
+        'handed_off_at' => null,
+    ];
 } else {
     // Clear handed_off_at so the handoff button reappears — the user's
     // recovery path is to fix whatever broke and re-send. queue_id is kept
     // for audit; a re-send overwrites it.
-    $patch['nucleus_publish_error'] = substr($error ?: 'unknown error', 0, 500);
-    $patch['handed_off_at']         = null;
+    $handoff = [
+        'publish_error' => substr($error ?: 'unknown error', 0, 500),
+        'handed_off_at' => null,
+    ];
 }
 
-$res = supabase_call('PATCH',
-    '/rest/v1/content_generations?id=eq.' . urlencode($gen_id),
-    $patch
-);
+$res = upsert_handoff($gen_id, $handoff);
+if ($res['status'] < 400) {
+    $res = supabase_call('PATCH', '/rest/v1/content_generations?id=eq.' . urlencode($gen_id), $article);
+}
 if ($res['status'] >= 400) {
     http_response_code(500);
     echo json_encode(['ok' => false, 'reason' => 'storage_error']);

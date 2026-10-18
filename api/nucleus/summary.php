@@ -54,9 +54,9 @@ $filter = $site_id
 // ── Pipeline (all non-published) ──────────────────────────────────────────────
 $pipeRes  = supabase_call('GET',
     '/rest/v1/content_generations?' . $filter
-    . '&status=neq.published&select=id,status,handed_off_at'
+    . '&status=neq.published&select=id,status,' . HANDOFF_EMBED
 );
-$pipeRows = json_decode($pipeRes['body'], true) ?: [];
+$pipeRows = array_map('flatten_handoff', json_decode($pipeRes['body'], true) ?: []);
 
 $research         = 0;
 $drafting         = 0;
@@ -88,11 +88,23 @@ foreach ($pipeRows as $row) {
 $publishedRes  = supabase_call('GET',
     '/rest/v1/content_generations?' . $filter
     . '&status=eq.published'
-    . '&select=id,keyword,content,wp_post_url,published_at,handed_off_at,created_at'
-    . '&order=published_at.desc.nullslast,created_at.desc'
-    . '&limit=50'
+    . '&select=id,keyword,content,wp_post_url,created_at,' . HANDOFF_EMBED
+    . '&order=created_at.desc'
+    . '&limit=200'
 );
-$publishedRows = json_decode($publishedRes['body'], true) ?: [];
+$publishedRows = array_map('flatten_handoff', json_decode($publishedRes['body'], true) ?: []);
+// Newest publish first, unpublished-time rows last, then newest created.
+usort($publishedRows, function ($a, $b) {
+    $pa = $a['published_at'] ?? null;
+    $pb = $b['published_at'] ?? null;
+    if ($pa !== $pb) {
+        if ($pa === null) return 1;
+        if ($pb === null) return -1;
+        return strcmp($pb, $pa);
+    }
+    return strcmp($b['created_at'] ?? '', $a['created_at'] ?? '');
+});
+$publishedRows = array_slice($publishedRows, 0, 50);
 
 // Track last activity from published pieces. handed_off_at is non-null here
 // only when a republish revision is currently in review.

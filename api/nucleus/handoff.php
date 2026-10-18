@@ -24,14 +24,14 @@ if (!$gen_id) {
 // Load generation
 $genRes  = supabase_call('GET',
     '/rest/v1/content_generations?id=eq.' . urlencode($gen_id)
-    . '&select=id,keyword,content,client_id,site_id,group_id,user_id,status,handed_off_at'
+    . '&select=id,keyword,content,client_id,site_id,group_id,user_id,status,' . HANDOFF_EMBED
 );
 $genData = json_decode($genRes['body'], true);
 if (empty($genData)) {
     http_response_code(404); ob_end_clean();
     echo json_encode(['detail' => 'Generation not found.']); exit;
 }
-$gen = $genData[0];
+$gen = flatten_handoff($genData[0]);
 
 // Access: owner or moderator+
 if ($gen['user_id'] !== $user_id && !check_group_access($user_id, $gen['group_id'] ?? '', 'moderator')) {
@@ -139,18 +139,15 @@ $resolved_dom = $resp['resolved_site_domain'] ?? null;
 // Record handoff (site fields populated when Nucleus's contract >= v1).
 // Prior-cycle state is cleared — a re-send after a failed publish or a
 // Nucleus return starts fresh (banner and error disappear).
-supabase_call('PATCH',
-    '/rest/v1/content_generations?id=eq.' . urlencode($gen_id),
-    [
-        'handed_off_at'                 => date('c'),
-        'nucleus_queue_id'              => $queue_id,
-        'nucleus_resolved_site_id'      => $resolved_id,
-        'nucleus_resolved_site_domain'  => $resolved_dom,
-        'nucleus_publish_error'         => null,
-        'nucleus_returned_at'           => null,
-        'nucleus_return_note'           => null,
-    ]
-);
+upsert_handoff($gen_id, [
+    'handed_off_at'        => date('c'),
+    'nucleus_queue_id'     => $queue_id,
+    'resolved_site_id'     => $resolved_id,
+    'resolved_site_domain' => $resolved_dom,
+    'publish_error'        => null,
+    'returned_at'          => null,
+    'return_note'          => null,
+]);
 
 ob_end_clean();
 echo json_encode([
