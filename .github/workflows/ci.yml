@@ -60,14 +60,15 @@ jobs:
         # An unauthenticated call returning 401 proves the route is deployed AND
         # that auth is wired. A 404 means the route vanished; a 200 would mean
         # the endpoint stopped checking its service token, which is worse.
+        # (content-updated / content-returned were retired in roadmap 5.3.)
         run: |
           fail=0
           for path in \
             /api/nucleus/summary \
             /api/nucleus/known-ids \
             /api/nucleus/publish-completed \
-            /api/nucleus/content-updated \
-            /api/nucleus/content-returned
+            /api/nucleus/content-briefs \
+            /api/nucleus/handoff
           do
             code=$(curl -sS -o /dev/null -w '%{http_code}' "https://content.adivius.com$path")
             case "$code" in
