@@ -39,14 +39,10 @@ if ($gen['user_id'] !== $user_id && !check_group_access($user_id, $gen['group_id
     echo json_encode(['detail' => 'Access denied.']); exit;
 }
 
-// handed_off_at means "a handoff is awaiting review at Nucleus right now".
-// It clears on publish success, publish failure, and return — so completed
-// pieces re-send after a return, and published pieces re-send to update the
-// live post (Nucleus PUTs to the stored WP post id on republish).
-if (!empty($gen['handed_off_at']) && !$dry_run) {
-    http_response_code(409); ob_end_clean();
-    echo json_encode(['detail' => 'Already at Nucleus awaiting review (sent ' . $gen['handed_off_at'] . '). Edit it there, or wait for it to publish or be returned.']); exit;
-}
+// A piece can be sent again at any time (roadmap §5.3): after handoff Nucleus
+// holds the only copy, and a new handoff of the same piece supersedes any
+// version still waiting there (returned or not). Published pieces re-send to
+// update the live post (Nucleus PUTs to the stored WP post id on republish).
 
 if ((!NUCLEUS_BASE_URL || !NUCLEUS_SERVICE_TOKEN) && !$dry_run) {
     http_response_code(503); ob_end_clean();
@@ -145,8 +141,6 @@ upsert_handoff($gen_id, [
     'resolved_site_id'     => $resolved_id,
     'resolved_site_domain' => $resolved_dom,
     'publish_error'        => null,
-    'returned_at'          => null,
-    'return_note'          => null,
 ]);
 
 ob_end_clean();
@@ -155,4 +149,5 @@ echo json_encode([
     'queue_id'              => $queue_id,
     'resolved_site_id'      => $resolved_id,
     'resolved_site_domain'  => $resolved_dom,
+    'review_url'            => nucleus_review_url($queue_id),
 ]);

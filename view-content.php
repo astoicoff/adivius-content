@@ -75,7 +75,6 @@
                     <span id="viewBadge"></span>
                     <span id="webhookBadge" style="display:none;"></span>
                     <span id="nucleusBadge" style="display:none;"></span>
-                    <span id="nucleusEditBadge" style="display:none;"></span>
                     <div id="viewDate" style="font-size:12px;color:var(--text-muted);font-family:'Inter',sans-serif;"></div>
                 </div>
             </div>
@@ -168,15 +167,6 @@
                     <div style="font-weight:600;margin-bottom:2px;">Nucleus publish failed</div>
                     <div id="nucleusPublishFailedError" style="font-family:'Inter',monospace;font-size:12px;color:var(--red);word-break:break-word;"></div>
                     <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">Fix the issue (often site credentials on Nucleus), then use Send to Nucleus to try again.</div>
-                </div>
-            </div>
-
-            <!-- Nucleus returned this piece for revision -->
-            <div id="nucleusReturnedAlert" class="alert alert-error" style="display:none;align-items:flex-start;gap:10px;margin-bottom:16px;">
-                <svg viewBox="0 0 24 24" style="margin-top:2px;flex-shrink:0;"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
-                <div style="flex:1;">
-                    <div style="font-weight:600;margin-bottom:2px;">Returned for revision by Nucleus <span id="nucleusReturnedWhen" style="font-weight:400;color:var(--text-muted);font-size:11px;margin-left:6px;"></span></div>
-                    <div id="nucleusReturnedNote" style="font-size:12.5px;color:var(--red);white-space:pre-wrap;word-break:break-word;line-height:1.5;"></div>
                 </div>
             </div>
 

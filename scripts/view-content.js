@@ -1035,36 +1035,25 @@ function renderPublishButtons() {
     const isHandedOff   = !!genData.handed_off_at;
     const isComplete    = genData.status === 'completed' || isPublished;
 
-    // handed_off_at = "a handoff is in review at Nucleus". Button shows
-    // whenever there's no active handoff — including for published pieces,
-    // where a re-send updates the live post in place (Nucleus PUTs to the
-    // stored WP post id). Publish success/failure/return all clear the flag
-    // server-side, re-arming the button.
+    // A completed piece can always be sent (roadmap §5.3): after handoff
+    // Nucleus holds the only copy, and a new send supersedes whatever version
+    // is still waiting there. A published piece re-sends to update the live
+    // post in place (Nucleus PUTs to the stored WP post id).
     const btnNucleus = document.getElementById("btnNucleus");
     if (btnNucleus) {
-        btnNucleus.style.display = (isComplete && !isHandedOff) ? "" : "none";
+        btnNucleus.style.display = isComplete ? "" : "none";
         const label = document.getElementById("btnNucleusLabel");
-        if (label) label.textContent = isPublished ? 'Send update to Nucleus' : 'Send to Nucleus';
+        if (label) label.textContent = isPublished ? 'Send update to Nucleus' : (isHandedOff ? 'Send again to Nucleus' : 'Send to Nucleus');
     }
 
     renderNucleusBadge();
-    renderNucleusRevisionState();
+    renderNucleusPublishState();
 }
 
-// Surface Nucleus editorial round-trip state:
-//  - nucleusReturnedAlert (red banner)  when nucleus_returned_at is the newer signal
-//  - nucleusEditBadge     (blue chip)   when nucleus_edited_at is the newer signal
-// (Ordering matters when both are set — the most recent one wins.)
-function renderNucleusRevisionState() {
-    const alertEl = document.getElementById("nucleusReturnedAlert");
-    const chipEl  = document.getElementById("nucleusEditBadge");
-    if (!alertEl || !chipEl) return;
-
-    alertEl.style.display = "none";
-    chipEl.style.display  = "none";
+// The publish outcome Nucleus reports back (publish-completed). Edits and
+// returns happen in Nucleus only since roadmap §5.3; the badge links there.
+function renderNucleusPublishState() {
     if (!genData) return;
-
-    // Publish failure banner — independent of the edit/return signals.
     const failEl = document.getElementById("nucleusPublishFailedAlert");
     if (failEl) {
         if (genData.nucleus_publish_error) {
@@ -1074,39 +1063,25 @@ function renderNucleusRevisionState() {
             failEl.style.display = "none";
         }
     }
-
-    const returnedAt = genData.nucleus_returned_at;
-    const editedAt   = genData.nucleus_edited_at;
-    const returnedT  = returnedAt ? Date.parse(returnedAt) : 0;
-    const editedT    = editedAt   ? Date.parse(editedAt)   : 0;
-
-    if (returnedAt && returnedT >= editedT) {
-        document.getElementById("nucleusReturnedNote").textContent =
-            genData.nucleus_return_note || '(No reason provided.)';
-        document.getElementById("nucleusReturnedWhen").textContent =
-            '· ' + new Date(returnedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-        alertEl.style.display = "flex";
-    } else if (editedAt) {
-        const when = new Date(editedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-        chipEl.className   = "badge badge-blue";
-        chipEl.innerHTML   = `<span class="badge-dot"></span>Edited on Nucleus · ${escapeHtml(when)}`;
-        chipEl.style.display = "";
-    }
 }
 
 function renderNucleusBadge() {
     const badge = document.getElementById("nucleusBadge");
     if (!badge) return;
 
-    const inReview    = !!genData?.handed_off_at;
+    const sent        = !!genData?.handed_off_at;
     const isPublished = genData?.status === 'published';
     const domain      = genData?.nucleus_resolved_site_domain;
+    const reviewUrl   = genData?.nucleus_review_url;
 
-    if (inReview) {
-        // Covers both the first send and a republish revision of a live piece.
-        const label = isPublished ? 'Update in review' : 'In review';
+    if (sent) {
+        // Nucleus has it (review, edits, return, publish happen there); link forward.
+        const label = isPublished ? 'Update sent to Nucleus' : 'Sent to Nucleus';
+        const link  = reviewUrl
+            ? ` · <a href="${escapeHtml(reviewUrl)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;">Open in Nucleus ↗</a>`
+            : '';
         badge.className = "badge badge-blue";
-        badge.innerHTML = `<span class="badge-dot"></span>${label} · ${escapeHtml(domain || 'Nucleus')}`;
+        badge.innerHTML = `<span class="badge-dot"></span>${label} · ${escapeHtml(domain || 'Nucleus')}${link}`;
     } else if (isPublished && genData.wp_post_url) {
         badge.className = "badge badge-green";
         badge.innerHTML = `<span class="badge-dot"></span>Live · <a href="${escapeHtml(genData.wp_post_url)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;">${escapeHtml(domain || 'view')}</a>`;
@@ -1133,9 +1108,8 @@ async function sendToNucleus() {
         genData.handed_off_at                = new Date().toISOString();
         genData.nucleus_resolved_site_id     = data.resolved_site_id     || null;
         genData.nucleus_resolved_site_domain = data.resolved_site_domain || null;
-        genData.nucleus_publish_error        = null;   // re-send clears a prior failure…
-        genData.nucleus_returned_at          = null;   // …and a prior return
-        genData.nucleus_return_note          = null;
+        genData.nucleus_review_url           = data.review_url           || null;
+        genData.nucleus_publish_error        = null;   // a re-send clears a prior failure
         renderPublishButtons();
         const dest = data.resolved_site_domain || 'Nucleus';
         showToast(

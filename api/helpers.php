@@ -153,13 +153,21 @@ function update_generation_row($id, $fields) {
 }
 
 // ---- Nucleus handoff state (content_handoffs, roadmap §3.1) ------------------
-// The article lives in content_generations; its trip through Nucleus (the
-// brief Nucleus sent, the queue item, the resolved site, handed off / edited /
-// returned / published / failed) lives in content_handoffs, one row per
-// generation that has touched Nucleus. Reads embed it and flatten it back to
-// the field names the UI and the Nucleus endpoints have always used.
+// The article lives in content_generations; its trip through Nucleus lives in
+// content_handoffs, one row per generation that has touched Nucleus: the brief
+// Nucleus sent, the last send (queue item, resolved site, when) and the
+// publish outcome. Since roadmap §5.3 that is all: after handoff Nucleus holds
+// the only copy, edits and returns stay there, and Content links forward
+// (nucleus_review_url). Reads embed it and flatten it back to the field names
+// the UI and the Nucleus endpoints use.
 
-const HANDOFF_EMBED = 'content_handoffs(nucleus_queue_id,resolved_site_id,resolved_site_domain,handed_off_at,edited_at,returned_at,return_note,publish_error,published_at,brief)';
+const HANDOFF_EMBED = 'content_handoffs(nucleus_queue_id,resolved_site_id,resolved_site_domain,handed_off_at,publish_error,published_at,brief)';
+
+/** Where a handed-off piece is reviewed in Nucleus (its /content-queue redirect). */
+function nucleus_review_url(?string $queue_id): ?string {
+    if (!$queue_id || !NUCLEUS_BASE_URL) return null;
+    return rtrim(NUCLEUS_BASE_URL, '/') . '/content-queue/' . rawurlencode($queue_id);
+}
 
 /** A generation row with HANDOFF_EMBED, flattened to the legacy field names. */
 function flatten_handoff(array $gen): array {
@@ -171,9 +179,7 @@ function flatten_handoff(array $gen): array {
     $gen['nucleus_queue_id']             = $h['nucleus_queue_id']     ?? null;
     $gen['nucleus_resolved_site_id']     = $h['resolved_site_id']     ?? null;
     $gen['nucleus_resolved_site_domain'] = $h['resolved_site_domain'] ?? null;
-    $gen['nucleus_edited_at']            = $h['edited_at']            ?? null;
-    $gen['nucleus_returned_at']          = $h['returned_at']          ?? null;
-    $gen['nucleus_return_note']          = $h['return_note']          ?? null;
+    $gen['nucleus_review_url']           = nucleus_review_url($h['nucleus_queue_id'] ?? null);
     $gen['nucleus_publish_error']        = $h['publish_error']        ?? null;
     $gen['published_at']                 = $h['published_at']         ?? null;
     $gen['nucleus_brief']                = $h['brief']                ?? null;
@@ -373,31 +379,6 @@ function extract_faq(string $html): array {
     return $faq;
 }
 
-// Stored content after a Nucleus edit (content-updated callback). Keeps the
-// header lines Nucleus doesn't send back (description, pillar, title line).
-// The handoff sends the h1 as `title`, falling back to the title line when
-// there is no h1, so an edited title lands on that same line.
-function apply_nucleus_edit(string $stored_content, string $title, string $slug, string $body_html): string {
-    $stored = parse_content_meta($stored_content);
-    $header = [
-        'h1'          => $stored['meta']['h1']    ?? null,
-        'title'       => $stored['meta']['title'] ?? null,
-        'url'         => $stored['meta']['url']   ?? null,
-        'description' => $stored['description_line'],
-        'pillar'      => $stored['meta']['pillar'] ?? null,
-    ];
-    if ($title !== '') {
-        if ($header['h1'] !== null || $header['title'] === null) $header['h1'] = $title;
-        else                                                      $header['title'] = $title;
-    }
-    if ($slug !== '') $header['url'] = $slug;
-
-    $content = '';
-    foreach ($header as $key => $value) {
-        if ($value !== null && $value !== '') $content .= "{$key}: {$value}\n";
-    }
-    return $content . "\n" . $body_html;
-}
 
 // The POST /api/inbound/content-ready body (HUB_CONTENT_READY_SPEC): every
 // key present, null or [] when unknown. Pure — $gen is the generation row
