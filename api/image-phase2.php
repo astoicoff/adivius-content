@@ -142,16 +142,14 @@ try {
         $ext_map  = ['image/png' => 'png', 'image/jpeg' => 'jpg', 'image/webp' => 'webp'];
         $ref_ext  = $ext_map[$base_mime] ?? 'jpg';
         $ref_storage_path = $user_id . '/' . $generation_id . '_ref.' . $ref_ext;
-        $ch = curl_init(SUPABASE_URL . '/storage/v1/object/generated-images/' . $ref_storage_path);
+        $ch = curl_init(image_object_url($ref_storage_path));
         curl_setopt_array($ch, [
             CURLOPT_CUSTOMREQUEST  => 'POST',
             CURLOPT_POSTFIELDS     => file_get_contents($base_path),
-            CURLOPT_HTTPHEADER     => [
-                'apikey: ' . SUPABASE_SERVICE_KEY,
-                'Authorization: Bearer ' . SUPABASE_SERVICE_KEY,
+            CURLOPT_HTTPHEADER     => array_merge(content_db_auth_headers(), [
                 'Content-Type: ' . $base_mime,
                 'x-upsert: true',
-            ],
+            ]),
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => 60,
         ]);
@@ -159,7 +157,7 @@ try {
         $ref_up_http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
         if ($ref_up_http >= 200 && $ref_up_http < 300) {
-            $new_ref_url = SUPABASE_URL . '/storage/v1/object/public/generated-images/' . $ref_storage_path;
+            $new_ref_url = image_public_url($ref_storage_path);
             // Persist immediately — even if the AI call below fails, the
             // reference survives for the retry.
             supabase_call('PATCH', '/rest/v1/image_generations?id=eq.' . urlencode($generation_id), [
@@ -303,18 +301,15 @@ try {
     $ts_ms        = (int)(microtime(true) * 1000);
     $storage_path = $user_id . '/' . $generation_id . '_' . $ts_ms . '.jpg';
 
-    $ch = curl_init(SUPABASE_URL . '/storage/v1/object/generated-images/' . $storage_path);
+    $ch = curl_init(image_object_url($storage_path));
     curl_setopt_array($ch, [
         CURLOPT_CUSTOMREQUEST  => 'POST',
         CURLOPT_POSTFIELDS     => $image_bytes,
-        CURLOPT_HTTPHEADER     => [
-            // Storage rejects a bare Bearer with the new sb_secret_ key format
-            // ("Invalid Compact JWS"). apikey header provides authentication.
-            'apikey: ' . SUPABASE_SERVICE_KEY,
-            'Authorization: Bearer ' . SUPABASE_SERVICE_KEY,
+        // Storage needs the apikey header as well as the Bearer token.
+        CURLOPT_HTTPHEADER     => array_merge(content_db_auth_headers(), [
             'Content-Type: image/jpeg',
             'x-upsert: true',
-        ],
+        ]),
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 60,
     ]);
@@ -326,7 +321,7 @@ try {
         throw new Exception('Storage upload failed (HTTP ' . $upload_http . '): ' . $upload_resp);
     }
 
-    $public_url = SUPABASE_URL . '/storage/v1/object/public/generated-images/' . $storage_path;
+    $public_url = image_public_url($storage_path);
 
     // Archive the previous image_url into versions before overwriting
     $new_versions = $prev_versions;

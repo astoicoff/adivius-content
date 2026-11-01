@@ -9,16 +9,13 @@ $method  = $_SERVER['REQUEST_METHOD'];
 // Extracts the storage-relative path from a public URL and issues a DELETE.
 // Non-fatal by design: Storage cleanup must never block the DB operation.
 function storage_delete_by_url($url) {
-    $prefix = SUPABASE_URL . '/storage/v1/object/public/generated-images/';
+    $prefix = image_public_url('');
     if (!$url || strpos($url, $prefix) !== 0) return;
     $path = substr($url, strlen($prefix));
-    $ch   = curl_init(SUPABASE_URL . '/storage/v1/object/generated-images/' . $path);
+    $ch   = curl_init(image_object_url($path));
     curl_setopt_array($ch, [
         CURLOPT_CUSTOMREQUEST  => 'DELETE',
-        CURLOPT_HTTPHEADER     => [
-            'apikey: ' . SUPABASE_SERVICE_KEY,
-            'Authorization: Bearer ' . SUPABASE_SERVICE_KEY,
-        ],
+        CURLOPT_HTTPHEADER     => content_db_auth_headers(),
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 30,
     ]);

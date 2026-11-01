@@ -14,9 +14,90 @@ if (!defined('SUPABASE_URL')) {
     define('NUCLEUS_SERVICE_TOKEN', getenv('NUCLEUS_SERVICE_TOKEN') ?: '');
     define('NUCLEUS_BASE_URL',      getenv('NUCLEUS_BASE_URL')      ?: '');
     define('NUCLEUS_TOOL_SLUG',     getenv('NUCLEUS_TOOL_SLUG')     ?: '');
-    // Auth uses Nucleus's shared Supabase project; data stays on Content Creator's own project.
+    // Auth uses Nucleus's shared Supabase project.
     define('AUTH_SUPABASE_URL',      getenv('AUTH_SUPABASE_URL')      ?: '');
     define('AUTH_SUPABASE_ANON_KEY', getenv('AUTH_SUPABASE_ANON_KEY') ?: '');
+}
+
+// Where Content's data lives (roadmap §3B). With CONTENT_DB_JWT set: schema `content`
+// in Nucleus's project, as the role `content_app`, which can reach that schema and the
+// generated-images bucket and nothing else. Blank: the old standalone project, which
+// is the rollback. Nucleus's service-role key must never be used here, so a token for
+// any other role is refused rather than trusted.
+define('CONTENT_DB_JWT',      getenv('CONTENT_DB_JWT')      ?: '');
+define('CONTENT_SECRETS_KEY', getenv('CONTENT_SECRETS_KEY') ?: '');
+
+if (CONTENT_DB_JWT !== '') {
+    $claims = json_decode(base64_decode(strtr(explode('.', CONTENT_DB_JWT . '..')[1], '-_', '+/')), true);
+    if (($claims['role'] ?? '') !== 'content_app' || strlen((string)base64_decode(CONTENT_SECRETS_KEY)) !== 32) {
+        http_response_code(500);
+        header('Content-Type: application/json');
+        echo json_encode(['detail' => 'Server misconfigured: CONTENT_DB_JWT must be a content_app token, and CONTENT_SECRETS_KEY a base64 32-byte key.']);
+        exit;
+    }
+    define('CONTENT_DB_URL',    AUTH_SUPABASE_URL);
+    define('CONTENT_DB_APIKEY', AUTH_SUPABASE_ANON_KEY);
+    define('CONTENT_DB_BEARER', CONTENT_DB_JWT);
+    define('CONTENT_DB_SCHEMA', 'content');
+} else {
+    define('CONTENT_DB_URL',    SUPABASE_URL);
+    define('CONTENT_DB_APIKEY', SUPABASE_SERVICE_KEY);
+    define('CONTENT_DB_BEARER', SUPABASE_SERVICE_KEY);
+    define('CONTENT_DB_SCHEMA', '');
+}
+
+// Auth headers for Content's PostgREST and Storage calls.
+function content_db_auth_headers(): array {
+    return ['apikey: ' . CONTENT_DB_APIKEY, 'Authorization: Bearer ' . CONTENT_DB_BEARER];
+}
+
+// PostgREST serves one schema per request, named by a method-dependent header.
+function content_db_profile_headers(string $method): array {
+    if (CONTENT_DB_SCHEMA === '') return [];
+    $read = in_array(strtoupper($method), ['GET', 'HEAD'], true);
+    return [($read ? 'Accept-Profile: ' : 'Content-Profile: ') . CONTENT_DB_SCHEMA];
+}
+
+const IMAGE_BUCKET = 'generated-images';
+
+// Upload/delete endpoint for an object in the image bucket.
+function image_object_url(string $path): string {
+    return CONTENT_DB_URL . '/storage/v1/object/' . IMAGE_BUCKET . '/' . $path;
+}
+
+// The public URL stored on image rows and served to pages.
+function image_public_url(string $path): string {
+    return CONTENT_DB_URL . '/storage/v1/object/public/' . IMAGE_BUCKET . '/' . $path;
+}
+
+// Provider API keys are encrypted at rest in user_settings: they sit in the same
+// project as Nucleus, so a stray read of the table must not yield usable keys. AES-256-
+// GCM with CONTENT_SECRETS_KEY (Vercel env, never in the database). Format:
+// enc:v1:base64(iv[12] . tag[16] . ciphertext). Blank stays blank. Without a key (the
+// legacy mode above, where values were always plain) both functions pass through.
+const SEALED_PREFIX = 'enc:v1:';
+const USER_SECRET_FIELDS = ['openai_key', 'perplexity_key', 'serpapi_key', 'claude_key', 'gemini_key'];
+
+function seal_secret(?string $plain): string {
+    $plain = (string)$plain;
+    if ($plain === '' || CONTENT_SECRETS_KEY === '') return $plain;
+    $iv     = random_bytes(12);
+    $tag    = '';
+    $cipher = openssl_encrypt($plain, 'aes-256-gcm', base64_decode(CONTENT_SECRETS_KEY), OPENSSL_RAW_DATA, $iv, $tag);
+    return SEALED_PREFIX . base64_encode($iv . $tag . $cipher);
+}
+
+// Returns '' if a sealed value can't be opened, so the caller reports a missing key
+// rather than sending ciphertext to a provider.
+function open_secret(?string $stored): string {
+    $stored = (string)$stored;
+    if (!str_starts_with($stored, SEALED_PREFIX)) return $stored;
+    $raw   = base64_decode(substr($stored, strlen(SEALED_PREFIX)));
+    $plain = CONTENT_SECRETS_KEY === '' || strlen($raw) < 28 ? false : openssl_decrypt(
+        substr($raw, 28), 'aes-256-gcm', base64_decode(CONTENT_SECRETS_KEY), OPENSSL_RAW_DATA, substr($raw, 0, 12), substr($raw, 12, 16)
+    );
+    if ($plain === false) { error_log('open_secret: could not decrypt a stored provider key'); return ''; }
+    return $plain;
 }
 
 // The hub contract (generated from scripts/hub-contract.mjs): specs and
@@ -83,12 +164,13 @@ function get_authed_user() {
 }
 
 function supabase_call($method, $path, $body = null, $extra_headers = []) {
-    $ch = curl_init(SUPABASE_URL . $path);
-    $headers = array_merge([
-        'Content-Type: application/json',
-        'apikey: ' . SUPABASE_SERVICE_KEY,
-        'Authorization: Bearer ' . SUPABASE_SERVICE_KEY,
-    ], $extra_headers);
+    $ch = curl_init(CONTENT_DB_URL . $path);
+    $headers = array_merge(
+        ['Content-Type: application/json'],
+        content_db_auth_headers(),
+        content_db_profile_headers($method),
+        $extra_headers
+    );
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_CUSTOMREQUEST  => $method,
@@ -104,7 +186,11 @@ function supabase_call($method, $path, $body = null, $extra_headers = []) {
 function get_user_settings($user_id) {
     $res  = supabase_call('GET', '/rest/v1/user_settings?select=*&user_id=eq.' . urlencode($user_id));
     $data = json_decode($res['body'], true);
-    return $data[0] ?? [];
+    $row  = $data[0] ?? [];
+    foreach (USER_SECRET_FIELDS as $field) {
+        if (isset($row[$field])) $row[$field] = open_secret($row[$field]);
+    }
+    return $row;
 }
 
 // Returns 'owner'|'moderator'|'viewer', or false if the user has no access.
@@ -125,12 +211,12 @@ function check_group_access(string $user_id, string $group_id, string $min_role 
 function upsert_user_settings($user_id, $openai_key, $perplexity_key, $serpapi_key, $claude_key = '', $gemini_key = '') {
     return supabase_call('POST', '/rest/v1/user_settings?on_conflict=user_id', [
         'user_id'        => $user_id,
-        'openai_key'     => $openai_key,
-        'perplexity_key' => $perplexity_key,
-        'serpapi_key'    => $serpapi_key,
-        'claude_key'     => $claude_key,
-        'gemini_key'     => $gemini_key,
-    ], ['Prefer: resolution=merge-duplicates,return=representation']);
+        'openai_key'     => seal_secret($openai_key),
+        'perplexity_key' => seal_secret($perplexity_key),
+        'serpapi_key'    => seal_secret($serpapi_key),
+        'claude_key'     => seal_secret($claude_key),
+        'gemini_key'     => seal_secret($gemini_key),
+    ], ['Prefer: resolution=merge-duplicates,return=minimal']);
 }
 
 function create_generation_row($user_id, $keyword, $group_id = null) {

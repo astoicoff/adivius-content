@@ -39,11 +39,12 @@ if ($action === 'set_project' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $project_id = trim($body['project_id'] ?? '');
     if (!$project_id) { http_response_code(400); echo json_encode(['detail' => 'project_id required']); exit; }
 
-    $settings = get_user_settings($user_id);
-    supabase_call('POST', '/rest/v1/user_settings?on_conflict=user_id', array_merge($settings, [
+    // Merge-duplicates only touches the columns sent, so the stored (encrypted)
+    // provider keys are left alone. Never write get_user_settings() back: it decrypts.
+    supabase_call('POST', '/rest/v1/user_settings?on_conflict=user_id', [
         'user_id'       => $user_id,
         'nw_project_id' => $project_id,
-    ]), ['Prefer: resolution=merge-duplicates,return=minimal']);
+    ], ['Prefer: resolution=merge-duplicates,return=minimal']);
 
     echo json_encode(['success' => true]);
     exit;

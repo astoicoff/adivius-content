@@ -21,7 +21,10 @@
  *     what is applied.
  *   - Verify DDL afterwards with an information_schema / pg_catalog query.
  *
- * The token comes from ../.env (Content Creator/.env, SUPABASE_ACCESS_TOKEN).
+ * Content's data lives in the Nucleus project, schema `content`, with its own ledger
+ * (roadmap §3B), so the token comes from Nucleus/web/.env.local (SUPABASE_ACCESS_TOKEN).
+ * Migrations run in the same database as Nucleus: every object must be schema-qualified
+ * as content.*, and every new function ends with a revoke plus a grant to content_app.
  * The engine and the migrations sit beside this repo in the constellation
  * checkout, not inside it — a bare clone of the repo cannot migrate, and says so.
  */
@@ -49,8 +52,9 @@ const { createProject, runCli } = await import(pathToFileURL(CORE).href)
 await runCli(process.argv.slice(2), {
   content: createProject({
     label: 'content',
-    ref: 'ptonwhknnjtudwvwwdnn',
-    envFile: resolve(REPO, '../.env'),
+    ref: 'glmharhknuicnszauurc',
+    envFile: resolve(REPO, '../../Nucleus/web/.env.local'),
     migrationsDir: MIGRATIONS,
+    ledger: 'content.schema_migrations',
   }),
 })

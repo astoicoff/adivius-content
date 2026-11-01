@@ -8,17 +8,15 @@ $user_id = $user['id'];
 
 // Helper: count rows via PostgREST Content-Range header
 function supabase_count($path) {
-    $ch = curl_init(SUPABASE_URL . $path);
+    $ch = curl_init(CONTENT_DB_URL . $path);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_CUSTOMREQUEST  => 'GET',
-        CURLOPT_HTTPHEADER     => [
-            'Content-Type: application/json',
-            'apikey: '         . SUPABASE_SERVICE_KEY,
-            'Authorization: Bearer ' . SUPABASE_SERVICE_KEY,
-            'Prefer: count=exact',
-            'Range: 0-0',
-        ],
+        CURLOPT_HTTPHEADER     => array_merge(
+            ['Content-Type: application/json', 'Prefer: count=exact', 'Range: 0-0'],
+            content_db_auth_headers(),
+            content_db_profile_headers('GET')
+        ),
         CURLOPT_HEADER => true,
     ]);
     $raw        = curl_exec($ch);
